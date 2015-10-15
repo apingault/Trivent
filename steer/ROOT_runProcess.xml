@@ -1,0 +1,21 @@
+<marlin>
+  <execute>
+    <processor name="myrootMaker"/>
+  </execute>
+  <global>
+    <parameter name="LCIOInputFiles">
+      TSDHCAL_testMerge.slcio
+    </parameter>
+    <!--parameter name="MaxRecordNumber" value="10"/-->
+    <parameter name="SkipNEvents" value="0"/>
+    <parameter name="SupressCheck" value="false"/>
+  </global>
+  <processor name="myrootMaker" type="rootMaker">
+    <parameter name="HitCollectionName" type="StringVec">TCaloHitRoot </parameter>
+    <parameter name="OverwriteFile" value="1"/>
+    <parameter name="TreeName" value="DHCAL"/>
+    <parameter name="TreeOutputFile" value="./TSDHCAL_testMerge.root"/>
+  </processor>
+  <processor name="MyLCIOOutputProcessor" type="LCIOOutputProcessor">
+  </processor>
+</marlin>

@@ -1,0 +1,7 @@
+<setup_geom>
+  <parameter name="DifGeom">
+    181,1,0.,64.000000,1.,1. 
+    94,1,0.,32.000000,1.,1. 
+    30,1,0.,0.000000,1.,1. 
+  </parameter>
+</setup_geom>

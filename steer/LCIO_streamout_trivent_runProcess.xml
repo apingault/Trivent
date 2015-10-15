@@ -1,0 +1,64 @@
+<marlin>
+  
+  <execute>
+    <processor name="MySDHCAL_RawData_Processor"/>
+    <processor name="MyTriventProc"/>
+  </execute>
+  
+  
+  <global>
+    <parameter name="LCIOInputFiles">
+      /scratch/DHCAL_715724_I0_0.slcio
+    </parameter>
+    <!--parameter name="LCIOInputFiles">
+      /scratch/DHCAL_713775_I0_0_NAS.slcio
+    </parameter-->
+    <parameter name="MaxRecordNumber" value="0"/>
+    <!--parameter name="SkipNEvents" value="500"/-->
+    <parameter name="SupressCheck" value="false"/>
+  </global>
+  
+  <processor name="MySDHCAL_RawData_Processor" type="SDHCAL_RawData_Processor">
+    <!--SDHCAL_RawData_Processor prints info on the Raw data-->
+    <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
+    <parameter name="Verbosity" type="string">DEBUG </parameter>
+    <!--parameter name="Verbosity" type="string">MESSAGE </parameter-->
+    <!--XDAQ produced collection name-->
+    <parameter name="XDAQCollectionName" type="string" lcioInType="LCGenericObject">RU_XDAQ </parameter>
+    <!--Name of output collection containing raw calorimeter hits-->
+    <parameter name="OutputRawCaloHitCollectionName" type="string" lcioOutType="RawCalorimeterHit">DHCALRawHits </parameter>
+    <!--Turn ON/OFF debug mode : Warning Debug mode uses assert and may crash the application-->
+    <parameter name="DebugMode" type="bool"> true </parameter>
+  </processor>
+
+
+  <processor name="MyTriventProc" type="TriventProc">
+    <parameter name="HitCollectionName" type="StringVec">DHCALRawHits </parameter>
+    <parameter name="DIFMapping" type="string">
+      ./DifGeom/Slot1_39_Geom.txt
+    </parameter>
+    <parameter name="GAIN_CORRECTION_MODE" type="bool">false </parameter>
+    <parameter name="electronic_noise_cut" type="int">100000 </parameter>
+    <parameter name="layerGap" type="double"> 2.8 </parameter>
+    <parameter name="LayerCut" type="int">7 </parameter>
+    <parameter name="noiseCut" type="int">7 </parameter>
+    <parameter name="timeWin" type="int">1 </parameter>
+    <parameter name="LCIOOutputFile" value="TB_Run713775.slcio"/>
+  </processor>
+  
+  
+  
+</marlin>
+
+
+
+
+
+
+
+
+
+
+
+
+
