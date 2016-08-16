@@ -39,6 +39,7 @@ TriventProc::TriventProc()
 
   streamlog_out( MESSAGE ) << "Trivent ... begin " << endl;
   _rejectedNum = 0;
+  _selectedNum = 0;
 
   // collection
   std::vector<std::string> hcalCollections;
@@ -56,11 +57,12 @@ TriventProc::TriventProc()
                              _outFileName ,
                              _outFileName);
   // Energy
-  _beamEnergy = 10;
+  _beamEnergy = 0;
   registerProcessorParameter("beamEnergy" ,
                              "The beam ",
                              _beamEnergy ,
                              _beamEnergy);
+  
   // Option of output file with noise
   _noiseFileName = "noise_run.slcio";
   registerProcessorParameter("NOISEutputFile" ,
@@ -75,23 +77,22 @@ TriventProc::TriventProc()
                              _layerCut ,
                              _layerCut);
 
-
   // noise cut
   _noiseCut = 10;
-  registerProcessorParameter("noiseCut" ,
+  registerProcessorParameter("NoiseCut" ,
                              "noise cut in time spectrum 10 in default",
                              _noiseCut ,
                              _noiseCut);
 
   // time windows
   _timeWin = 2;
-  registerProcessorParameter("timeWin" ,
+  registerProcessorParameter("TimeWin" ,
                              "time window = 2 in default",
                              _timeWin ,
                              _timeWin);
   //maping on XML file
   _geomXML = "setup_geometry.xml";
-  registerProcessorParameter("setup_geometry" ,
+  registerProcessorParameter("SetupGeometry" ,
                              "Dif geometry and position on the detector XML",
                              _geomXML,
                              _geomXML);
@@ -104,13 +105,13 @@ TriventProc::TriventProc()
                              _mappingfile);
   //inter layer
   _layerGap = 9.;
-  registerProcessorParameter("layerGap" ,
+  registerProcessorParameter("LayerGap" ,
                              "Layers Gap in (cm)",
                              _layerGap,
                              _layerGap);
   // electronic noise cut
   _elecNoiseCut = 5000;
-  registerProcessorParameter("electronic_noise_cut" ,
+  registerProcessorParameter("ElectronicNoiseCut" ,
                              "number of hit max on time stamp",
                              _elecNoiseCut,
                              _elecNoiseCut);
@@ -130,7 +131,7 @@ TriventProc::TriventProc()
                              _treeName);
   // histogram control tree
   _logrootName = "logroot.root";
-  registerProcessorParameter("logroot_Name" ,
+  registerProcessorParameter("ROOTOutputFile" ,
                              "Logroot name",
                              _logrootName,
                              _logrootName);
@@ -591,6 +592,7 @@ void TriventProc::processEvent( LCEvent * evtP )
                 evt->setEventNumber( evtnum++ ) ;
                 evt->addCollection(outcol, "SDHCAL_HIT");
                 _lcWriter->writeEvent( evt ) ;
+                _selectedNum++;
               } else {
                 _rejectedNum++;
                 delete outcol;
@@ -613,7 +615,8 @@ void TriventProc::processEvent( LCEvent * evtP )
 //==============================================================
 void TriventProc::end()
 {
-  streamlog_out( MESSAGE ) << "Trivent Select " << _rejectedNum << " Condidate event" << std::endl;
+  streamlog_out( MESSAGE ) << "Trivent rejected " << _rejectedNum << " Condidate event" << std::endl;
+  streamlog_out( MESSAGE ) << "Trivent Select " << _selectedNum << " Condidate event" << std::endl;
   streamlog_out( MESSAGE ) << "Trivent end" << std::endl;
   //cc.StoreHistos("test.root");
   _lcWriter->close();

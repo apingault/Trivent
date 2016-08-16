@@ -7,33 +7,73 @@ uname -a
 
 echo "============= Trivent parameters =================="
 
+#runPeriod="October2015"
+runPeriod="June2016"
+
 RUN=$1
-MaxRecordNumber=5000000
+echo $2
+if [ "$2" == "" ]
+then
+    Sync=""
+else 
+    Sync="_$2"
+fi
+
+MaxRecordNumber=0
+skipNEvents=0
+
 GAIN_CORRECTION_MODE=false
-electronic_noise_cut=100000
+electronic_noise_cut=175000
 layerGap=2.8
 LayerCut=7
 noiseCut=7
 timeWin=2
-dataFolder="/Users/antoine/CALICE/DataAnalysis/data"
+cerenkovID=3
+cerenkovOffset=0
+cerenkovLength=1
 
+# dataFolder="/Users/antoine/CALICE/DataAnalysis/data"
+dataFolder="/Volumes/PagosDisk/CALICE/data/SPS_06_2016"
+
+triventFolder="/Users/antoine/CALICE/DataAnalysis/triventArnaud"
+geomFile="${triventFolder}/DifGeom/m3_bonneteau_avril2015.xml"
+
+outputFolder="/Users/antoine/CALICE/DataAnalysis/data"
+outputFile="${outputFolder}/TDHCAL_${RUN}${Sync}" #root/slcio extension added in the xml file
+
+
+echo $RUN
+echo $MaxRecordNumber
 echo $GAIN_CORRECTION_MODE
-
+echo $electronic_noise_cut
+echo $layerGap
+echo $LayerCut
+echo $noiseCut
+echo $timeWin
+echo $cerenkovID
+echo $cerenkovOffset
+echo $cerenkovLength
+echo $dataFolder
+echo $triventFolder
+echo "Sync = " $Sync
 echo "================  ILCSoft - ======================="
 
-source /opt/ilcsoft/v01-17-06/init_ilcsoft.sh
-export MARLIN_DLL=/Users/antoine/CALICE/DataAnalysis/triventArnaud/lib/libTriventArnaud.dylib
+sourceilc
+export MARLIN_DLL=${triventFolder}/lib/libTriventArnaud.dylib
+#export MARLIN_DLL=${triventFolder}/lib/libTrivent.so
 
 echo "========  steering file for Marlin ============="
 
-FILELIST=`ls ${dataFolder}/Streamout/ | grep DHCAL_${RUN}_SO.slcio`
+FILELIST=`ls ${dataFolder} | grep DHCAL_${RUN}_SO${Sync}.slcio`
 if
-    [[ $FILELIST == "DHCAL_${RUN}_SO.slcio" ]]
+    [[ $FILELIST == "DHCAL_${RUN}_SO${Sync}.slcio" ]]
 then
     echo $FILELIST
+else 
+  echo "No Files Found"    
 # else 
-#     scp acqilc@lyosdhcal10.cern.ch:/data/NAS/Avril2015/STREAMOUT_tmp/DHCAL_${RUN}_SO.slcio DHCAL_${RUN}_SO.slcio
-#     FILELIST=DHCAL_${RUN}_SO.slcio
+#     scp -r lyosdhcal10:/data/NAS/${runPeriod}/STREAMOUT_tmp/DHCAL_${RUN}_SO${Sync}.slcio ${dataFolder}/Streamout/DHCAL_${RUN}_SO${Sync}.slcio
+#     FILELIST=DHCAL_${RUN}_SO${Sync}.slcio
 #     #FILELIST=`ls  /data/NAS/December2014/STREAMOUT_tmp/DHCAL_${RUN}_I0_0s.slcio`
 #     echo $FILELIST
 fi
@@ -53,29 +93,28 @@ cat >LCIO.xml<<EOF
   
   
   <global>
-    <parameter name="LCIOInputFiles">
-     ${dataFolder}/Streamout/DHCAL_${RUN}_SO.slcio
-    </parameter>
-    <parameter name="MaxRecordNumber"  value="${MaxRecordNumber}" />
-    <parameter name="SkipNEvents" value="0" />
+    <parameter name="LCIOInputFiles">  ${dataFolder}/DHCAL_${RUN}_SO${Sync}.slcio  </parameter>
+    <parameter name="MaxRecordNumber">  ${MaxRecordNumber}  </parameter>
+    <parameter name="SkipNEvents" value="${skipNEvents}"/>
     <parameter name="Verbosity" type="string"> MESSAGE </parameter>
     <parameter name="SupressCheck" type="bool"> ${GAIN_CORRECTION_MODE} </parameter>
   </global>
   
 
   <processor name="MyTriventProc" type="TriventProc">
-    <parameter name="HitCollectionName" type="StringVec">DHCALRawHits </parameter>
+    <parameter name="HCALCollections" type="StringVec">DHCALRawHits </parameter>
     <parameter name="DIFMapping" type="string">
       ./DifGeom/Slot1_39_Geom.txt
     </parameter>
-    <parameter name="setup_geometry" type="string"> /Users/antoine/CALICE/DataAnalysis/triventArnaud/DifGeom/m3_bonneteau_avril2015.xml </parameter>
-    <parameter name="GAIN_CORRECTION_MODE" type="bool">false </parameter>
-    <parameter name="electronic_noise_cut" type="int">500000 </parameter>
-    <parameter name="layerGap" type="double"> 2.8 </parameter>
-    <parameter name="LayerCut" type="int">5 </parameter>
-    <parameter name="noiseCut" type="int">7 </parameter>
-    <parameter name="timeWin" type="int">2 </parameter>
-    <parameter name="LCIOOutputFile" value="${dataFolder}/Trivent/slcio/TDHCAL_${RUN}.slcio"/>
+    <parameter name="SetupGeometry" type="string"> ${geomFile} </parameter>
+    <parameter name="GAIN_CORRECTION_MODE" type="bool">${GAIN_CORRECTION_MODE} </parameter>
+    <parameter name="ElectronicNoiseCut" type="int"> ${electronic_noise_cut} </parameter>
+    <parameter name="LayerGap" type="double"> ${layerGap} </parameter>
+    <parameter name="LayerCut" type="int"> ${LayerCut} </parameter>
+    <parameter name="NoiseCut" type="int"> ${noiseCut} </parameter>
+    <parameter name="TimeWin" type="int"> ${timeWin} </parameter>
+    <parameter name="LCIOOutputFile" value="${outputFile}.slcio"/>
+    <parameter name="ROOTOutputFile" value="${outputFile}.root"/>
   </processor>
   
   
@@ -84,6 +123,6 @@ cat >LCIO.xml<<EOF
 
 EOF
 echo "========  RUNNING TRIVENT RECO ================="
-
 Marlin LCIO.xml
+echo " === RootFile: ${outputFile}.root"
 # rm LCIO.xml

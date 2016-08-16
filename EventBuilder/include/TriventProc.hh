@@ -89,6 +89,7 @@ protected:
   int _trigCount;
   int _maxTime;
   int evtnum;
+  int _selectedNum;
   int _rejectedNum;
   uint _index[3];
   uintVec zcut;
