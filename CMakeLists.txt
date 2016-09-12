@@ -5,7 +5,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.6 FATAL_ERROR)
 ########################################################
 
 # SET(CMAKE_SKIP_RPATH TRUE)
-set(CMAKE_MACOSX_RPATH 1)
+# set(CMAKE_MACOSX_RPATH 1)
 
 
 # project name
@@ -59,8 +59,8 @@ IF( INSTALL_DOC AND EXISTS "${PROJECT_SOURCE_DIR}/doc/CMakeLists.txt" )
     ADD_SUBDIRECTORY( ./doc )
 ENDIF()
 
-
-
+# Require C++11
+ADD_DEFINITIONS( "-std=c++11" )
 
 ADD_SUBDIRECTORY( ./EventBuilder )
 # ADD_SUBDIRECTORY( ./SDHCALReco )
