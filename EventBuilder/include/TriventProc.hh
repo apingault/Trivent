@@ -1,24 +1,33 @@
 #ifndef _TriventProc_hh_
 #define _TriventProc_hh_
 
-#define  HISTOGRAM_PARSER true
-
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <marlin/Processor.h>
-#include <EVENT/CalorimeterHit.h>
-#include <EVENT/RawCalorimeterHit.h>
-#include <IMPL/CalorimeterHitImpl.h>
-#include <TTree.h>
-#include <TFile.h>
-#include <TH1.h>
-#include <TH1F.h>
-#include "IO/LCWriter.h"
-#include <map>
-#include <algorithm>
+// -- Asics and channels mapping for sdhcal
 #include "Mapping.h"
-using namespace std;
+
+// -- std includes
+#include <string>
+#include <map>
+
+// -- marlin includes
+#include <marlin/Processor.h>
+#include "marlin/VerbosityLevels.h"
+#include "marlin/tinyxml.h"
+
+// -- lcio includes
+#include <lcio.h>
+#include "IO/LCWriter.h"
+#include <EVENT/RawCalorimeterHit.h>
+#include <EVENT/LCCollection.h>
+#include <IMPL/CalorimeterHitImpl.h>
+#include <IMPL/LCCollectionVec.h>
+#include <IMPL/LCEventImpl.h>
+#include <UTIL/CellIDEncoder.h>
+
+// -- ROOT includes
+#include <TFile.h>
+#include <TTree.h>
+#include <TH1F.h>
+#include <TH2D.h>
 
 class TriventProc  : public marlin::Processor
 {
@@ -47,7 +56,6 @@ public:
   std::vector<int> getTimeSpectrum();
   uint*   getPadIndex(uint dif_id, uint asic_id, uint chan_id);
   void    eventBuilder(LCCollection* col_event,int time_peak, int prev_time_peak);
-  bool    peakOrNot(std::vector<int> time_spectrum, int itime ,int threshold);
   void    end();
 
 protected:
@@ -64,12 +72,11 @@ protected:
   std::string _outFileName;
   std::string _noiseFileName;
   std::string _treeName;
-  std::string _logrootName;
+  std::string _rootFileName;
   std::string _colName;
   std::string _fileName;
   std::string _mappingfile;
   std::string _geomXML;
-  std::ostream *_output;
   std::vector<std::string> _hcalCollections;
   int _overwrite;
   TTree *_outputTree;
@@ -92,7 +99,7 @@ protected:
   int _selectedNum;
   int _rejectedNum;
   uint _index[3];
-  uintVec zcut;
+  uintVec _firedLayers;
   LCWriter* _lcWriter;
   int _bcid1;
   int _bcid2;
@@ -104,6 +111,12 @@ protected:
   std::string blue    ;
   std::string magenta ;
   std::string white   ;
+
+
+//ROOT histograms
+TFile *m_rootFile; 
+std::vector<TH2D*> m_vHitMapPerLayer;
+Int_t m_runNumber;
 
 };
 
