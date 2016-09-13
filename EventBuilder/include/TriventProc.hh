@@ -47,6 +47,7 @@ public:
   void    XMLReader(std::string xmlfile);
   void    readDifGeomFile(std::string geomfile);
   void    printDifGeom();
+  void    defineColors();
 
   uint    getCellDif_id(int cell_id);
   uint    getCellAsic_id(int cell_id);
@@ -64,7 +65,7 @@ protected:
   TH1F *mean_hit_dif;
   TH1F *time_hit_dif;
   // xml test
-  std::map<std::string,std::string> m_parameters;
+  std::map<std::string, std::string> m_parameters;
 
   std::vector<EVENT::RawCalorimeterHit*> _trigger_raw_hit;
 
@@ -87,6 +88,7 @@ protected:
   std::map<int, LayerID  > _mapping;
   std::map<int, double  > _chamberPos;//camber , pos
 
+  // Cut parameters
   int _noiseCut;
   int _timeWin;
   int _layerCut;
@@ -104,6 +106,7 @@ protected:
   int _bcid1;
   int _bcid2;
 
+  // Color for streamlog ouptut 
   std::string normal  ;
   std::string red     ;
   std::string green   ;

@@ -6,26 +6,14 @@
  */
 
 #include <TriventProc.hh>
-#include <EVENT/LCCollection.h>
-#include <IMPL/LCCollectionVec.h>
-#include <IMPL/LCEventImpl.h>
-#include <limits.h>
-#include <cmath>
-#include <EVENT/LCFloatVec.h>
-#include <EVENT/LCParameters.h>
-#include <stdexcept>
-#include <Rtypes.h>
-#include <sstream>
-#include <UTIL/CellIDEncoder.h>
-#include "Mapping.h"
-#include "TObject.h"
-#include "TRefArray.h"
-#include "TRef.h"
-#include <fstream>
-#include <algorithm>
-#include <lcio.h>
-#include "marlin/VerbosityLevels.h"
-#include "marlin/tinyxml.h"
+
+// -- std includes
+#include <fstream>    // std::stringstream
+#include <iterator>   // std::next
+
+// -- Root headers
+#include <TCanvas.h>
+
 
 TriventProc a_TriventProc_instance;
 
@@ -62,7 +50,7 @@ TriventProc::TriventProc()
                              "The beam ",
                              _beamEnergy ,
                              _beamEnergy);
-  
+
   // Option of output file with noise
   _noiseFileName = "noise_run.slcio";
   registerProcessorParameter("NOISEutputFile" ,
@@ -130,11 +118,11 @@ TriventProc::TriventProc()
                              _treeName,
                              _treeName);
   // histogram control tree
-  _logrootName = "logroot.root";
+  _rootFileName = "logroot.root";
   registerProcessorParameter("ROOTOutputFile" ,
                              "Logroot name",
-                             _logrootName,
-                             _logrootName);
+                             _rootFileName,
+                             _rootFileName);
 
   GAIN_CORRECTION_MODE = false;
   registerProcessorParameter("GAIN_CORRECTION_MODE",
@@ -144,6 +132,7 @@ TriventProc::TriventProc()
 
 }
 
+//=============================================================================
 void TriventProc::XMLReader(std::string xmlfile) {
   TiXmlDocument doc(xmlfile.c_str());
   bool load_key = doc.LoadFile();
@@ -251,6 +240,7 @@ void TriventProc::XMLReader(std::string xmlfile) {
   }
 }
 
+//=============================================================================
 void TriventProc::readDifGeomFile(std::string geomfile) {
 
   cout << "read the mapping file .." << endl;
@@ -275,6 +265,7 @@ void TriventProc::readDifGeomFile(std::string geomfile) {
     cerr << "ERROR ... maping file not correct !" << endl;
 }
 
+//=============================================================================
 void TriventProc::printDifGeom() {
 
   for (std::map<int, LayerID>::iterator itt = _mapping.begin(); itt != _mapping.end(); itt++)     {
@@ -291,9 +282,11 @@ void TriventProc::printDifGeom() {
 uint TriventProc::getCellDif_id(int cell_id) {
   return cell_id & 0xFF;
 }
+//=============================================================================
 uint TriventProc::getCellAsic_id(int cell_id) {
   return (cell_id & 0xFF00) >> 8;
 }
+//=============================================================================
 uint TriventProc::getCellChan_id(int cell_id) {
   return (cell_id & 0x3F0000) >> 16;
 }
@@ -315,7 +308,8 @@ uint* TriventProc::getPadIndex(uint dif_id, uint asic_id, uint chan_id) {
                           << std::endl;
   return _index;
 }
-//===============================================
+
+//=============================================================================
 void TriventProc::getMaxTime()
 {
   _maxTime = 0;
@@ -332,6 +326,7 @@ void TriventProc::getMaxTime()
 }
 
 
+//=============================================================================
 std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))
 {
   std::vector<int> time_spectrum(_maxTime + 1);
@@ -361,7 +356,10 @@ bool TriventProc::peakOrNot(std::vector<int> time_spectrum , int itime , int thr
   }
 }
 
+//=============================================================================
 int IJKToKey(const int i, const int j, const int k) {return 100 * 100 * k + 100 * j + i;}
+
+//=============================================================================
 int findAsicKey(int i, int j, int k)
 {
   if (i > 96 || i < 0 || j > 96 || j < 0) return -1;
@@ -370,6 +368,8 @@ int findAsicKey(int i, int j, int k)
   int num = jnum * 12 + inum;
   return k * 1000 + num;
 }
+
+//=============================================================================
 void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_time_peak) {
   zcut.clear();
   col_event->setFlag(col_event->getFlag() | ( 1 << LCIO::RCHBIT_LONG));
@@ -463,6 +463,9 @@ void TriventProc::init() {
   printParameters();
   // new process
 
+//=============================================================================
+void TriventProc::defineColors()
+{
   char cnormal[8] =  {0x1b, '[', '0', ';', '3', '9', 'm', 0};
   char cred[8]     = {0x1b, '[', '1', ';', '3', '1', 'm', 0};
   char cgreen[8]   = {0x1b, '[', '1', ';', '3', '2', 'm', 0};
@@ -478,12 +481,25 @@ void TriventProc::init() {
   blue     = cblue;
   magenta  = cmagenta;
   white    = cwhite;
+}
+//=============================================================================
+void TriventProc::init() {
+  _trigCount = 0;
+  evtnum = 0; // event number
+  // ========================
+  printParameters();
 
+  // Define colors for
+  defineColors();
+
+
+  // Create writer for lcio output file
   _lcWriter = LCFactory::getInstance()->createLCWriter() ;
   _lcWriter->setCompressionLevel( 0 ) ;
   _lcWriter->open(_outFileName.c_str(), LCIO::WRITE_NEW) ;
 
 
+  // Read and print geometry file
   XMLReader(_geomXML.c_str());
   printDifGeom();
   evtnum = 0; // event number
@@ -609,23 +625,16 @@ void TriventProc::processEvent( LCEvent * evtP )
       }
     } catch (lcio::DataNotAvailableException err) {}
   }
-
-
 }
-//==============================================================
+
+//=============================================================================
 void TriventProc::end()
 {
   streamlog_out( MESSAGE ) << "Trivent rejected " << _rejectedNum << " Condidate event" << std::endl;
-  streamlog_out( MESSAGE ) << "Trivent Select " << _selectedNum << " Condidate event" << std::endl;
+  streamlog_out( MESSAGE ) << "Trivent Selected " << _selectedNum << " Condidate event" << std::endl;
   streamlog_out( MESSAGE ) << "Trivent end" << std::endl;
-  //cc.StoreHistos("test.root");
   _lcWriter->close();
 
-  if (_outputTree) {
-    TFile *_logroot = _outputTree->GetCurrentFile();
-    _logroot->Write();
-    delete _logroot;
-  }
 }
 //==============================================================
 
