@@ -23,17 +23,17 @@ MaxRecordNumber=0
 skipNEvents=0
 
 GAIN_CORRECTION_MODE=false
-electronic_noise_cut=175000
+electronic_noise_cut=200000
 layerGap=2.8
 LayerCut=7
-noiseCut=7
+noiseCut=10
 timeWin=2
 cerenkovID=3
 cerenkovOffset=0
 cerenkovLength=1
 
 # dataFolder="/Users/antoine/CALICE/DataAnalysis/data"
-dataFolder="/Volumes/PagosDisk/CALICE/data/SPS_06_2016"
+dataFolder="/Volumes/PagosDisk/CALICE/data/SPS_06_2016/StreamOuted"
 
 triventFolder="/Users/antoine/CALICE/DataAnalysis/triventArnaud"
 geomFile="${triventFolder}/DifGeom/m3_bonneteau_avril2015.xml"
