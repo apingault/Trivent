@@ -599,6 +599,12 @@ void TriventProc::processEvent( LCEvent * evtP ) {
           col = evtP ->getCollection(_hcalCollections[i].c_str());
           int numElements = col->getNumberOfElements();// hit number
 
+          // reset Flags
+          m_isSelected = false;
+          m_isNoise = false;
+          m_hasNotEnoughLayers = false;
+          m_isTooCloseInTime = false;
+
           _trigCount++;
           if (0 == _trigCount % 10)
             streamlog_out( MESSAGE ) << yellow << "Trigger number == " << _trigCount << normal << std::endl;
@@ -713,6 +719,8 @@ void TriventProc::processEvent( LCEvent * evtP ) {
                 {
                   streamlog_out( DEBUG0 ) << green << " Event rejected, too few layer hit. nLayerHit: " << _firedLayersSet.size() << " _layerCut: " << _layerCut << normal << std::endl;
                   _rejectedNum++;
+                  m_isSelected = false;
+                  m_hasNotEnoughLayers = true;
                   delete outcol;
                 }
                 //  Apply cut on time between two events
@@ -725,10 +733,13 @@ void TriventProc::processEvent( LCEvent * evtP ) {
                   evt->addCollection(outcol, "SDHCAL_HIT");
                   _lcWriter->writeEvent( evt ) ;
                   _selectedNum++;
+                  m_isSelected = true;
                 }
                 else {
                   streamlog_out( DEBUG0 ) << blue << " Event rejected, Events too close. eventTime: " << timePeak << " prevEventTime: " << prevTimePeak << normal << std::endl;
                   _rejectedNum++;
+                  m_isSelected = false;
+                  m_isTooCloseInTime = true;
                   delete outcol;
                 }
 
@@ -740,8 +751,11 @@ void TriventProc::processEvent( LCEvent * evtP ) {
                 ++timeIter;
               }
             } else { // Not enough hit in frame, look in next one
+              m_isSelected = false;
+              m_isNoise = true;
               ++timeIter;
             }
+            // TODO: FILL ROOT
           }
         } catch (lcio::DataNotAvailableException zero) {}
       }
