@@ -472,6 +472,12 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
                                << " K == " << K
                                << std::endl;
 
+        // Fill hitsMap for each Layer, starting at K-1 = 0
+        streamlog_out ( DEBUG ) << yellow << "Filling hitMap for Layer '" << K << "'..." << normal << std::endl;
+        m_vHitMapPerLayer.at(K - 1)->Fill(I, J);
+        streamlog_out ( DEBUG ) << blue << "Filling hitMap for Layer '" << K << "'...OK" << normal << std::endl;
+
+
         cd.setCellID( caloHit ) ;
         // add layer to list of unique touched layers
         _firedLayersSet.insert(K);
@@ -479,26 +485,15 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
         col_event->addElement(caloHit);
         hitKeys.push_back(aHitKey);
       }
-      //}else{
-      //streamlog_out( MESSAGE ) << " time peak = "<<time_peak<<" pointer --> : " << rawhit << std::endl;
-      //}
+      else {
+        streamlog_out( MESSAGE ) << " time peak = " << time_peak << " pointer --> : " << rawhit << std::endl;
+      }
     }//loop over the hit
     hitKeys.clear();
   } catch (DataNotAvailableException &e) {
     streamlog_out(WARNING) << " collection not available" << std::endl;
   }
 }
-
-//===============================================
-void TriventProc::init() {
-  _trigCount = 0;
-  //========================
-  //readDifGeomFile(_mappingfile.c_str());
-
-  // ========================
-
-  printParameters();
-  // new process
 
 //=============================================================================
 void TriventProc::defineColors()
@@ -539,21 +534,60 @@ void TriventProc::init() {
   // Read and print geometry file
   XMLReader(_geomXML.c_str());
   printDifGeom();
-  evtnum = 0; // event number
 
+
+  /**
+   * Book root histograms
+   */
+
+  m_rootFile = new TFile(_rootFileName.c_str(), "RECREATE");
+
+  if (NULL == m_rootFile)
+    return;
+
+  // Create a list of unique Layers from geometry file
+  std::set<int> layerSet;
+  for (std::map<int, LayerID>::iterator itt = _mapping.begin(); itt != _mapping.end(); itt++)
+    layerSet.insert(itt->second.K);
+
+  // Find last layer and resize the vector of hitMap
+  const auto maxLayer = std::max_element(layerSet.begin(), layerSet.end());
+  streamlog_out( MESSAGE ) << yellow << "Max LayerId in geometryFile: '" << *maxLayer << "'" << normal << std::endl;
+  m_vHitMapPerLayer.resize(*maxLayer);
+
+  // Check if first layer is numbered 0 or 1
+  // Prevent accessing non defined element in vectors...
+  const auto firstLayer = std::min_element(layerSet.begin(), layerSet.end());
+  bool startAt0 = false;
+  if ( 0 == *firstLayer )
+    startAt0 = true;
+
+  for (std::set<int>::const_iterator layerIter = layerSet.begin(); layerIter != layerSet.end(); ++layerIter)
+  {
+    unsigned int iLayer = *layerIter - 1;
+    if (startAt0)
+      iLayer = *layerIter;
+
+    std::stringstream oss;
+    streamlog_out( MESSAGE ) << yellow << "Booking hitMap for layer '" << iLayer << "'..." << normal << std::endl;
+    oss << "hitMap_Layer" << iLayer;
+    m_vHitMapPerLayer.at(iLayer) = (new TH2D(oss.str().c_str(), oss.str().c_str(), 96, 0, 96, 96, 0, 96));
+    m_vHitMapPerLayer.at(iLayer)->GetXaxis()->SetTitle("I");
+    m_vHitMapPerLayer.at(iLayer)->GetYaxis()->SetTitle("J (DIFSide)");
+
+    streamlog_out( MESSAGE ) << blue << "Booking hitMap for layer '" << iLayer << "'...OK" << normal << std::endl;
+  }
+
+  for (const auto histo : m_vHitMapPerLayer)
+    streamlog_out( MESSAGE ) << yellow << "Booked hitMap histo for layer '" << histo << "'" << normal << std::endl;
 }
-//==================================================================================
-//void TriventProc::setTriggerRawHit() {
 
-//}
-//==================================================================================
-void TriventProc::processRunHeader( LCRunHeader * runHd ) {
-
+//=============================================================================
+void TriventProc::processRunHeader( LCRunHeader * /*runHd*/ ) {
 }
 
-//==================================================================================
-void TriventProc::processEvent( LCEvent * evtP )
-{
+//=============================================================================
+void TriventProc::processEvent( LCEvent * evtP ) {
   if (evtP != NULL) {
     try {
 
@@ -566,7 +600,7 @@ void TriventProc::processEvent( LCEvent * evtP )
           int numElements = col->getNumberOfElements();// hit number
 
           _trigCount++;
-          if (0 == _trigCount % 100)
+          if (0 == _trigCount % 10)
             streamlog_out( MESSAGE ) << yellow << "Trigger number == " << _trigCount << normal << std::endl;
 
           if (col == NULL )  {
@@ -584,7 +618,8 @@ void TriventProc::processEvent( LCEvent * evtP )
           std::vector<int> vTrigger;
           for (int ihit(0); ihit < col->getNumberOfElements(); ++ihit) {// loop over the hits
             RawCalorimeterHit *raw_hit =
-              dynamic_cast<RawCalorimeterHit*>( col->getElementAt(ihit)) ;
+              dynamic_cast<RawCalorimeterHit*>( col->getElementAt(ihit));
+
             if (NULL != raw_hit) {
               _trigger_raw_hit.push_back(raw_hit);
               //extract abolute bcid information:
@@ -672,6 +707,23 @@ void TriventProc::end()
   streamlog_out( MESSAGE ) << "Trivent end" << std::endl;
   _lcWriter->close();
 
+  TCanvas *c1 = new TCanvas();
+  c1->SetCanvasSize(2048, 1024);
+  c1->Update();
+  c1->cd();
+  c1->Divide(2, 1);
+  c1->cd(1);
+  std::cout << "Drawing for layer 48" << std::endl;
+  m_vHitMapPerLayer.at(47)->Draw("colz");
+  c1->cd(2);
+  std::cout << "Drawing for layer 50" << std::endl;
+  m_vHitMapPerLayer.at(49)->Draw("colz");
+  std::stringstream ss;
+  ss << "/Volumes/PagosDisk/CALICE/data/SPS_06_2016/hitMap_Layer48-50_run" << m_runNumber << ".png";
+  c1->SaveAs(ss.str().c_str());
+  m_rootFile->cd();
+  m_rootFile->Write();
+  m_rootFile->Close();
 }
 //==============================================================
 

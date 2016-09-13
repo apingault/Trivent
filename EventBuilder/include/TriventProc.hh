@@ -119,10 +119,10 @@ protected:
   std::string white   ;
 
 
-//ROOT histograms
-TFile *m_rootFile; 
-std::vector<TH2D*> m_vHitMapPerLayer;
-Int_t m_runNumber;
+  //ROOT histograms
+  TFile *m_rootFile;
+  std::vector<TH2D*> m_vHitMapPerLayer;
+  Int_t m_runNumber;
 
 };
 
