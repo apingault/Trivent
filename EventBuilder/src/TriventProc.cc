@@ -347,9 +347,15 @@ std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))
 {
   std::vector<int> time_spectrum(_maxTime + 1);
   try {
-    for (std::vector<EVENT::RawCalorimeterHit*>::iterator raw_hit = _trigger_raw_hit.begin(); raw_hit != _trigger_raw_hit.end(); raw_hit++) {
-      int time =  int((*raw_hit)->getTimeStamp());
-      if (time >= 0) time_spectrum[time]++;
+    for (std::vector<EVENT::RawCalorimeterHit*>::const_iterator raw_hit = _trigger_raw_hit.begin(); raw_hit != _trigger_raw_hit.end(); raw_hit++) {
+      int time =  static_cast<int>((*raw_hit)->getTimeStamp());
+      if (time > _maxTime)
+      {
+        streamlog_out( WARNING ) << "\t *** WARNING *** Found Hit after _maxTime -> hitTime: " << time << " / maxTime: " << _maxTime << std::endl;
+        continue;
+      }
+      if (time >= 0)
+        ++time_spectrum.at(time);
     }
   } catch (std::exception ec) {
     streamlog_out( WARNING ) << "No hits " << std::endl;
