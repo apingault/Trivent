@@ -381,24 +381,31 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
   zcut.clear();
   col_event->setFlag(col_event->getFlag() | ( 1 << LCIO::RCHBIT_LONG));
   col_event->setFlag(col_event->getFlag() | ( 1 << LCIO::RCHBIT_TIME));
-  CellIDEncoder<CalorimeterHitImpl> cd( "M:3,S-1:3,I:9,J:9,K-1:6" , col_event) ;
+
+  CellIDEncoder<CalorimeterHitImpl> cd( "M:3,S-1:3,I:9,J:9,K-1:6" , col_event);
+
   std::map<int, int> asicMap;
   try {
     std::vector<int> hitKeys;
-    for (std::vector<EVENT::RawCalorimeterHit*>::iterator rawhit = _trigger_raw_hit.begin(); rawhit != _trigger_raw_hit.end(); rawhit++) {
-      float pos[3];
-      int time = (*rawhit)->getTimeStamp();
-      if (fabs(time - time_peak) <= _timeWin &&
+    for (std::vector<EVENT::RawCalorimeterHit*>::const_iterator rawhit = _trigger_raw_hit.begin(); rawhit != _trigger_raw_hit.end(); rawhit++) {
+      int time = static_cast<int>((*rawhit)->getTimeStamp());
+      if (std::fabs(time - time_peak) <= _timeWin &&
           (time > prev_time_peak + _timeWin )) {
 
         int Dif_id  =  getCellDif_id ((*rawhit)->getCellID0());
         int Asic_id =  getCellAsic_id((*rawhit)->getCellID0());
         int Chan_id =  getCellChan_id((*rawhit)->getCellID0());
 
-        int I = getPadIndex(Dif_id, Asic_id, Chan_id)[0];
-        int J = getPadIndex(Dif_id, Asic_id, Chan_id)[1];
-        int K = getPadIndex(Dif_id, Asic_id, Chan_id)[2];
-        //find ans remove square events
+        std::vector<unsigned int> padIndex = getPadIndex(Dif_id, Asic_id, Chan_id);
+
+        unsigned int I = padIndex[0];
+        unsigned int J = padIndex[1];
+        unsigned int K = padIndex[2];
+
+        if (K <= 0 || K > 64) {
+          streamlog_out( WARNING ) << " Found hit in Layer '" << K << "' DifId: " << Dif_id << std::endl;
+          continue;
+        }
         int asickey = findAsicKey(I, J, K);
         if (asicMap[asickey]) asicMap[asickey]++;
         else asicMap[asickey] = 1;
@@ -415,6 +422,8 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
         pos[2] = K * 26.131;
 
         if (K <= 0 || K > 64) {streamlog_out( DEBUG ) << Dif_id << std::endl; continue;}
+        // Creating Calorimeter Hit
+        float pos[3];
         CalorimeterHitImpl* caloHit = new CalorimeterHitImpl();
         caloHit->setTime(float((*rawhit)->getTimeStamp())); // done !!
 
