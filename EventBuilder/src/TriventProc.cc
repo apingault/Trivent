@@ -378,7 +378,10 @@ int findAsicKey(int i, int j, int k)
 
 //=============================================================================
 void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_time_peak) {
-  zcut.clear();
+
+  // reset Number of layers touched
+  _firedLayersSet.clear();
+
   col_event->setFlag(col_event->getFlag() | ( 1 << LCIO::RCHBIT_LONG));
   col_event->setFlag(col_event->getFlag() | ( 1 << LCIO::RCHBIT_TIME));
 
@@ -410,7 +413,7 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
         if (asicMap[asickey]) asicMap[asickey]++;
         else asicMap[asickey] = 1;
         if ( asicMap[asickey] == 64 ) {
-          zcut.clear();
+          _firedLayersSet.clear();
           hitKeys.clear();
           asicMap.clear();
           return;
@@ -441,6 +444,8 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
           }
           continue;
         }
+
+
         // set the cell id
         cd["I"] = I ;
         cd["J"] = J ;
@@ -452,8 +457,8 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
                                 << " K == " << K
                                 << std::endl;
         cd.setCellID( caloHit ) ;
-        if (std::find(zcut.begin(), zcut.end(), K) == zcut.end())
-          zcut.push_back(K);
+        // add layer to list of unique touched layers
+        _firedLayersSet.insert(K);
         caloHit->setPosition(pos);
         col_event->addElement(caloHit);
         hitKeys.push_back(aHitKey);

@@ -100,7 +100,7 @@ protected:
   int evtnum;
   int _selectedNum;
   int _rejectedNum;
-  uintVec _firedLayers;
+  std::set<unsigned int> _firedLayersSet;
   LCWriter* _lcWriter;
   int _bcid1;
   int _bcid2;
