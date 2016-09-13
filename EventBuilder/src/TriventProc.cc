@@ -409,39 +409,50 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
           streamlog_out( WARNING ) << " Found hit in Layer '" << K << "' DifId: " << Dif_id << std::endl;
           continue;
         }
+
+        //find and remove square events
         int asickey = findAsicKey(I, J, K);
-        if (asicMap[asickey]) asicMap[asickey]++;
-        else asicMap[asickey] = 1;
+        if (asicMap[asickey])
+          ++asicMap[asickey];
+        else
+          asicMap[asickey] = 1;
+
         if ( asicMap[asickey] == 64 ) {
+          streamlog_out ( MESSAGE) << "Rejecting event with full asic. Dif " << Dif_id << " asic " << Asic_id << "' ... " << std::endl;
+
           _firedLayersSet.clear();
           hitKeys.clear();
           asicMap.clear();
           return;
         }
-        //
-        int aHitKey = IJKToKey(I, J, K);
         pos[0] = I * 10.*1.0408;
         pos[1] = J * 10.*1.0408;
         pos[2] = K * 26.131;
 
-        if (K <= 0 || K > 64) {streamlog_out( DEBUG ) << Dif_id << std::endl; continue;}
+
         // Creating Calorimeter Hit
         float pos[3];
         CalorimeterHitImpl* caloHit = new CalorimeterHitImpl();
-        caloHit->setTime(float((*rawhit)->getTimeStamp())); // done !!
+        caloHit->setTime(static_cast<float>((*rawhit)->getTimeStamp()));
 
-        if (float((*rawhit)->getAmplitude() & 3) > 2.5) caloHit->setEnergy(float((*rawhit)->getAmplitude() & 3));
-        else if (float((*rawhit)->getAmplitude() & 3) > 1.5) caloHit->setEnergy(float((*rawhit)->getAmplitude() & 3) - 1);
-        else caloHit->setEnergy(float((*rawhit)->getAmplitude() & 3) + 1);
+        float hitShiftedAmplitude = static_cast<float>((*rawhit)->getAmplitude() & 3);
+        if (hitShiftedAmplitude > 2.5)
+          caloHit->setEnergy(hitShiftedAmplitude);        // 3rd treshold
+        else if (hitShiftedAmplitude > 1.5)
+          caloHit->setEnergy(hitShiftedAmplitude - 1);    // 2nd treshold ?
+        else
+          caloHit->setEnergy(hitShiftedAmplitude + 1);    // 1st treshold ?
 
-        //avoid two hit in the same cell
-        if (std::find(hitKeys.begin(), hitKeys.end(), aHitKey) != hitKeys.end()) {
-          IMPL::CalorimeterHitImpl* hit =
-            dynamic_cast<IMPL::CalorimeterHitImpl*>(col_event->getElementAt(std::distance(hitKeys.begin(), std::find(hitKeys.begin(), hitKeys.end(), aHitKey))));
-          float hitTime = hit->getTime();
-          if ( fabs(time_peak - hitTime) > fabs(time_peak - time) ) {
-            hit->setEnergy(caloHit->getEnergy());
-          }
+        // Create hit Key
+        int aHitKey = IJKToKey(I, J, K);
+
+        // Avoid two hit in the same cell
+        std::vector<int>::iterator findIter = std::find(hitKeys.begin(), hitKeys.end(), aHitKey);
+
+        if (findIter != hitKeys.end())
+        {
+          streamlog_out( WARNING ) << " Found two hits in the same cell! " << std::endl;
+          delete caloHit;
           continue;
         }
 
@@ -452,10 +463,13 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
         cd["K-1"] = K - 1 ;
         cd["M"] = 0 ;
         cd["S-1"] = 3 ;
-        streamlog_out( DEBUG0 ) << " I == " << I
-                                << " J == " << J
-                                << " K == " << K
-                                << std::endl;
+
+
+        streamlog_out( DEBUG ) << " I == " << I
+                               << " J == " << J
+                               << " K == " << K
+                               << std::endl;
+
         cd.setCellID( caloHit ) ;
         // add layer to list of unique touched layers
         _firedLayersSet.insert(K);
