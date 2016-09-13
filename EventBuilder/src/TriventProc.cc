@@ -382,6 +382,7 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
 
   // reset Number of layers touched
   _firedLayersSet.clear();
+  int multiHit = 0;
 
   col_event->setFlag(col_event->getFlag() | ( 1 << LCIO::RCHBIT_LONG));
   col_event->setFlag(col_event->getFlag() | ( 1 << LCIO::RCHBIT_TIME));
@@ -390,7 +391,7 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
 
   std::map<int, int> asicMap;
   try {
-    std::vector<int> hitKeys;
+    std::map<int, int> hitKeys;
     for (std::vector<EVENT::RawCalorimeterHit*>::const_iterator rawhit = _trigger_raw_hit.begin(); rawhit != _trigger_raw_hit.end(); rawhit++) {
       int time = static_cast<int>((*rawhit)->getTimeStamp());
       if (std::fabs(time - time_peak) <= _timeWin &&
@@ -419,11 +420,13 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
           asicMap[asickey] = 1;
 
         if ( asicMap[asickey] == 64 ) {
-          streamlog_out ( MESSAGE) << "Rejecting event with full asic. Dif " << Dif_id << " asic " << Asic_id << "' ... " << std::endl;
+          streamlog_out ( MESSAGE) << "Rejecting event with full asic. Dif '" << Dif_id << "' asic '" << Asic_id << "' ... " << std::endl;
 
           _firedLayersSet.clear();
           hitKeys.clear();
           asicMap.clear();
+          m_isSelected = false;
+          m_hasFullAsic = true;
           return;
         }
 
@@ -449,11 +452,22 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
         int aHitKey = IJKToKey(I, J, K);
 
         // Avoid two hit in the same cell
-        std::vector<int>::iterator findIter = std::find(hitKeys.begin(), hitKeys.end(), aHitKey);
+        // std::vector<int>::const_iterator findIter = std::find(hitKeys.begin(), hitKeys.end(), aHitKey);
+        std::map<int, int>::const_iterator findIter = hitKeys.find(aHitKey);
 
         if (findIter != hitKeys.end())
         {
-          streamlog_out( WARNING ) << " Found two hits in the same cell! " << std::endl;
+          ++multiHit;
+          if (multiHit > 10)
+            streamlog_out( WARNING ) << " Found two hits in the same cell! : I,J,K, time,previousTime -> "
+                                     << I << "\t"
+                                     << J << "\t"
+                                     << K << "\t"
+                                     << time << "\t"
+                                     << findIter->second << "\t\t"
+                                     << " in evt " << evtnum << "\t"
+                                     << " total multiHits " << multiHit << "\t"
+                                     << std::endl;
           delete caloHit;
           continue;
         }
@@ -483,10 +497,10 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
         _firedLayersSet.insert(K);
         caloHit->setPosition(pos);
         col_event->addElement(caloHit);
-        hitKeys.push_back(aHitKey);
+        hitKeys.insert(std::pair<int, int>(aHitKey, time));
       }
       else {
-        streamlog_out( MESSAGE ) << " time peak = " << time_peak << " pointer --> : " << rawhit << std::endl;
+        streamlog_out( DEBUG0 ) << " time peak = " << time_peak << " pointer --> : " << *rawhit << std::endl;
       }
     }//loop over the hit
     hitKeys.clear();
@@ -707,10 +721,14 @@ void TriventProc::processEvent( LCEvent * evtP ) {
 
                 LCCollectionVec* outcol = new LCCollectionVec(LCIO::CALORIMETERHIT);
 
+
+                // Event Building
                 int timePeak = distance (time_spectrum.begin(), timeIter);
                 streamlog_out( DEBUG0 ) << yellow << " EventBuilding with timePeak '" << timePeak << "' prevTimePeak: " << prevTimePeak << normal << std::endl;
                 TriventProc::eventBuilder(outcol, timePeak, prevTimePeak);
                 streamlog_out( DEBUG0 ) << yellow << " EventBuilding...OK" << normal << std::endl;
+
+
 
                 streamlog_out( DEBUG0 ) << "_firedLayersSet.size() = " << _firedLayersSet.size() << "\t _LayerCut = " << _layerCut << std::endl;
 

@@ -104,8 +104,9 @@ protected:
   // Flags for selected/rejected events
   bool m_isSelected;
   bool m_isNoise;
-  bool m_hasNotEnoughLayers;
   bool m_isTooCloseInTime;
+  bool m_hasNotEnoughLayers;
+  bool m_hasFullAsic;
   
   std::set<unsigned int> _firedLayersSet;
   LCWriter* _lcWriter;
