@@ -20,9 +20,10 @@ TriventProc a_TriventProc_instance;
 //=========================================================
 TriventProc::TriventProc()
   : Processor("TriventProc"),
-    _output(0),
-    _outputTree(0)//,
-    //_hitArray(0)
+    _outputTree(0),
+    m_cellSizeI(10.408),
+    m_cellSizeJ(10.408),
+    m_layerThickness(26.131)
 {
 
   streamlog_out( MESSAGE ) << "Trivent ... begin " << endl;
@@ -425,13 +426,14 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
           asicMap.clear();
           return;
         }
-        pos[0] = I * 10.*1.0408;
-        pos[1] = J * 10.*1.0408;
-        pos[2] = K * 26.131;
 
 
         // Creating Calorimeter Hit
         float pos[3];
+        pos[0] = I * m_cellSizeI;
+        pos[1] = J * m_cellSizeJ;
+        pos[2] = K * m_layerThickness;
+
         CalorimeterHitImpl* caloHit = new CalorimeterHitImpl();
         caloHit->setTime(static_cast<float>((*rawhit)->getTimeStamp()));
 

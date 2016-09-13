@@ -105,6 +105,10 @@ protected:
   int _bcid1;
   int _bcid2;
 
+  // Geometry paramaters
+  float m_cellSizeI;
+  float m_cellSizeJ;
+  float m_layerThickness;
   // Color for streamlog ouptut 
   std::string normal  ;
   std::string red     ;
