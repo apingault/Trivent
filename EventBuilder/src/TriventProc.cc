@@ -357,21 +357,6 @@ std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))
   return time_spectrum;
 }
 
-bool TriventProc::peakOrNot(std::vector<int> time_spectrum , int itime , int threshold) {
-
-#if HISTOGRAM_PARSER
-  noise_dist->Fill(time_spectrum[itime]);
-#endif
-
-  if (time_spectrum[itime] >= threshold
-      && time_spectrum[itime] >  time_spectrum[itime + 1]
-      && time_spectrum[itime] >= time_spectrum[itime + 1]) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
 //=============================================================================
 int IJKToKey(const int i, const int j, const int k) {return 100 * 100 * k + 100 * j + i;}
 
