@@ -279,34 +279,51 @@ void TriventProc::printDifGeom() {
 }
 
 // ============ decode the cell ids =============
+// bit shift & 0xFF = Apply mask 1111 1111 to binary value
+// eg: Dif 1 => cellID0 = 00983297 => DifID = 1 / AsicID = 1 / ChanID = 15
 uint TriventProc::getCellDif_id(int cell_id) {
   return cell_id & 0xFF;
 }
+
 //=============================================================================
+//  bit shift & 0xFF00 Apply mask 1111 1111 0000 0000 then cut last 8 bits
 uint TriventProc::getCellAsic_id(int cell_id) {
   return (cell_id & 0xFF00) >> 8;
 }
+
 //=============================================================================
+//  bit shift & 0x3F0000 Apply mask 1111 0000 0000 0000 0000 then cut last 16 bits
 uint TriventProc::getCellChan_id(int cell_id) {
   return (cell_id & 0x3F0000) >> 16;
 }
 
-uint* TriventProc::getPadIndex(uint dif_id, uint asic_id, uint chan_id) {
-  _index[0] = _index[1] = _index[2] = 0;
-  double DifY = -1., DifZ = -1.;
-  DifZ = _mapping.find(dif_id)->second.K;
-  DifY = _mapping.find(dif_id)->second.DifY;
-  _index[0] = (1 + MapILargeHR2[chan_id] + AsicShiftI[asic_id]);
-  _index[1] = (32 - (MapJLargeHR2[chan_id] + AsicShiftJ[asic_id])) + int(DifY);
-  _index[2] = abs(int(DifZ));
+// ============ ============ ============ ============ ============ ============ ============
+// ============ ============ ============ ============ ============ ============ ============
+// Full example with Dif 1:
+// cellId0 = 00983297 -> Binaire =  1111 0000 0001 0000 0001
+// binaire & 0xFF = 0000 0001 => 2^0 = 1
+// binaire & 0xFF00 = 0000 0001 0000 0000 >>8 = 0000 0001 => 2^0 = 1
+// binaire & 0x3F0000 =  1111 0000 0000 0000 0000 >>16 = 1111 => (2^3)+(2^2)+(2^1)+(2^0) = 15
+// ============ ============ ============ ============ ============ ============ ============
+// ============ ============ ============ ============ ============ ============ ============
+
+//=============================================================================
+std::vector<unsigned int> TriventProc::getPadIndex(unsigned int dif_id, unsigned int asic_id, unsigned int chan_id) {
+  std::vector<unsigned int> index(3, 0);
+  std::map<int, LayerID>::const_iterator findIter = _mapping.find(dif_id);
+
+  index[0] = (1 + MapILargeHR2[chan_id] + AsicShiftI[asic_id]);
+  index[1] = ( 32 - (MapJLargeHR2[chan_id] + AsicShiftJ[asic_id]) ) + findIter->second.DifY;
+  index[2] = findIter->second.K;
+
   streamlog_out( DEBUG0 ) << " Dif_id == " << dif_id
                           << " Asic_id ==" << asic_id
                           << " Chan_id ==" << chan_id
-                          << " I == " << _index[0]
-                          << " J == " << _index[1]
-                          << " K == " << _index[2]
+                          << " I == " << index[0]
+                          << " J == " << index[1]
+                          << " K == " << index[2]
                           << std::endl;
-  return _index;
+  return index;
 }
 
 //=============================================================================
@@ -314,17 +331,16 @@ void TriventProc::getMaxTime()
 {
   _maxTime = 0;
   try {
-    for (std::vector<EVENT::RawCalorimeterHit*>::iterator raw_hit = _trigger_raw_hit.begin(); raw_hit != _trigger_raw_hit.end(); raw_hit++) {
-      int time =  int((*raw_hit)->getTimeStamp());
-      if (time >= 0) _maxTime = max(_maxTime, time);
+    for (std::vector<EVENT::RawCalorimeterHit*>::const_iterator raw_hit = _trigger_raw_hit.begin(); raw_hit != _trigger_raw_hit.end(); raw_hit++) {
+      int time =  static_cast<int>((*raw_hit)->getTimeStamp());
+
+      if (time >= 0)
+        _maxTime = max(_maxTime, time);
     }
   } catch (std::exception ec) {
     streamlog_out( WARNING ) << "No hits " << std::endl;
   }
-  streamlog_out( DEBUG1 ) << " maxtime before == " << _maxTime << std::endl;
-  //return maxtime;
 }
-
 
 //=============================================================================
 std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))

@@ -55,8 +55,8 @@ public:
 
   void    getMaxTime();
   std::vector<int> getTimeSpectrum();
-  uint*   getPadIndex(uint dif_id, uint asic_id, uint chan_id);
-  void    eventBuilder(LCCollection* col_event,int time_peak, int prev_time_peak);
+  std::vector<unsigned int> getPadIndex(uint dif_id, uint asic_id, uint chan_id);
+  void    eventBuilder(LCCollection* col_event, int time_peak, int prev_time_peak);
   void    end();
 
 protected:
@@ -100,7 +100,6 @@ protected:
   int evtnum;
   int _selectedNum;
   int _rejectedNum;
-  uint _index[3];
   uintVec _firedLayers;
   LCWriter* _lcWriter;
   int _bcid1;
