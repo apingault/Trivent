@@ -645,54 +645,104 @@ void TriventProc::processEvent( LCEvent * evtP ) {
 
           //---------------------------------------------------------------
           //! Find the condidate event
-          int ibin = 0;
-          int bin_c_prev = -2 * _timeWin; //  the previous bin center
+          int prevTimePeak = 0; //  the previous bin center
 
-          int time_prev = 0;
-          while (ibin < (_maxTime + 1)) {
-            if (time_spectrum[ibin] >= _noiseCut &&
-                time_spectrum[ibin] >= time_spectrum[ibin + 1] &&
-                time_spectrum[ibin] >= time_spectrum[ibin - 1] &&
-                time_spectrum[ibin] >= time_spectrum[ibin - 2] &&
-                time_spectrum[ibin] >= time_spectrum[ibin + 2] ) {
-              LCEventImpl*  evt = new LCEventImpl() ;     // create the event
+          // Event is built at peakTime+-TimeWindow
+          // Loop on time_spectrum vector without going out of range
+          // This way we might miss the first/last event but sure not to access out of range value (like time_spectrum(-2)...)
+          auto beginTime = std::next(time_spectrum.begin(), _timeWin);
+          const auto & endTime = std::prev(time_spectrum.end(), _timeWin);
+          auto & timeIter = beginTime;
 
-              //---------- set event paramters ------
-              const std::string parname_trigger = "trigger";
-              const std::string parname_energy  = "beamEnergy";
-              const std::string parname_bcid1 = "bcid1";
-              const std::string parname_bcid2 = "bcid2";
-              evt->parameters().setValue(parname_trigger, evtP->getEventNumber());
-              evt->parameters().setValue(parname_energy , _beamEnergy);
-              evt->parameters().setValue(parname_bcid1 , _bcid1);
-              evt->parameters().setValue(parname_bcid2 , _bcid2);
-              evt->setRunNumber( evtP->getRunNumber()) ;
-              //-------------------------------------
+          /**
+           * Method used before to find peak ( does not take into account the time window)
+           */
+          // while (ibin < (_maxTime + 1)) {
+          //   if (time_spectrum[ibin] >= _noiseCut &&
+          //       time_spectrum[ibin] >= time_spectrum[ibin + 1] &&
+          //       time_spectrum[ibin] >= time_spectrum[ibin - 1] &&
+          //       time_spectrum[ibin] >= time_spectrum[ibin - 2] &&
+          //       time_spectrum[ibin] >= time_spectrum[ibin + 2] ) {
+          while (distance(timeIter, endTime) > 0 ) // Insure that timeIter < endTime
+          {
+            if ( *(timeIter) >= _noiseCut ) {
+              // find the bin with max hits
+              const auto & maxIter = std::max_element(std::prev(timeIter, _timeWin), std::next(timeIter, _timeWin));
 
-              LCCollectionVec* outcol = new LCCollectionVec(LCIO::CALORIMETERHIT);
-              TriventProc::eventBuilder(outcol, ibin, bin_c_prev);
+              //find if the current bin has the max or equal hits
+              if ( maxIter == timeIter || *(maxIter) == *(timeIter)) // if bin > other bins or bin is equal to biggest bin
+              {
+                // Found a peak at time *(timeIter)
+                // std::cout << yellow
+                //           << "\tmaxIter: " << std::distance(maxIter, timeIter)
+                //           << "\t_timeWin: " << _timeWin
+                //           << "\t_noiseCut: " << _noiseCut
+                //           << "\ttime: " << *(timeIter)
+                //           << "\tnextTime: " << *(std::next(timeIter))
+                //           << "\tprevTime: " << *(std::prev(timeIter))
+                //           << "\t2nextTime: " << *(std::next(timeIter, 2))
+                //           << "\t2prevTime: " << *(std::prev(timeIter, 2))
+                //           << normal << std::endl;
 
-              streamlog_out( DEBUG1 ) << "zcut.size() = " << zcut.size() << "\t _LayerCut = " << _layerCut << std::endl;
-              if ( (int)zcut.size() > _layerCut && abs(int(ibin) - time_prev) > _time2prevEventCut) {
-                streamlog_out( DEBUG5 ) << green << " Trivent find event at :==> " << red << ibin
-                                        << green << "\t :Nhit: ==> " << magenta
-                                        << outcol->getNumberOfElements() << normal << std::endl;
-                evt->setEventNumber( evtnum++ ) ;
-                evt->addCollection(outcol, "SDHCAL_HIT");
-                _lcWriter->writeEvent( evt ) ;
-                _selectedNum++;
-              } else {
-                _rejectedNum++;
-                delete outcol;
+                LCEventImpl*  evt = new LCEventImpl() ;     // create the event
+
+                //---------- set event paramters ------
+                const std::string parname_trigger = "trigger";
+                const std::string parname_energy  = "beamEnergy";
+                const std::string parname_bcid1 = "bcid1";
+                const std::string parname_bcid2 = "bcid2";
+                evt->parameters().setValue(parname_trigger, evtP->getEventNumber());
+                evt->parameters().setValue(parname_energy , _beamEnergy);
+                evt->parameters().setValue(parname_bcid1 , _bcid1);
+                evt->parameters().setValue(parname_bcid2 , _bcid2);
+                evt->setRunNumber( evtP->getRunNumber()) ;
+                m_runNumber = evtP->getRunNumber();
+                //-------------------------------------
+
+                LCCollectionVec* outcol = new LCCollectionVec(LCIO::CALORIMETERHIT);
+
+                int timePeak = distance (time_spectrum.begin(), timeIter);
+                streamlog_out( DEBUG0 ) << yellow << " EventBuilding with timePeak '" << timePeak << "' prevTimePeak: " << prevTimePeak << normal << std::endl;
+                TriventProc::eventBuilder(outcol, timePeak, prevTimePeak);
+                streamlog_out( DEBUG0 ) << yellow << " EventBuilding...OK" << normal << std::endl;
+
+                streamlog_out( DEBUG0 ) << "_firedLayersSet.size() = " << _firedLayersSet.size() << "\t _LayerCut = " << _layerCut << std::endl;
+
+                // Apply cut on min number of firedLayer +
+                if ( (int)_firedLayersSet.size() < _layerCut )
+                {
+                  streamlog_out( DEBUG0 ) << green << " Event rejected, too few layer hit. nLayerHit: " << _firedLayersSet.size() << " _layerCut: " << _layerCut << normal << std::endl;
+                  _rejectedNum++;
+                  delete outcol;
+                }
+                //  Apply cut on time between two events
+                else if (abs(timePeak - prevTimePeak) > _time2prevEventCut)
+                {
+                  streamlog_out( DEBUG0 ) << green << " Trivent find event at :==> " << red << timePeak
+                                          << green << "\t :Nhit: ==> " << magenta
+                                          << outcol->getNumberOfElements() << normal << std::endl;
+                  evt->setEventNumber( evtnum++ ) ;
+                  evt->addCollection(outcol, "SDHCAL_HIT");
+                  _lcWriter->writeEvent( evt ) ;
+                  _selectedNum++;
+                }
+                else {
+                  streamlog_out( DEBUG0 ) << blue << " Event rejected, Events too close. eventTime: " << timePeak << " prevEventTime: " << prevTimePeak << normal << std::endl;
+                  _rejectedNum++;
+                  delete outcol;
+                }
+
+                delete evt; evt = NULL;
+
+                prevTimePeak = timePeak;
+                timeIter = std::next(timeIter, _timeWin);
+              } else { // is not a peak, look in next frame
+                ++timeIter;
               }
-              time_prev = ibin;
-              delete evt; evt = NULL;
-
-              bin_c_prev = ibin;
-              ibin = ibin + _timeWin;
-            } else {ibin++;}
+            } else { // Not enough hit in frame, look in next one
+              ++timeIter;
+            }
           }
-
         } catch (lcio::DataNotAvailableException zero) {}
       }
     } catch (lcio::DataNotAvailableException err) {}
