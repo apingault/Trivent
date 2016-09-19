@@ -59,6 +59,9 @@ public:
   void    eventBuilder(LCCollection* col_event, int time_peak, int prev_time_peak);
   void    end();
 
+  TTree*  getOrCreateTree(std::string treeName, std::string treeDescription); 
+  void    findCerenkovHits(int timePeak);
+
 protected:
   TH1F *noise_dist;
   TH1F *gain_chan;
@@ -68,6 +71,7 @@ protected:
   std::map<std::string, std::string> m_parameters;
 
   std::vector<EVENT::RawCalorimeterHit*> _trigger_raw_hit;
+  std::vector<EVENT::RawCalorimeterHit*> _cerenkov_raw_hit;
 
   bool GAIN_CORRECTION_MODE;
   std::string _outFileName;
@@ -113,6 +117,16 @@ protected:
   float m_cellSizeI;
   float m_cellSizeJ;
   float m_layerThickness;
+
+  // Cerenkov
+  int m_cerenkovLength;
+  bool m_hasCherenkov;
+  int m_cerenkovDifId;
+  int m_cerenkovTimeWindow;
+  bool m_cerenkovFlag[3];
+  int m_cerenkovCount[3];
+  int m_cerenkovCountTotal[3];
+
   // Color for streamlog ouptut 
   std::string normal  ;
   std::string red     ;
@@ -142,6 +156,9 @@ protected:
   int m_evtNbr;              // Current Evt number
   int m_nHit;                // Number of hits
   int m_nFiredLayers;        // Number of Layers touched in evt
+  int m_nCerenkov1;          // Number of hit in first Cerenkov
+  int m_nCerenkov2;          // Number of hit in second Cerenkov
+  int m_timeCerenkov;        // Timing between peak and Cerenkov signal
   bool m_isSelected;         // Event is selected/rejected
   bool m_isNoise;            // If rejected, is it noise
   bool m_isTooCloseInTime;   // If rejected, is it too close from previous evt

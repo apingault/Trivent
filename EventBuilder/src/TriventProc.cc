@@ -23,7 +23,10 @@ TriventProc::TriventProc()
     _outputTree(0),
     m_cellSizeI(10.408),
     m_cellSizeJ(10.408),
-    m_layerThickness(26.131)
+    m_layerThickness(26.131),
+    m_hasCherenkov(true),
+    m_cerenkovDifId(3),
+    m_cerenkovTimeWindow(20)
 {
 
   streamlog_out( MESSAGE ) << "Trivent ... begin " << endl;
@@ -136,6 +139,21 @@ TriventProc::TriventProc()
                              "GAIN_CORRECTION_MODE",
                              GAIN_CORRECTION_MODE,
                              GAIN_CORRECTION_MODE);
+
+  registerProcessorParameter("HasCerenkovDIF",
+                             "If Cerenkov dif was connected during data taking",
+                             m_hasCherenkov,
+                             m_hasCherenkov);
+
+  registerProcessorParameter("CerenkovDifId",
+                             "Dif number for cerenkov data",
+                             m_cerenkovDifId,
+                             m_cerenkovDifId);
+
+  registerProcessorParameter("CerenkovTimeWindow",
+                             "TimeWindow around timePeak in which to look for cerenkov data",
+                             m_cerenkovTimeWindow,
+                             m_cerenkovTimeWindow);
 
   registerProcessorParameter( "PlotFolder" ,
                               "Folder Path to save Plot",
@@ -566,6 +584,9 @@ void TriventProc::init() {
   m_eventTree->Branch("EventNumber",             &m_evtNbr);
   m_eventTree->Branch("NumberOfHits",            &m_nHit);
   m_eventTree->Branch("NumberOfFiredLayers",     &m_nFiredLayers);
+  m_eventTree->Branch("NumberOfCerenkov1Hits",   &m_nCerenkov1);
+  m_eventTree->Branch("NumberOfCerenkov2Hits",   &m_nCerenkov2);
+  m_eventTree->Branch("CerenkovTime",            &m_timeCerenkov);
   m_eventTree->Branch("EventIsSelected",         &m_isSelected);
   m_eventTree->Branch("EventIsNoise",            &m_isNoise);
   m_eventTree->Branch("EventIsToCloseFromLast",  &m_isTooCloseInTime);
@@ -624,6 +645,34 @@ void TriventProc::processRunHeader( LCRunHeader * /*runHd*/ ) {
 }
 
 //=============================================================================
+void TriventProc::findCerenkovHits(int timePeak) {
+  for (std::vector<EVENT::RawCalorimeterHit*>::const_iterator cerHit = _cerenkov_raw_hit.begin(); cerHit != _cerenkov_raw_hit.end(); cerHit++) {
+    int time = static_cast<int>((*cerHit)->getTimeStamp());
+    if (std::fabs(time - timePeak) <= m_cerenkovTimeWindow) {
+
+      m_timeCerenkov = time - timePeak;
+      int Dif_id  =  getCellDif_id ((*cerHit)->getCellID0());
+      int Asic_id =  getCellAsic_id((*cerHit)->getCellID0());
+      int Chan_id =  getCellChan_id((*cerHit)->getCellID0());
+
+      if (Dif_id != m_cerenkovDifId)
+      {
+        streamlog_out ( WARNING ) << "[findCerenkov] - Found Cerenkov hit in dif '" << Dif_id << "'..." << std::endl;
+        continue;
+      }
+      streamlog_out ( MESSAGE ) << "[findCerenkov] - Found Cerenkov hit at time '" << m_timeCerenkov
+                                << "'\t Asic " << Asic_id
+                                << "'\t Chan " << Chan_id
+                                << "'\t Threshold " << (*cerHit)->getAmplitude()
+                                << std::endl;
+
+      m_nCerenkov1 += 1;
+      m_nCerenkov2 += 1;
+    }
+  }
+}
+
+//=============================================================================
 void TriventProc::processEvent( LCEvent * evtP ) {
   if (evtP != NULL) {
     try {
@@ -657,6 +706,7 @@ void TriventProc::processEvent( LCEvent * evtP ) {
 
           // set raw hits
           _trigger_raw_hit.clear();
+          _cerenkov_raw_hit.clear();
           std::vector<int> vTrigger;
           for (int ihit(0); ihit < numElements; ++ihit) {// loop over the hits
             RawCalorimeterHit *raw_hit =
@@ -665,6 +715,9 @@ void TriventProc::processEvent( LCEvent * evtP ) {
             if (NULL != raw_hit) {
               _trigger_raw_hit.push_back(raw_hit);
               int difId = raw_hit->getCellID0() & 0xFF;
+              if (difId == m_cerenkovDifId)
+                _cerenkov_raw_hit.push_back(raw_hit);
+
               //extract abolute bcid information:
               if (ihit == 0) {
                 unsigned int difid = 0;
@@ -763,6 +816,9 @@ void TriventProc::processEvent( LCEvent * evtP ) {
                 m_evtNbr             = evtnum; // rejected event will have same number as last accepted !
                 m_nHit               = outcol->getNumberOfElements();
                 m_nFiredLayers       = (int)_firedLayersSet.size();
+                m_nCerenkov1         = 0;
+                m_nCerenkov2         = 0;
+                m_timeCerenkov       = -2 * m_cerenkovTimeWindow;
 
                 streamlog_out( DEBUG0 ) << "_firedLayersSet.size() = " << _firedLayersSet.size() << "\t _LayerCut = " << _layerCut << std::endl;
 
@@ -786,6 +842,18 @@ void TriventProc::processEvent( LCEvent * evtP ) {
                   _lcWriter->writeEvent( evt ) ;
                   _selectedNum++;
                   m_isSelected = true;
+
+                  if (m_hasCherenkov) {
+                    findCerenkovHits(timePeak);
+                    if ( m_timeCerenkov != -2 * m_cerenkovTimeWindow) // InitialValue
+                      streamlog_out( MESSAGE ) << "[processEvent] - " << green << " Evt# " << evtnum
+                                               << "\tFound Cerenkov!"
+                                               << "\t cer1 = " << m_nCerenkov1
+                                               << "\t cer2 = " << m_nCerenkov2
+                                               << normal << std::endl;
+
+
+                  }
                 }
                 else {
                   streamlog_out( DEBUG0 ) << blue << " Event rejected, Events too close. eventTime: " << timePeak << " prevEventTime: " << prevTimePeak << normal << std::endl;
