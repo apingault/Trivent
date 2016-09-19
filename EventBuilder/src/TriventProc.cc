@@ -33,11 +33,17 @@ TriventProc::TriventProc()
   // collection
   std::vector<std::string> hcalCollections;
   hcalCollections.push_back(std::string("DHCALRawHits"));
-  registerInputCollections( LCIO::RAWCALORIMETERHIT ,
-                            "HCALCollections"       ,
-                            "HCAL Collection Names" ,
-                            _hcalCollections        ,
-                            hcalCollections         );
+  registerInputCollections( LCIO::RAWCALORIMETERHIT,
+                            "InputCollectionNames",
+                            "HCAL Collection Names",
+                            _hcalCollections,
+                            hcalCollections);
+
+  registerOutputCollection( LCIO::CALORIMETERHIT ,
+                            "OutputCollectionName",
+                            "HCAL Collection Names",
+                            m_outputCollectionName,
+                            m_outputCollectionName);
 
   // Option of output file with clean events
   _outFileName = "LCIO_clean_run.slcio";
@@ -126,144 +132,101 @@ TriventProc::TriventProc()
                              _rootFileName);
 
   GAIN_CORRECTION_MODE = false;
-  registerProcessorParameter("GAIN_CORRECTION_MODE",
+  registerProcessorParameter("GainCorrectionMode",
                              "GAIN_CORRECTION_MODE",
                              GAIN_CORRECTION_MODE,
                              GAIN_CORRECTION_MODE);
+
+  registerProcessorParameter( "PlotFolder" ,
+                              "Folder Path to save Plot",
+                              m_plotFolder,
+                              std::string("./") );
 
 }
 
 //=============================================================================
 void TriventProc::XMLReader(std::string xmlfile) {
-  TiXmlDocument doc(xmlfile.c_str());
-  bool load_key = doc.LoadFile();
+  TiXmlDocument xml(xmlfile.c_str());
+  bool load_key = xml.LoadFile();
   if (load_key) {
-    streamlog_out( MESSAGE ) << green << "File : " << xmlfile.c_str() << normal << std::endl;
-    // tout ici
-    TiXmlHandle hDoc(&doc);
+    streamlog_out( MESSAGE ) << green << "Found Geometry File : " << xmlfile.c_str() << normal << std::endl;
+
+    TiXmlHandle xmlHandle(&xml);
     TiXmlElement* pElem;
-    TiXmlHandle hRoot(0);
-    // name block
-    {
-      pElem = hDoc.FirstChildElement().Element();
-      // should always have a valid root but handle gracefully if it does
-      if (!pElem) streamlog_out( WARNING ) << red << "error elem" << normal << std::endl;
-      streamlog_out( MESSAGE ) << green << pElem->Value() << normal << std::endl;
+    TiXmlHandle rootHandle(0);
 
-      // save this for later
-      hRoot = TiXmlHandle(pElem);
-    }
+    pElem = xmlHandle.FirstChildElement().Element();
+    // should always have a valid root but handle gracefully if it does not
+    if (!pElem) streamlog_out( ERROR ) << red << "error Not root handle Found in xml file" << normal << std::endl;
+
+    // save this for later
+    rootHandle = TiXmlHandle(pElem);
+
     // parameters block
-    {
-      m_parameters.clear();
-      pElem = hRoot.FirstChild("parameter").Element();
-      std::string key = pElem->Attribute("name");
-      streamlog_out( MESSAGE ) << green << key.c_str() << normal << std::endl;
-      streamlog_out( DEBUG1 ) << green
-                              << "parameter : "
-                              << pElem->Attribute("name")
-                              << normal
-                              << std::endl;
+    pElem = rootHandle.FirstChild("parameter").Element();
+    streamlog_out( DEBUG0 ) << green << "Reading data for key: " << pElem->Attribute("name") << normal << std::endl;
+    streamlog_out( DEBUG0 ) << green
+                            << "parameter : "
+                            << pElem->Attribute("name")
+                            << normal
+                            << std::endl;
 
-      std::vector<std::string> lines;
+    std::string value = pElem->GetText() ;
+    streamlog_out( DEBUG0 ) << green
+                            << "value : "
+                            << value
+                            << normal
+                            << std::endl;
+
+    std::string line;
+    std::vector<std::string> lines;
+    std::istringstream iss(value);
+
+    // value no longer has the formatted eol, all replaced by a space character...
+    while (std::getline(iss, line, ' ') ) {
+      // streamlog_out( MESSAGE ) << blue << line << normal << std::endl;
+      lines.push_back(line);
+    }
+    streamlog_out( MESSAGE ) << yellow << "Found " << lines.size() << " difs in geometry file corresponding to : "
+                             << (int)lines.size() / 3 << " layers + " << lines.size() % 3 << " difs"
+                             << normal << std::endl;
+
+    for (std::vector<std::string>::const_iterator lineIter = lines.begin(); lineIter != lines.end(); ++lineIter) {
+      std::stringstream ss( lineIter->c_str() );
+      std::vector<std::string> result;
+
+      while ( ss.good() )
       {
-        std::string value = pElem->GetText() ;
-        std::vector<std::string> lines;
-        istringstream iss(value);
-        copy(istream_iterator<string>(iss),
-             istream_iterator<string>(),
-             back_inserter<vector<string> >(lines));
-        for (unsigned int iline = 0; iline < lines.size(); iline++) {
-          std::string line = lines.at(iline);
-          streamlog_out( MESSAGE ) << red << line << normal << std::endl;
-
-          stringstream ss( line.c_str() );
-          vector<string> result;
-
-          LayerID mapp;
-          int Dif_id;
-          while ( ss.good() )
-          {
-            string substr;
-            getline( ss, substr, ',' );
-            result.push_back( substr );
-          }
-          istringstream ( result.at(0) ) >> Dif_id;
-          istringstream ( result.at(1) ) >> mapp.K;
-          istringstream ( result.at(2) ) >> mapp.DifX;
-          istringstream ( result.at(3) ) >> mapp.DifY;
-          istringstream ( result.at(4) ) >> mapp.IncX;
-          istringstream ( result.at(5) ) >> mapp.IncY;
-          _mapping[Dif_id] = mapp;
-        }
+        std::string substr;
+        getline( ss, substr, ',' );
+        // streamlog_out( MESSAGE ) << red << substr << normal << std::endl;
+        result.push_back( substr );
       }
-      pElem = pElem->NextSiblingElement();
-      // ChamberGeom  Node.
+      streamlog_out( DEBUG0 ) << blue << lineIter->c_str() << normal << std::endl;
+
+      LayerID mapp;
+      int Dif_id;
+      while ( ss.good() )
       {
-        streamlog_out( DEBUG1 ) << green
-                                << "parameter : "
-                                << pElem->Attribute("name")
-                                << normal
-                                << std::endl;
-        std::vector<std::string> lines;
-        {
-          std::string value = pElem->GetText() ;
-          std::vector<std::string> lines;
-          istringstream iss(value);
-          copy(istream_iterator<string>(iss),
-               istream_iterator<string>(),
-               back_inserter<vector<string> >(lines));
-          for (unsigned int iline = 0; iline < lines.size(); iline++) {
-            std::string line = lines.at(iline);
-            streamlog_out( MESSAGE ) << red << line << normal << std::endl;
-
-            stringstream ss( line.c_str() );
-            vector<string> result;
-
-            double position;
-            int Dif_id;
-            while ( ss.good() )
-            {
-              string substr;
-              getline( ss, substr, ',' );
-              result.push_back( substr );
-            }
-            istringstream ( result.at(0) ) >> Dif_id;
-            istringstream ( result.at(3) ) >> position;
-
-            _chamberPos[Dif_id] = position;
-          }
-        }
+        string substr;
+        getline( ss, substr, ',' );
+        result.push_back( substr );
       }
+      istringstream ( result.at(0) ) >> Dif_id;
+      istringstream ( result.at(1) ) >> mapp.K;
+      istringstream ( result.at(2) ) >> mapp.DifX;
+      istringstream ( result.at(3) ) >> mapp.DifY;
+      istringstream ( result.at(4) ) >> mapp.IncX;
+      istringstream ( result.at(5) ) >> mapp.IncY;
+      _mapping[Dif_id] = mapp;
+
     }
   } else {
-    streamlog_out( WARNING ) << red << "Failed to load file : " << xmlfile.c_str() << normal << std::endl;
+    std::ostringstream oss;
+    oss << "Failed to load geometry file '" << xmlfile.c_str() << "'";
+    streamlog_out( WARNING ) << red << oss.str() << normal << std::endl;
+    throw (oss.str());
   }
-}
-
-//=============================================================================
-void TriventProc::readDifGeomFile(std::string geomfile) {
-
-  cout << "read the mapping file .." << endl;
-
-  LayerID contenu;
-  ifstream file(geomfile.c_str(), ios::in);
-  if (file) {
-    while (!file.eof()) {
-      int Dif_id;
-      char co;
-      file >> Dif_id >> co
-           >> contenu.K >> co
-           >> contenu.DifX >> co
-           >> contenu.DifY >> co
-           >> contenu.IncX >> co
-           >> contenu.IncY ;
-      _mapping [Dif_id] = contenu;
-    }
-    file.close();
-  }
-  else
-    cerr << "ERROR ... maping file not correct !" << endl;
 }
 
 //=============================================================================
@@ -528,8 +491,22 @@ void TriventProc::defineColors()
   magenta  = cmagenta;
   white    = cwhite;
 }
+
+//=============================================================================
+TTree* TriventProc::getOrCreateTree(std::string treeName, std::string treeDescription) {
+  TTree *tree = (TTree*)m_rootFile->Get(treeName.c_str());
+
+  if (!tree) {
+    std::cout << "Creating tree '" << treeName << "'" << std::endl;
+    tree = new TTree(treeName.c_str(), treeDescription.c_str());
+  }
+
+  return tree;
+}
+
 //=============================================================================
 void TriventProc::init() {
+  _trigNbr = 0;
   _trigCount = 0;
   evtnum = 0; // event number
   // ========================
@@ -546,7 +523,22 @@ void TriventProc::init() {
 
 
   // Read and print geometry file
-  XMLReader(_geomXML.c_str());
+  try {
+    XMLReader(_geomXML.c_str());
+    // printDifGeom();
+  }
+  catch ( std::string &e) {
+    std::cout << "\n------------------------------------------------------------------------------------------" << std::endl;
+    std::cout << "\t ****** Caught Exception when parsing geometry file: " << e << std::endl;
+    std::cout << "------------------------------------------------------------------------------------------\n" << std::endl;
+    throw;
+  }
+  catch (...) {
+    std::cout << "\n------------------------------------------------------------------------------------------" << std::endl;
+    std::cout << "\t ****** Uncaught Exception when parsing geometry file! " << std::endl;
+    std::cout << "------------------------------------------------------------------------------------------\n" << std::endl;
+    throw;
+  }
   printDifGeom();
 
 
@@ -558,6 +550,34 @@ void TriventProc::init() {
 
   if (NULL == m_rootFile)
     return;
+
+
+  // Create Trigger tree & Branches
+  m_triggerTree = getOrCreateTree("TriggerTree", "Trigger variables");
+
+  m_triggerTree->Branch("TriggerNumber",                    &m_trigNbr);
+  // m_triggerTree->Branch("NumberOfEvents",                   &m_nEvt);
+  m_triggerTree->Branch("TimeSpectrum", "std::vector<int>", &m_vTimeSpectrum);
+
+
+  // Create Event tree & Branches
+  m_eventTree = getOrCreateTree("EventTree", "Event variables");
+  m_eventTree->Branch("TriggerNumber",           &m_evtTrigNbr);
+  m_eventTree->Branch("EventNumber",             &m_evtNbr);
+  m_eventTree->Branch("NumberOfHits",            &m_nHit);
+  m_eventTree->Branch("NumberOfFiredLayers",     &m_nFiredLayers);
+  m_eventTree->Branch("EventIsSelected",         &m_isSelected);
+  m_eventTree->Branch("EventIsNoise",            &m_isNoise);
+  m_eventTree->Branch("EventIsToCloseFromLast",  &m_isTooCloseInTime);
+  m_eventTree->Branch("EventHasNotEnoughLayers", &m_hasNotEnoughLayers);
+  m_eventTree->Branch("EventIsHasFullAsic",      &m_hasFullAsic);
+
+
+
+
+  TDirectory *rootDir = gDirectory;
+  TDirectory *hitMapDir = rootDir->mkdir("HitMapPerLayer");
+  hitMapDir->cd();
 
   // Create a list of unique Layers from geometry file
   std::set<int> layerSet;
@@ -592,8 +612,11 @@ void TriventProc::init() {
     streamlog_out( MESSAGE ) << blue << "Booking hitMap for layer '" << iLayer << "'...OK" << normal << std::endl;
   }
 
-  for (const auto histo : m_vHitMapPerLayer)
-    streamlog_out( MESSAGE ) << yellow << "Booked hitMap histo for layer '" << histo << "'" << normal << std::endl;
+  int iLayer = 0;
+  for (const auto &histo : m_vHitMapPerLayer) {
+    streamlog_out( MESSAGE ) << yellow << "Booked hitMap histo for layer '" << iLayer << "' at --> '" <<  histo << "'" << normal << std::endl;
+    ++iLayer;
+  }
 }
 
 //=============================================================================
@@ -605,19 +628,18 @@ void TriventProc::processEvent( LCEvent * evtP ) {
   if (evtP != NULL) {
     try {
 
-      _eventNr = evtP->getEventNumber();
+      _trigNbr = evtP->getEventNumber();
+      if (_trigNbr > 1E6) {
+        streamlog_out( MESSAGE ) << yellow << "Trigger number == " << _trigNbr << normal << std::endl;
+        return;
+      }
+
       for (unsigned int i = 0; i < _hcalCollections.size(); i++) { //!loop over collection
         try {
 
           LCCollection * col = NULL;
           col = evtP ->getCollection(_hcalCollections[i].c_str());
-          int numElements = col->getNumberOfElements();// hit number
-
-          // reset Flags
-          m_isSelected = false;
-          m_isNoise = false;
-          m_hasNotEnoughLayers = false;
-          m_isTooCloseInTime = false;
+          int numElements = col->getNumberOfElements();// hit number in trigger
 
           _trigCount++;
           if (0 == _trigCount % 10)
@@ -636,12 +658,13 @@ void TriventProc::processEvent( LCEvent * evtP ) {
           // set raw hits
           _trigger_raw_hit.clear();
           std::vector<int> vTrigger;
-          for (int ihit(0); ihit < col->getNumberOfElements(); ++ihit) {// loop over the hits
+          for (int ihit(0); ihit < numElements; ++ihit) {// loop over the hits
             RawCalorimeterHit *raw_hit =
               dynamic_cast<RawCalorimeterHit*>( col->getElementAt(ihit));
 
             if (NULL != raw_hit) {
               _trigger_raw_hit.push_back(raw_hit);
+              int difId = raw_hit->getCellID0() & 0xFF;
               //extract abolute bcid information:
               if (ihit == 0) {
                 unsigned int difid = 0;
@@ -686,7 +709,7 @@ void TriventProc::processEvent( LCEvent * evtP ) {
           while (distance(timeIter, endTime) > 0 ) // Insure that timeIter < endTime
           {
             if ( *(timeIter) >= _noiseCut ) {
-              // find the bin with max hits
+              // find the bin in +- timeWin with max hits
               const auto & maxIter = std::max_element(std::prev(timeIter, _timeWin), std::next(timeIter, _timeWin));
 
               //find if the current bin has the max or equal hits
@@ -719,8 +742,15 @@ void TriventProc::processEvent( LCEvent * evtP ) {
                 m_runNumber = evtP->getRunNumber();
                 //-------------------------------------
 
-                LCCollectionVec* outcol = new LCCollectionVec(LCIO::CALORIMETERHIT);
+                LCCollectionVec *outcol = new LCCollectionVec(LCIO::CALORIMETERHIT);
 
+
+                // reset Flags
+                m_isSelected = false;
+                m_isNoise = false;
+                m_hasNotEnoughLayers = false;
+                m_hasFullAsic = false;
+                m_isTooCloseInTime = false;
 
                 // Event Building
                 int timePeak = distance (time_spectrum.begin(), timeIter);
@@ -728,7 +758,11 @@ void TriventProc::processEvent( LCEvent * evtP ) {
                 TriventProc::eventBuilder(outcol, timePeak, prevTimePeak);
                 streamlog_out( DEBUG0 ) << yellow << " EventBuilding...OK" << normal << std::endl;
 
-
+                m_isEvent            = true;
+                m_evtTrigNbr         = _trigNbr;
+                m_evtNbr             = evtnum; // rejected event will have same number as last accepted !
+                m_nHit               = outcol->getNumberOfElements();
+                m_nFiredLayers       = (int)_firedLayersSet.size();
 
                 streamlog_out( DEBUG0 ) << "_firedLayersSet.size() = " << _firedLayersSet.size() << "\t _LayerCut = " << _layerCut << std::endl;
 
@@ -748,7 +782,7 @@ void TriventProc::processEvent( LCEvent * evtP ) {
                                           << green << "\t :Nhit: ==> " << magenta
                                           << outcol->getNumberOfElements() << normal << std::endl;
                   evt->setEventNumber( evtnum++ ) ;
-                  evt->addCollection(outcol, "SDHCAL_HIT");
+                  evt->addCollection(outcol, m_outputCollectionName);
                   _lcWriter->writeEvent( evt ) ;
                   _selectedNum++;
                   m_isSelected = true;
@@ -768,13 +802,16 @@ void TriventProc::processEvent( LCEvent * evtP ) {
               } else { // is not a peak, look in next frame
                 ++timeIter;
               }
-            } else { // Not enough hit in frame, look in next one
-              m_isSelected = false;
-              m_isNoise = true;
+            } else { // Not enough hit in frame, look in next one ( previous bin has already been looked into )
               ++timeIter;
             }
-            // TODO: FILL ROOT
+            if (m_isEvent)
+              m_eventTree->Fill();
+            m_isEvent = false;
           }
+          m_trigNbr = _trigNbr;
+          m_vTimeSpectrum = time_spectrum;
+          m_triggerTree->Fill();
         } catch (lcio::DataNotAvailableException zero) {}
       }
     } catch (lcio::DataNotAvailableException err) {}
@@ -801,7 +838,7 @@ void TriventProc::end()
   std::cout << "Drawing for layer 50" << std::endl;
   m_vHitMapPerLayer.at(49)->Draw("colz");
   std::stringstream ss;
-  ss << "/Volumes/PagosDisk/CALICE/data/SPS_06_2016/hitMap_Layer48-50_run" << m_runNumber << ".png";
+  ss << m_plotFolder << "hitMap_Layer48-50_run" << m_runNumber << ".png";
   c1->SaveAs(ss.str().c_str());
   m_rootFile->cd();
   m_rootFile->Write();

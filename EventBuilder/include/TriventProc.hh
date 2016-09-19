@@ -74,14 +74,14 @@ protected:
   std::string _noiseFileName;
   std::string _treeName;
   std::string _rootFileName;
-  std::string _colName;
+  std::string m_outputCollectionName;
   std::string _fileName;
   std::string _mappingfile;
   std::string _geomXML;
   std::vector<std::string> _hcalCollections;
   int _overwrite;
   TTree *_outputTree;
-  unsigned int _eventNr;
+  unsigned int _trigNbr;
   Int_t _nHit;
   Int_t _elecNoiseCut;
 
@@ -102,11 +102,7 @@ protected:
   int _rejectedNum;
   
   // Flags for selected/rejected events
-  bool m_isSelected;
-  bool m_isNoise;
-  bool m_isTooCloseInTime;
-  bool m_hasNotEnoughLayers;
-  bool m_hasFullAsic;
+  
   
   std::set<unsigned int> _firedLayersSet;
   LCWriter* _lcWriter;
@@ -126,11 +122,31 @@ protected:
   std::string magenta ;
   std::string white   ;
 
-
+  bool m_isEvent;
   //ROOT histograms
   TFile *m_rootFile;
-  std::vector<TH2D*> m_vHitMapPerLayer;
+  std::vector<TH2D*> m_vHitMapPerLayer; // HitMap of selected evt for each Layer
   Int_t m_runNumber;
+  std::string m_plotFolder;
+  // Trees
+  TTree *m_triggerTree; 
+  TTree *m_eventTree; 
+  
+  // Trigger branches
+  int m_trigNbr;                    // Current trigger number
+  // int m_nEvt;                       // Number of evt in trigger
+  std::vector<int> m_vTimeSpectrum; // number of hits per time clock
+  
+  // Event branches
+  int m_evtTrigNbr;          // Current trigger Number
+  int m_evtNbr;              // Current Evt number
+  int m_nHit;                // Number of hits
+  int m_nFiredLayers;        // Number of Layers touched in evt
+  bool m_isSelected;         // Event is selected/rejected
+  bool m_isNoise;            // If rejected, is it noise
+  bool m_isTooCloseInTime;   // If rejected, is it too close from previous evt
+  bool m_hasNotEnoughLayers; // If rejected, has not touched sufficient layers
+  bool m_hasFullAsic;        // If rejected, has full asics
 
 };
 
