@@ -381,6 +381,18 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
         int Dif_id  =  getCellDif_id ((*rawhit)->getCellID0());
         int Asic_id =  getCellAsic_id((*rawhit)->getCellID0());
         int Chan_id =  getCellChan_id((*rawhit)->getCellID0());
+        
+        if (Asic_id < 1 || Asic_id > 48){
+          streamlog_out( WARNING ) << "\tFound a hit with weird AsicId, Dif/Asic/Chan... " << Dif_id << "/" << Asic_id << "/" << Chan_id << std::endl;
+          if (Dif_id == m_cerenkovDifId)
+            Asic_id = 48;
+        }
+
+        if (Chan_id < 0 || Chan_id > 63){
+          streamlog_out( WARNING ) << "\tFound a hit with weird ChannelId, Dif/Asic/Chan... " << Dif_id << "/" << Asic_id << "/" << Chan_id << std::endl;
+          if (Dif_id == m_cerenkovDifId)
+            Chan_id = 64;
+        }
 
         std::vector<unsigned int> padIndex = getPadIndex(Dif_id, Asic_id, Chan_id);
 
@@ -401,7 +413,7 @@ void TriventProc::eventBuilder(LCCollection* col_event, int time_peak, int prev_
           asicMap[asickey] = 1;
 
         if ( asicMap[asickey] == 64 ) {
-          streamlog_out ( MESSAGE) << "Rejecting event with full asic. Dif '" << Dif_id << "' asic '" << Asic_id << "' ... " << std::endl;
+          streamlog_out ( MESSAGE ) << "Rejecting event with full asic. Dif '" << Dif_id << "' asic '" << Asic_id << "' ... " << std::endl;
 
           _firedLayersSet.clear();
           hitKeys.clear();
@@ -906,7 +918,7 @@ void TriventProc::end()
   std::cout << "Drawing for layer 50" << std::endl;
   m_vHitMapPerLayer.at(49)->Draw("colz");
   std::stringstream ss;
-  ss << m_plotFolder << "hitMap_Layer48-50_run" << m_runNumber << ".png";
+  ss << m_plotFolder << "/hitMap_Layer48-50_run" << m_runNumber << ".png";
   c1->SaveAs(ss.str().c_str());
   m_rootFile->cd();
   m_rootFile->Write();
