@@ -62,40 +62,22 @@ public:
   void findCerenkovHits(const int timePeak);
 
 protected:
-  TH1F *noise_dist;
-  TH1F *gain_chan;
-  TH1F *mean_hit_dif;
-  TH1F *time_hit_dif;
-  // xml test
-  std::map<std::string, std::string> m_parameters;
-
-
   LCWriter *m_lcWriter;
   std::vector<EVENT::RawCalorimeterHit *> m_trigger_raw_hit;
   std::vector<EVENT::RawCalorimeterHit *> m_cerenkov_raw_hit;
 
   std::string m_outputCollectionName;
-  std::string _fileName;
-  std::string _mappingfile;
-  int _overwrite;
-  Int_t _nHit;
-
-  std::map<int, double  > _chamberPos;//camber , pos
   std::string m_outFileName;
   std::string m_noiseFileName;
   std::string m_rootFileName;
   std::string m_treeName;
+  std::string m_treeDescription;
   std::string m_geomXMLFile;
   std::vector<std::string> m_hcalCollections;
   float m_beamEnergy;
   std::map<int, LayerID> m_mDifMapping;
 
   // Cut parameters
-  double _layerGap;
-  
-  // Flags for selected/rejected events
-  
-  
   bool m_useGainCorrection;
   int m_elecNoiseCut;
   int m_noiseCut;
@@ -114,7 +96,13 @@ protected:
   int m_cerenkovTimeWindow;
   unsigned int m_nCerenkov1;       // Number of hit in first Cerenkov
   unsigned int m_nCerenkov2;       // Number of hit in second Cerenkov
+  unsigned int m_nCerenkov3;       // Number of hit in frist + second Cerenkov
+  unsigned int m_nCerenkovTrigger; // Tot number of hit in cerenkov for current trigger
+  bool m_hasTooManyCerenkov;       // if m_nCerenkovTrigger > bifHit in trigger
   int m_timeCerenkov;              // Timing between peak and Cerenkov signal
+  unsigned int m_totCerenkovHits;  
+  unsigned int m_cerenkovEvts;     // Number of events tagged with the cerenkov
+  int m_maxCerenkovTime;           // CerenkovTime with most occurence ->MPV for cerenkov timeShift
 
   int m_maxTime;
   unsigned int m_trigNbr;
