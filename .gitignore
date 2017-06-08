@@ -2,11 +2,6 @@ build/
 doc/
 lib/
 output/
-.git/
-.svn
-dataBaseList.log
-Trivent.cbp
-CTestTestfile.cmake
 
 *.*~
 *.pcm

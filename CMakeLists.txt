@@ -1,23 +1,25 @@
 ########################################################
 # cmake file for building Marlin example Package
 # @author Jan Engels, Desy IT
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 2.8 FATAL_ERROR)
 ########################################################
 
-# SET(CMAKE_SKIP_RPATH TRUE)
-# set(CMAKE_MACOSX_RPATH 1)
-
-
 # project name
-PROJECT(TriventArnaud)
-
+PROJECT(TriventProcessor)
 
 # project version
 SET( ${PROJECT_NAME}_VERSION_MAJOR 0 )
-SET( ${PROJECT_NAME}_VERSION_MINOR 4 )
-SET( ${PROJECT_NAME}_VERSION_PATCH 1 )
+SET( ${PROJECT_NAME}_VERSION_MINOR 5 )
+SET( ${PROJECT_NAME}_VERSION_PATCH 0 )
 
-
+# Require C++11
+INCLUDE( CheckCXXCompilerFlag )
+CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+IF( COMPILER_SUPPORTS_CXX11 )
+  SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+ELSE()
+  MESSAGE( SEND_ERROR " ${PROJECT_NAME} Requires C++11 support. Please upgrade your compiler !" )
+ENDIF()
 
 ### DEPENDENCIES ############################################################
 
@@ -32,24 +34,10 @@ INCLUDE_DIRECTORIES( ${Marlin_INCLUDE_DIRS} )
 LINK_LIBRARIES( ${Marlin_LIBRARIES} )
 ADD_DEFINITIONS( ${Marlin_DEFINITIONS} )
 
-FIND_PACKAGE( ROOT REQUIRED ) # minimum required Marlin version
+FIND_PACKAGE( ROOT 5.34 REQUIRED )
 INCLUDE_DIRECTORIES( ${ROOT_INCLUDE_DIRS} )
 LINK_LIBRARIES( ${ROOT_LIBRARIES} )
 ADD_DEFINITIONS( ${ROOT_DEFINITIONS} )
-
-
-# optional package
-#FIND_PACKAGE( AIDA )
-#IF( AIDA_FOUND )
-#    INCLUDE_DIRECTORIES( ${AIDA_INCLUDE_DIRS} )
-#    LINK_LIBRARIES( ${AIDA_LIBRARIES} )
-#    ADD_DEFINITIONS( "-DMARLIN_USE_AIDA" )
-#    MESSAGE( STATUS "AIDA -- found" )
-#ELSE()
-#    MESSAGE( STATUS "AIDA -- not found" )
-#ENDIF()
-
-
 
 ### DOCUMENTATION ###########################################################
 
@@ -59,12 +47,9 @@ IF( INSTALL_DOC AND EXISTS "${PROJECT_SOURCE_DIR}/doc/CMakeLists.txt" )
     ADD_SUBDIRECTORY( ./doc )
 ENDIF()
 
-# Require C++11
-ADD_DEFINITIONS( "-std=c++11" )
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -O2 -Wno-effc++ -Wno-shadow")
 
 ADD_SUBDIRECTORY( ./EventBuilder )
-# ADD_SUBDIRECTORY( ./SDHCALReco )
 
 # display some variables and write them to cache
 DISPLAY_STD_VARIABLES()
-
