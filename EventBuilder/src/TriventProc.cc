@@ -950,11 +950,13 @@ void TriventProc::processEvent(LCEvent *evtP)
 
           // Event is built at peakTime+-TimeWindow
           // Loop on time_spectrum vector without going out of range
-          // This way we might miss the first/last event but sure not to access out of range value (like time_spectrum(-2)...)
-          auto beginTime = std::next(time_spectrum.begin(), _timeWin);
-          const auto & endTime = std::prev(time_spectrum.end(), _timeWin);
-          auto & timeIter = beginTime;
-
+          auto        beginTime = time_spectrum.begin();
+          const auto& endTime   = time_spectrum.end();
+          auto        timeIter  = beginTime;
+          auto        prevMaxIter = beginTime;
+          
+          streamlog_out(WARNING) << blue << "[processEvent] - Trigger '" << m_trigCount << "' - beginTime : " << *beginTime << " endTime : " << distance(beginTime, endTime) << " ts.size: " << time_spectrum.size() << normal << std::endl;
+          
           /**
            * Old Method used before to find peak ( does not take into account the time window)
            */
@@ -968,8 +970,41 @@ void TriventProc::processEvent(LCEvent *evtP)
           {
             if (*(timeIter) >= m_noiseCut)
             {
+              auto lowerBound = timeIter;
+              auto upperBound = timeIter;
+              // Ensure we are not lookinf before/after begin/end of time_spectrum  
+              if (distance(beginTime, timeIter) > m_timeWin)
+                lowerBound = std::prev(timeIter, m_timeWin);
+              else if (distance(beginTime, timeIter) > 1 )
+              {
+                streamlog_out(DEBUG0) << green << "[processEvent] - small lowerBound! m_timeWin : " << m_timeWin << " distance(beginTime, timeIter) = " << distance(beginTime, timeIter) << normal << std::endl;
+                lowerBound = std::prev(timeIter, distance(beginTime, timeIter));
+              }
+              else
+                streamlog_out(DEBUG0) << red << "[processEvent] - shit lowerBound! m_timeWin : " << m_timeWin << " distance(beginTime, timeIter) = " << distance(beginTime, timeIter) << normal << std::endl;
+                
+              if (distance(timeIter, endTime) > m_timeWin)
+                upperBound = std::next(timeIter, m_timeWin);
+              else
+              {
+                upperBound = std::next(timeIter, distance(timeIter, endTime)); // distance > 0 already met in while loop
+                streamlog_out(DEBUG0) << green << "[processEvent] - small upperBound! m_timeWin : " << m_timeWin << " distance(timeIter, endTime) = " << distance(timeIter, endTime) << normal << std::endl;
+              }
               // find the bin in +- timeWin with max hits
-              const auto & maxIter = std::max_element(std::prev(timeIter, _timeWin), std::next(timeIter, _timeWin));
+              
+              const auto& maxIter = std::max_element(lowerBound, upperBound); //max in [lower,upper)
+              streamlog_out(DEBUG0) << yellow << "[processEvent] - upperBound '" << distance(beginTime, upperBound) << "' lowerBound '" << distance(beginTime, lowerBound) << " max '" << distance(beginTime, maxIter) << "' : " << *maxIter << normal << std::endl;
+                
+              if ( maxIter <= prevMaxIter && distance(beginTime, timeIter) > 0 )
+              {
+                streamlog_out(DEBUG0) << yellow << "[processEvent] - Found duplicate peak, at time '" << distance(time_spectrum.begin(), maxIter) << "' previous peak : '" << distance(time_spectrum.begin(), prevMaxIter) << "'..." << normal << std::endl;
+                ++timeIter;
+              }
+              
+              // streamlog_out(WARNING) << yellow << "*maxIter: " << *maxIter
+                                    //  << "' *timeIter: " << *timeIter
+                                    //  << "' m_timeWin: " << m_timeWin
+                                    //  << normal << std::endl;
 
               //find if the current bin has the max or equal hits
               if ((maxIter == timeIter) || (*(maxIter) == *(timeIter))) // if bin > other bins or bin is equal to biggest bin
@@ -1074,6 +1109,10 @@ void TriventProc::processEvent(LCEvent *evtP)
                   m_isTooCloseInTime = true;
                   delete outcol;
                 }
+                
+                if (m_nCerenkov1>0 || m_nCerenkov2>0 || m_nCerenkov3>0) {
+                  ++m_cerenkovEvts;
+                }
                 m_eventTree->Fill();
 
                 delete evt;
@@ -1089,10 +1128,11 @@ void TriventProc::processEvent(LCEvent *evtP)
             }
             else     // Not enough hit in frame, look in next one ( previous bin has already been looked into )
             {
+              // if (*timeIter >5)
+              // streamlog_out(WARNING) <<yellow<< "[NoiseCut] - Event rejected : " << *(timeIter) << normal << std::endl;
               ++timeIter;
             }
           }
-          m_trigNbr = _trigNbr;
           // m_vTimeSpectrum = time_spectrum;
           // m_triggerTree->Fill();
         }
