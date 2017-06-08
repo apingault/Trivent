@@ -1,7 +1,22 @@
 '''
     Utils to to get informations from GEOMETRY db
+    After installing mysql server
+    sudo mysqld_safe
+    mysql -u root
+    mysql> CREATE DATABASE GEOMETRY; 
+    mysql> USE GEOMETRY; 
+    mysql> CREATE USER 'acqilc'@'localhost'
+    mysql> GRANT ALL PRIVILEGES ON GEOMETRY.* TO 'acqilc'@'localhost';
+    # ON lyosdhcal10 
+    mysqldump -u acqilc -pRPC_2008  GEOMETRY > geometry_m3_2017.sql
+    #locally
+    mysqldump -u acqilc -pRPC_2008  GEOMETRY < geometry_m3_2017.sql
+    if not working: 
+    mysql -u acqilc -pRPC_2008
+    use GEOMETRY;
+    source geometry_m3_2017;
 '''
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function # import print function from py3 if running py2.x
@@ -196,7 +211,7 @@ def createGeomXml(xmlFileName, difList, layerList):
 def main():
     try:
         db = mdb.connect(host='localhost', user='acqilc', passwd='RPC_2008', db='GEOMETRY')
-        testName = "SPS_12_2014"
+        testName = "SPS_06_2015"
         cur = db.cursor()
 
         print ("[dbUtils.py] - Selected TestBeam: '%s'" % testName)
