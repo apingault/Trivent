@@ -143,6 +143,10 @@ protected:
   unsigned int m_evtNbr;              // Current Evt number
   unsigned int m_nHit;                // Number of hits
 
+  // std::vector<unsigned long int> m_hitBCID;             // Hit time
+  std::vector<int> m_hitI;         // Hit position
+  std::vector<int> m_hitJ;         // Hit position
+  std::vector<int> m_hitK;         // Hit position
   unsigned int m_nFiredLayers;     // Number of Layers touched in evt
   bool m_isSelected;               // Event is selected/rejected
   bool m_isNoise;                  // If rejected, is it noise

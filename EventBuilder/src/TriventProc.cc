@@ -40,6 +40,8 @@ TriventProc a_TriventProc_instance;
 TriventProc::TriventProc()
   : Processor("TriventProc"),
   m_lcWriter(nullptr),
+  // m_trigger_raw_hit(nullptr),
+  // m_cerenkov_raw_hit(nullptr),
   m_outputCollectionName("SDHCAL_HIT"),
   m_outFileName("TDHCAL.slcio"),
   m_noiseFileName("noise_run.slcio"),
@@ -79,11 +81,15 @@ TriventProc::TriventProc()
   m_bcid2(0),
   m_rootFile(nullptr),
   m_runNumber(0),
+  // m_vHitMapPerLayer(nullptr),
   m_plotFolder("./"),
   m_eventTree(nullptr),
   m_evtTrigNbr(0),
   m_evtNbr(0),
   m_nHit(0),
+  m_hitI(),
+  m_hitJ(),
+  m_hitK(),
   m_nFiredLayers(0),
   m_isSelected(false),
   m_isNoise(false),
@@ -611,6 +617,10 @@ void TriventProc::eventBuilder(LCCollection *col_event, int time_peak, int prev_
         caloHit->setPosition(pos);
         col_event->addElement(caloHit);
         hitKeys.insert(std::pair<int, int>(aHitKey, rawHitTime));
+        m_hitI.push_back(I);
+        m_hitJ.push_back(J);
+        m_hitK.push_back(K);
+        // m_hitBCID.push_back((*rawhit)->getTimeStamp());
       }
       else
       {
@@ -724,7 +734,11 @@ void TriventProc::init()
   m_eventTree = getOrCreateTree(m_treeName, m_treeDescription);
   m_eventTree->Branch("TriggerNumber", &m_evtTrigNbr);
   m_eventTree->Branch("EventNumber", &m_evtNbr);
+  // m_eventTree->Branch("Hitbcid",                 &m_hitBCID);
   m_eventTree->Branch("NumberOfHits", &m_nHit);
+  m_eventTree->Branch("HitI", &m_hitI);
+  m_eventTree->Branch("HitJ", &m_hitJ);
+  m_eventTree->Branch("HitK", &m_hitK);
   m_eventTree->Branch("NumberOfFiredLayers", &m_nFiredLayers);
   m_eventTree->Branch("NumberOfCerenkov1Hits", &m_nCerenkov1);
   m_eventTree->Branch("NumberOfCerenkov2Hits", &m_nCerenkov2);
@@ -1051,6 +1065,9 @@ void TriventProc::processEvent(LCEvent *evtP)
                 m_hasNotEnoughLayers = false;
                 m_hasFullAsic        = false;
                 m_isTooCloseInTime   = false;
+                m_hitI.clear();
+                m_hitJ.clear();
+                m_hitK.clear();
 
                 // Event Building
                 int timePeak = distance(time_spectrum.begin(), timeIter);
