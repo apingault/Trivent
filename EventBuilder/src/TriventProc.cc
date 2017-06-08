@@ -1173,6 +1173,18 @@ void TriventProc::end()
   streamlog_out(MESSAGE) << "Trivent Selected " << m_selectedNum << " Condidate event" << std::endl;
   streamlog_out(MESSAGE) << "Cerenkov Event Selected " << m_cerenkovEvts << std::endl;
 
+  m_eventTree->Draw("CerenkovTime>>hcer","CerenkovTime>-40");
+  TH1I *hcer = (TH1I*)gDirectory->Get("hcer");
+  streamlog_out(MESSAGE) << "Cerenkov Probable time shift at " << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin()) << " with " << hcer->GetBinContent(hcer->GetMaximumBin()) << "/" << m_cerenkovEvts << " event tagged" << std::endl;
+  int cerTagInTime = 0;
+for (int i = -m_timeWin; i<m_timeWin+1; ++i)
+  {
+    streamlog_out(MESSAGE) << "Bin '" << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin()+i) << "' :  " << hcer->GetBinContent(hcer->GetMaximumBin()+i) << std::endl;
+    cerTagInTime+=hcer->GetBinContent(hcer->GetMaximumBin()+i);
+  }
+  streamlog_out(ERROR) << "TotCerenkov in MPV+-timeWin : " << cerTagInTime << "/" << m_cerenkovEvts << " (" << (float)(cerTagInTime)/(float)(m_cerenkovEvts)*100 << "%)"<< std::endl;
+
+  streamlog_out(MESSAGE) << "Trivent end" << std::endl;
   m_lcWriter->close();
 
   // TCanvas *c1 = new TCanvas();
