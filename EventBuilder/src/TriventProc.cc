@@ -365,6 +365,11 @@ std::vector<int> TriventProc::getPadIndex(const int dif_id, const int asic_id, c
   std::vector<int> index(3, 0);
   std::map<int, LayerID>::const_iterator findIter = m_mDifMapping.find(dif_id);
 
+  if (findIter == m_mDifMapping.end())
+  {
+    streamlog_out(ERROR) << " [getPadIndex] difId '" << dif_id <<"' not found in geometry file" << std::endl;
+    return index; // empty
+  }  
   index[0] = (1 + MapILargeHR2[chan_id] + AsicShiftI[asic_id]);
   index[1] = (32 - (MapJLargeHR2[chan_id] + AsicShiftJ[asic_id])) + findIter->second.DifY;
   index[2] = findIter->second.K;
