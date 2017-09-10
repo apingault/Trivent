@@ -30,14 +30,16 @@ INCLUDE( ilcsoft_default_settings )
 
 
 FIND_PACKAGE( Marlin 1.0 REQUIRED ) # minimum required Marlin version
-INCLUDE_DIRECTORIES( ${Marlin_INCLUDE_DIRS} )
-LINK_LIBRARIES( ${Marlin_LIBRARIES} )
-ADD_DEFINITIONS( ${Marlin_DEFINITIONS} )
-
+FIND_PACKAGE( CLHEP REQUIRED ) # Required for Marlin >v1.10
 FIND_PACKAGE( ROOT 5.34 REQUIRED )
-INCLUDE_DIRECTORIES( ${ROOT_INCLUDE_DIRS} )
-LINK_LIBRARIES( ${ROOT_LIBRARIES} )
-ADD_DEFINITIONS( ${ROOT_DEFINITIONS} )
+
+FOREACH( pkg ROOT Marlin CLHEP)
+  IF( ${pkg}_FOUND )
+    INCLUDE_DIRECTORIES( ${${pkg}_INCLUDE_DIRS} )
+    LINK_LIBRARIES( ${${pkg}_LIBRARIES} )
+    ADD_DEFINITIONS( ${${pkg}_DEFINITIONS} )
+  ENDIF()
+ENDFOREACH()
 
 ### DOCUMENTATION ###########################################################
 
