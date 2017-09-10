@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 '''
     Configuration file for trivent processor. Is read by trivent.py
     Usage :    python steer/trivent.py config_trivent 732875,732882
@@ -10,12 +11,12 @@ import platform
 # for file in `lfc-ls /grid/calice/SDHCAL/pingault/TB/CERN/$runPeriod/Streamout/ | grep DHCAL_`; do echo $file; source /eos/user/a/apingaul/CALICE/script/carefulDownload.sh $file /grid/calice/SDHCAL/pingault/TB/CERN/$runPeriod/Streamout/ /eos/user/a/apingaul/CALICE/Data/$runPeriod/Streamout/ ; done
 
 
-runPeriod = "SPS_12_2014"
+# runPeriod = "SPS_12_2014"
 # runPeriod = "SPS_04_2015"
 # runPeriod = "PS_06_2015"
 # runPeriod = "SPS_10_2015"
 # runPeriod = "SPS_06_2016"
-# runPeriod = "SPS_10_2016"
+runPeriod = "SPS_10_2016"
 
 ''' ------------------------- Complete SPS_12_2014 runList ------------------------- '''
 # 72 runs
@@ -113,7 +114,8 @@ LFC_HOST = 'grid-lfc.desy.de'
 eos_home = '/eos/user/a/apingaul/CALICE/'
 #gridDataPath = eos_home + 'data/' + runPeriod
 gridIlcSoftPath = "/cvmfs/ilc.desy.de/sw/x86_64_gcc49_sl6/"
-gridProcessorPath = eos_home + "Software/Trivent/"
+
+
 
 gridInputFiles = []
  # xmlFile and marlinLibrary are added after
@@ -132,8 +134,8 @@ gridInputFiles = []
 ####################
 ### Global variables
 ####################
-ilcSoftVersion = "v01-17-09"
-ilcSoftPath = "/opt/ilcsoft/"
+ilcSoftVersion = "v01-19-04"
+ilcSoftPath = "/home/acqilc/ilcsoft/"
 if runOnGrid is True or runOnLxplus is True:
     ilcSoftVersion = "v01-19-01"
     ilcSoftPath = gridIlcSoftPath
@@ -150,14 +152,16 @@ marlinCfgFile = "marlinCfg_{0}.yml" #.format(runNumber) cfgFile name written by 
 # dataPath = "/Users/antoine/CALICE/DataAnalysis/data"
 # dataPath = "/Volumes/PagosDisk/CALICE/data/%s" % runPeriod
 
-gridDataPath = eos_home + 'Data/' + runPeriod
+# gridDataPath = eos_home + 'Data/' + runPeriod
+gridProcessorPath = '/home/acqilc/antoine/Trivent/'
+gridDataPath =  '/home/acqilc/antoine/StreamoutProcessor/'
 # if runOnGrid is True:
 dataPath = gridDataPath
 
-inputPath = "%s/Streamout" % dataPath
-outputPath = "%s/Trivent" % dataPath
-plotPath = "%s/Plots" % dataPath
-logPath = "%s/Logs" % dataPath
+inputPath = dataPath
+outputPath = dataPath
+plotPath = dataPath
+logPath = dataPath
 # geomPath = "%s/Geometry" % dataPath
 
 
@@ -187,7 +191,7 @@ geomFile2014 = "{0}/m3_bonneteau.xml".format(geomPath)
 geomFile2015 = "{0}/m3_bonneteau_avril2015.xml".format(geomPath)
 geomFileOct2015 = "{0}/m3_oct2015.xml".format(geomPath)
 geomFile2012 = "{0}/setup_geometry_nov.xml".format(geomPath)
-
+geomFile2017 = '{0}/TRIVENTsdhcal_07_09_2017.xml'.format(geomPath)
 
 
 xmlFile = "{0}/TriventProcessor.xml".format(processorPath) # XML file to be generated
@@ -196,7 +200,7 @@ if sys.platform == 'darwin':
     libExt = 'dylib'
 
 # marlinLib = "{0}/lib/libTrivent.dylib".format(processorPath) # Marlin library for processor
-marlinLib = "{0}/lib/libTrivent.{1}".format(processorPath,libExt) # Marlin library for processor
+marlinLib = "{0}/lib/libTriventProcessor.{1}".format(processorPath,libExt) # Marlin library for processor
 if runOnGrid is True:
     gridInputFiles.append(xmlFile)
     gridInputFiles.append(marlinLib)
@@ -255,5 +259,8 @@ elif runPeriod.find("SPS_04_2015") != -1:
 
 elif runPeriod.find("SPS_10_2015") != -1 or runPeriod.find("2016") != -1:
     geomFile = geomFileOct2015
-
+    
+else:
+    geomFile = geomFile2017
+    
 triventProc.SetupGeometry = geomFile
