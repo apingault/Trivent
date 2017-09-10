@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
     Configuration module for Trivent Marlin processor
     Generate the xml file with data imported from external config file
@@ -216,10 +217,10 @@ def main():
     if len(sys.argv) > 1:
         # --- Load configuration File
         configFile = sys.argv[1]
-        # try:
-        exec("import {0} as conf".format(configFile))
-        # except (ImportError, SyntaxError):
-            # sys.exit("[{0}] - Cannot import config file '{1}'".format(scriptName, configFile))
+        try:
+            exec("import {0} as conf".format(configFile))
+        except (ImportError, SyntaxError):
+            sys.exit("[{0}] - Cannot import config file '{1}'".format(scriptName, configFile))
         # --- /Load configuration File
         if len(sys.argv) > 2:
             # --- Load runList
@@ -265,8 +266,8 @@ def main():
         print ("[{0}] - MARLIN_DLL: {1}".format(scriptName, conf.marlinLib))
 
         # Checking if trivent alredy run
-        if os.path.exists("{0}.slcio".format(outputFile)) is True:
-            sys.exit("[{0}] - OutputFile already present...exiting".format(scriptName))
+        # if os.path.exists("{0}.slcio".format(outputFile)) is True:
+        #     sys.exit("[{0}] - OutputFile already present...exiting".format(scriptName))
 
 
         # Looking for or generating xml Geometry File
