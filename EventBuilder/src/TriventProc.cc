@@ -29,6 +29,7 @@
 // -- std includes
 #include <fstream>    // std::stringstream
 #include <iterator>   // std::next
+#include <algorithm>  // std::max_element
 
 // -- Root headers
 #include <TCanvas.h>
@@ -1028,7 +1029,7 @@ void TriventProc::processEvent(LCEvent *evtP)
               //find if the current bin has the max or equal hits
               if ((maxIter == timeIter) || (*(maxIter) == *(timeIter))) // if bin > other bins or bin is equal to biggest bin
               {
-                streamlog_out(WARNING) << blue << "[processEvent] - Found Peak, at time '" << distance(time_spectrum.begin(), maxIter) << "' - hits : " << *maxIter << normal << std::endl;
+                // streamlog_out(WARNING) << blue << "[processEvent] - Found Peak, at time '" << distance(time_spectrum.begin(), maxIter) << "' - hits : " << *maxIter << normal << std::endl;
                 prevMaxIter = maxIter;
                 // Found a peak at time *(timeIter)
                 // std::cout << yellow
