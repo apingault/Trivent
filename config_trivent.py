@@ -87,7 +87,8 @@ runPeriod = "SPS_10_2016"
 
 
 
-
+# SPS H2 09 2017
+runList=[736532,736535,736536]
 
 
 
@@ -242,9 +243,11 @@ triventProc.LayerGap = 2.8 # Not used
 triventProc.LayerCut = 7
 triventProc.NoiseCut = 10
 triventProc.TimeWin = 2
+
+# Cerenkov
 triventProc.HasCerenkovDif = True
 triventProc.CerenkovDifId = 3
-triventProc.CerenkovTimeWindow = 25
+triventProc.CerenkovTimeWindow = 10
 
 if runPeriod.find("2012") != -1:
     triventProc.HasCerenkovDif = False
@@ -262,5 +265,6 @@ elif runPeriod.find("SPS_10_2015") != -1 or runPeriod.find("2016") != -1:
     
 else:
     geomFile = geomFile2017
-    
+
+print geomFile
 triventProc.SetupGeometry = geomFile
