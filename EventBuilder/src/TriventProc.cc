@@ -546,7 +546,6 @@ void TriventProc::eventBuilder(LCCollection *col_event, int time_peak, int prev_
           asicMap.clear();
           m_isSelected  = false;
           m_hasFullAsic = true;
-          return;
         }
 
 
