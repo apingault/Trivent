@@ -63,6 +63,9 @@ TriventProc::TriventProc()
   m_hasCherenkov(true),
   m_cerenkovDifId(3),
   m_cerenkovTimeWindow(25),
+    m_cerAsic(0),
+    m_cerChan(0),
+    m_cerThreshold(0),
   m_nCerenkov1(0),
   m_nCerenkov2(0),
   m_nCerenkov3(0),
@@ -91,6 +94,7 @@ TriventProc::TriventProc()
   m_hitI(),
   m_hitJ(),
   m_hitK(),
+  m_hitThreshold(0),
   m_nFiredLayers(0),
   m_isSelected(false),
   m_isNoise(false),
@@ -622,6 +626,7 @@ void TriventProc::eventBuilder(LCCollection *col_event, int time_peak, int prev_
         m_hitJ.push_back(J);
         m_hitK.push_back(K);
         // m_hitBCID.push_back((*rawhit)->getTimeStamp());
+	m_hitThreshold.push_back(thresh);
       }
       else
       {
@@ -740,7 +745,11 @@ void TriventProc::init()
   m_eventTree->Branch("HitI", &m_hitI);
   m_eventTree->Branch("HitJ", &m_hitJ);
   m_eventTree->Branch("HitK", &m_hitK);
+  m_eventTree->Branch("HitThreshold", &m_hitThreshold);
   m_eventTree->Branch("NumberOfFiredLayers", &m_nFiredLayers);
+  m_eventTree->Branch("CerAsic", &m_cerAsic);
+  m_eventTree->Branch("CerChan", &m_cerChan);
+  m_eventTree->Branch("CerThreshold", &m_cerThreshold);
   m_eventTree->Branch("NumberOfCerenkov1Hits", &m_nCerenkov1);
   m_eventTree->Branch("NumberOfCerenkov2Hits", &m_nCerenkov2);
   m_eventTree->Branch("NumberOfCerenkov3Hits", &m_nCerenkov3);
@@ -842,7 +851,10 @@ void TriventProc::findCerenkovHits(int timePeak)
                              << "'\t Chan " << Chan_id
                              << "'\t Threshold " << hitThreshold
                              << std::endl;
-
+      m_cerAsic = Asic_id;
+      m_cerChan = Chan_id;
+      m_cerThreshold = hitThreshold;
+      
       switch (hitThreshold)
       {
       case 1:
@@ -1069,6 +1081,7 @@ void TriventProc::processEvent(LCEvent *evtP)
                 m_hitI.clear();
                 m_hitJ.clear();
                 m_hitK.clear();
+		m_hitThreshold.clear();
 
                 // Event Building
                 int timePeak = distance(time_spectrum.begin(), timeIter);

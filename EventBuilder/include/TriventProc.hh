@@ -94,6 +94,9 @@ protected:
   bool m_hasCherenkov;
   int m_cerenkovDifId;
   int m_cerenkovTimeWindow;
+  unsigned int m_cerAsic;
+  unsigned int m_cerChan;
+  unsigned int m_cerThreshold;
   unsigned int m_nCerenkov1;       // Number of hit in first Cerenkov
   unsigned int m_nCerenkov2;       // Number of hit in second Cerenkov
   unsigned int m_nCerenkov3;       // Number of hit in frist + second Cerenkov
@@ -147,6 +150,8 @@ protected:
   std::vector<int> m_hitI;         // Hit position
   std::vector<int> m_hitJ;         // Hit position
   std::vector<int> m_hitK;         // Hit position
+  std::vector<int> m_hitThreshold;
+  
   unsigned int m_nFiredLayers;     // Number of Layers touched in evt
   bool m_isSelected;               // Event is selected/rejected
   bool m_isNoise;                  // If rejected, is it noise
