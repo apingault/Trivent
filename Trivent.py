@@ -167,8 +167,11 @@ def checkPeriod(runNumber, runPeriod, configFile):
     if runNumber >= '730927' and runNumber <= '732909' and runPeriod != 'SPS_06_2016':
         sys.exit(periodError('SPS_06_2016'))
 
-    if runNumber >= '734927' and runPeriod != 'SPS_10_2016':
+    if runNumber >= '733626' and runNumber <= '733759' and runPeriod != 'SPS_10_2016':
         sys.exit(periodError('SPS_10_2016'))
+
+    if runNumber >= '736500' and runNumber <= '736575' and runPeriod != 'SPS_09_2017':
+        sys.exit(periodError('SPS_09_2017'))
 
 # -----------------------------------------------------------------------------
 def createJob(executable, args = [], name='', comment='', backend='Local', backendCE='', voms=''):
@@ -249,7 +252,8 @@ def main():
         print ("[{0}] - Looking for files to process for run '{1}' in {2}... ".format(scriptName, runNumber, conf.inputPath), end="")
         #   TODO Remove Hardcoding here
         # stringToFind = 'DHCAL_%d_SO_Antoine' % runNumber
-        stringToFind = 'DHCAL_%d_SO' % runNumber
+        # stringToFind = 'DHCAL_%d_SO' % runNumber
+        stringToFind = 'DHCAL_%d_I0_0' % runNumber
         if os.path.exists(conf.inputPath) is False:
             sys.exit("\n[{0}] - Folder '{1}' does not exist...exiting".format(scriptName, conf.inputPath))
 
@@ -318,8 +322,10 @@ def main():
             print ("[{0}] --- Ouput is logged to '{1}'".format(scriptName, log))
             beginTime = time.time()
             # subprocess.call(["Marlin", conf.xmlFile], env=dict(os.environ, MARLIN_DLL=conf.marlinLib, MARLINDEBUG="1"), stdout=log)
-            subprocess.call(['python', 'run_marlin.py', marlinCfgFile], stdout=log, stderr=log)
-            # subprocess.call(['python', 'run_marlin.py', marlinCfgFile])
+            if conf.logToFile is True:
+                subprocess.call(['python', 'run_marlin.py', marlinCfgFile], stdout=log, stderr=log)
+            else:
+                subprocess.call(['python', 'run_marlin.py', marlinCfgFile])
             print ('[{0}] - Running Marlin...OK - '.format(scriptName), end='')
             try:
                 elapsedTime(beginTime)

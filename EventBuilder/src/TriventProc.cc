@@ -591,7 +591,7 @@ void TriventProc::eventBuilder(LCCollection *col_event, int time_peak, int prev_
         if (Dif_id == m_cerenkovDifId)
         {
           m_totCerenkovHits++;
-          streamlog_out(WARNING) << " m_totCerenkovHits == " << m_totCerenkovHits
+          streamlog_out( DEBUG ) << " m_totCerenkovHits == " << m_totCerenkovHits
                                  << " I == " << I
                                  << " J == " << J
                                  << " K == " << K
@@ -877,7 +877,7 @@ void TriventProc::findCerenkovHits(int timePeak)
   m_nCerenkovTrigger += (m_nCerenkov1 + m_nCerenkov2 + m_nCerenkov3);
   if (m_nCerenkovTrigger > m_cerenkov_raw_hit.size())
   {
-    streamlog_out(ERROR) << red << "[findCerenkov] - Cerenkov hit associated with multiple event in Trigger : Associated hit/total bif_hit in trigger : '" << m_nCerenkovTrigger << "'/" << m_cerenkov_raw_hit.size() << normal << std::endl;
+    streamlog_out(DEBUG) << red << "[findCerenkov] - Cerenkov hit associated with multiple event in Trigger : Associated hit/total bif_hit in trigger : '" << m_nCerenkovTrigger << "'/" << m_cerenkov_raw_hit.size() << normal << std::endl;
     m_hasTooManyCerenkov = true;
   }
 }
@@ -1040,7 +1040,7 @@ void TriventProc::processEvent(LCEvent *evtP)
               //find if the current bin has the max or equal hits
               if ((maxIter == timeIter) || (*(maxIter) == *(timeIter))) // if bin > other bins or bin is equal to biggest bin
               {
-                // streamlog_out(WARNING) << blue << "[processEvent] - Found Peak, at time '" << distance(time_spectrum.begin(), maxIter) << "' - hits : " << *maxIter << normal << std::endl;
+                streamlog_out( DEBUG ) << blue << "[processEvent] - Found Peak, at time '" << distance(time_spectrum.begin(), maxIter) << "' - hits : " << *maxIter << normal << std::endl;
                 prevMaxIter = maxIter;
                 // Found a peak at time *(timeIter)
                 // std::cout << yellow
@@ -1104,7 +1104,7 @@ void TriventProc::processEvent(LCEvent *evtP)
 
                   if (m_timeCerenkov != -2 * m_cerenkovTimeWindow)  // InitialValue
                   {
-                    streamlog_out(MESSAGE) << "[processEvent] - " << green << "Trig# " << m_evtTrigNbr << " TrigCount " << m_trigCount << " Evt# " << m_evtNum
+                    streamlog_out( DEBUG ) << "[processEvent] - " << green << "Trig# " << m_evtTrigNbr << " TrigCount " << m_trigCount << " Evt# " << m_evtNum
                                            << "\tFound Cerenkov!"
                                            << "\t cer1 = " << m_nCerenkov1
                                            << "\t cer2 = " << m_nCerenkov2
