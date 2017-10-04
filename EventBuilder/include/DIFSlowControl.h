@@ -8,12 +8,12 @@
 #include "DIFUnpacker.h"
 using namespace std;
 
-/** 
+/**
 \class DIFSlowControl
-  \author  L.Mirabito 
+  \author  L.Mirabito
   \date March 2010
   \version 1.0
-  
+
  \brief Handler of DIF Slow Control  info
 
 */
@@ -35,14 +35,14 @@ public:
 
   //! Get chips map
   /**
-     @return a map of < Asic Id, map of <string (parameter name),int (parameter value) >  
+     @return a map of < Asic Id, map of <string (parameter name),int (parameter value) >
    */
   map < int,map <string,int> > getChipsMap(){ return _mapSC;}
 
   //! Get one chip map
   /**
      @param asicid ASIC ID
-     @return a map of <string (parameter name),int (parameter value) >  
+     @return a map of <string (parameter name),int (parameter value) >
    */
   map<string,int> getChipSlowControl(int asicid){ return _mapSC[asicid];}
 
@@ -77,14 +77,14 @@ private:
 class DIFPtr
 {
 public:
- DIFPtr(unsigned char* p,uint32_t max_size) : theDIF_(p),theSize_(max_size)
+ DIFPtr(unsigned char* p,uint32_t max_size) : theSize_(max_size), theDIF_(p)
   {
     theFrames_.clear();theLines_.clear();
     try
       {
 	theGetFramePtrReturn_=DIFUnpacker::getFramePtr(theFrames_,theLines_,theSize_,theDIF_);
       }
-    catch (std::string e)
+    catch (std::string &e)
       {
 	std::cout<<"DIF "<<getID()<<" T ? "<<hasTemperature()<<" " <<e<<std::endl;
       }
@@ -116,7 +116,7 @@ public:
   inline bool getFrameLevel(uint32_t i,uint32_t ipad,uint32_t ilevel){return DIFUnpacker::getFrameLevel(theFrames_[i],ipad,ilevel);}
   void dumpDIFInfo()
   {
-    printf("DIF %d DTC %d GTC %d ABCID %lld BCID %d Lines %d Temperature %d \n",
+    printf("DIF %d DTC %d GTC %d ABCID %llu BCID %d Lines %d Temperature %d \n",
 		 getID(),
 		 getDTC(),
 		 getGTC(),
@@ -127,7 +127,7 @@ public:
 
     if (hasTemperature())
       printf("T: ASU1 %d %f ASU2 %d %f DIF %d  %f \n",getTASU1(),getTemperatureASU1(),getTASU2(),getTemperatureASU2(),getTDIF(),getTemperatureDIF());
-    printf("Found %d Lines and %d Frames \n",theLines_.size(),theFrames_.size());
+    printf("Found %zu Lines and %zu Frames \n",theLines_.size(),theFrames_.size());
   }
 
  private:

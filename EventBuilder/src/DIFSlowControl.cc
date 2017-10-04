@@ -318,7 +318,6 @@ void DIFSlowControl::Dump()
   for (map< int,map < string,int > >::iterator it=_mapSC.begin();it!=_mapSC.end();++it)
     {
       std::cout<<"ASIC " <<it->first<<std::endl;
-      map < string,int >::iterator jt =it->second.begin();
       for (map < string,int >::iterator jt =(it->second).begin(); jt!=(it->second).end();++jt)
 	std::cout<<jt->first<<" : "<<jt->second<<std::endl;
     }

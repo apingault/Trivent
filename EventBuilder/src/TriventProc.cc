@@ -35,6 +35,7 @@
 #include <TCanvas.h>
 
 
+
 TriventProc a_TriventProc_instance;
 
 //=========================================================
@@ -63,9 +64,9 @@ TriventProc::TriventProc()
   m_hasCherenkov(true),
   m_cerenkovDifId(3),
   m_cerenkovTimeWindow(25),
-    m_cerAsic(0),
-    m_cerChan(0),
-    m_cerThreshold(0),
+  m_cerAsic(0),
+  m_cerChan(0),
+  m_cerThreshold(0),
   m_nCerenkov1(0),
   m_nCerenkov2(0),
   m_nCerenkov3(0),
@@ -74,6 +75,7 @@ TriventProc::TriventProc()
   m_timeCerenkov(0),
   m_totCerenkovHits(0),
   m_cerenkovEvts(0),
+  m_maxCerenkovTime(0),
   m_maxTime(0),
   m_trigNbr(0),
   m_trigCount(0),
@@ -293,7 +295,7 @@ void TriventProc::XMLReader(std::string xmlfile)
       }
       streamlog_out(DEBUG0) << blue << lineIter->c_str() << normal << std::endl;
 
-      LayerID mapp;
+      LayerID mapp{};
       int     Dif_id;
       while (ss.good())
       {
@@ -697,7 +699,7 @@ void TriventProc::init()
 
   // Read and print geometry file
   try {
-    XMLReader(m_geomXMLFile.c_str());
+    XMLReader(m_geomXMLFile);
     // printDifGeom();
   }
   catch (std::string& e) {

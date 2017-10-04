@@ -192,7 +192,7 @@ uint32_t DIFUnpacker::getFramePtr(std::vector<unsigned char*> &vFrame,std::vecto
       vFrame.push_back(&cb[fshift]);fshift+=DU_FRAME_SIZE;
       if (fshift>max_size)
 	{
-	  printf("fshift %x exceed %d \n",fshift,max_size);
+	  printf("fshift %x exceed %u \n",fshift,max_size);
 	  return fshift;
 	}
       //printf("%x \n",cb[fshift]);
