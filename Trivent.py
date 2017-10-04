@@ -4,39 +4,39 @@
     Generate the xml file with data imported from external config file
 """
 
-from __future__ import print_function # import print function from py3 if running py2.x
+from __future__ import print_function  # import print function from py3 if running py2.x
 
 import os
 import sys
 import time
 import subprocess
-import shlex # split properly command line for Popen
+import shlex  # split properly command line for Popen
 # from lxml import etree
 import yaml
 
 # from ganga import *
 
 import MySQLdb as mdb
-import dbUtils as dbu # custom interfaces to TestBeam databases
+import dbUtils as dbu  # custom interfaces to TestBeam databases
 from marlin import Marlin
 # import marlinUtils as mu
 # Import default config file
 # Not needed here just for dumb editor not to complain about config not existing
 import config_trivent as conf
-
-
 '''
     Create xml geometry file from testBeam database
 '''
+
+
 # -----------------------------------------------------------------------------
 def generateXMLGeometryFile(testBeamPeriod):
     db = mdb.connect(host='localhost', user='acqilc', passwd='RPC_2008', db='GEOMETRY')
     cur = db.cursor()
 
-    print ("[{0}] - Selected TestBeam: '{1}'".format(os.path.basename(__file__), testBeamPeriod) )
+    print("[{0}] - Selected TestBeam: '{1}'".format(os.path.basename(__file__), testBeamPeriod))
 
     testBeamIdx = dbu.selectTestBeam(cur, testBeamPeriod)
-    print ("[{0}] - TestBeam index : '{1}'".format(os.path.basename(__file__), testBeamIdx) )
+    print("[{0}] - TestBeam index : '{1}'".format(os.path.basename(__file__), testBeamIdx))
 
     difList = dbu.selectDifList(cur, testBeamIdx).fetchall()
     layerList = dbu.selectLayerList(cur, testBeamIdx).fetchall()
@@ -56,7 +56,6 @@ def generateXMLGeometryFile(testBeamPeriod):
 #         xmlHandle.set(option, optionValue)
 #     xmlHandle.text = value
 #     xmlParList[xmlHandleName] = [value]
-
 
 # # -----------------------------------------------------------------------------
 # '''
@@ -110,9 +109,10 @@ def generateXMLGeometryFile(testBeamPeriod):
 #     s = etree.tostring(marlin, pretty_print=True)
 #     with open(conf.xmlFile, "w") as outFile:
 #         outFile.write(s)
+'''
+'''
 
-'''
-'''
+
 # -----------------------------------------------------------------------------
 def findFile(folder, findString):
     found = False
@@ -124,13 +124,16 @@ def findFile(folder, findString):
         if findString in line:
             found = True
     if found is False:
-        print ("\n[{0}] - File Not found, available files: ".format(os.path.basename(__file__)))
+        print("\n[{0}] - File Not found, available files: ".format(os.path.basename(__file__)))
         for line in stdout_list:
-            print ("\t%s" % line)
+            print("\t%s" % line)
     return found
+
 
 '''
 '''
+
+
 # -----------------------------------------------------------------------------
 def elapsedTime(startTime):
     t_sec = round(time.time() - startTime)
@@ -141,13 +144,17 @@ def elapsedTime(startTime):
 
 '''
 '''
+
+
 # -----------------------------------------------------------------------------
 def checkPeriod(runNumber, runPeriod, configFile):
     ''' Check runNumber is associated to correct runPeriod
         Abort execution if not
     '''
+
     def periodError(goodPeriod):
-        return "[{0}] - RunNumber '{1}' is from TestBeam '{2}', you selected '{3}' in configFile '{4}'".format(os.path.basename(__file__), runNumber, goodPeriod, conf.runPeriod, configFile)
+        return "[{0}] - RunNumber '{1}' is from TestBeam '{2}', you selected '{3}' in configFile '{4}'".format(
+            os.path.basename(__file__), runNumber, goodPeriod, conf.runPeriod, configFile)
 
     if runNumber < '726177' and (runPeriod != 'SPS_08_2012' or runPeriod != 'SPS_11_2012'):
         sys.exit(periodError('SPS_08_2012 or SPS_11_2012'))
@@ -173,8 +180,9 @@ def checkPeriod(runNumber, runPeriod, configFile):
     if runNumber >= '736500' and runNumber <= '736575' and runPeriod != 'SPS_09_2017':
         sys.exit(periodError('SPS_09_2017'))
 
+
 # -----------------------------------------------------------------------------
-def createJob(executable, args = [], name='', comment='', backend='Local', backendCE='', voms=''):
+def createJob(executable, args=[], name='', comment='', backend='Local', backendCE='', voms=''):
     ''' Create Ganga job. Default backend is Local
     '''
     j = Job()
@@ -187,10 +195,9 @@ def createJob(executable, args = [], name='', comment='', backend='Local', backe
         j.backend.CE = backendCE
         try:
             gridProxy.voms = voms
-        except NameError: # ganga > 6.3 no longer has the gridProxy credentials system
+        except NameError:  # ganga > 6.3 no longer has the gridProxy credentials system
             j.backend.credential_requirements = VomsProxy(vo=voms)
     return j
-
 
 
 # -----------------------------------------------------------------------------
@@ -203,14 +210,12 @@ def setCliOptions(marlin, xmlSection):
             marlin.setCliOption(sectionName + param, value)
 
 
-
-
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
 def main():
     '''
     '''
-    scriptName = os.path.basename(__file__) # For logging clarity
+    scriptName = os.path.basename(__file__)  # For logging clarity
 
     runNumber = 0
     runListArg = None
@@ -221,7 +226,7 @@ def main():
         # --- Load configuration File
         configFile = sys.argv[1]
         try:
-            exec("import {0} as conf".format(configFile))
+            exec ("import {0} as conf".format(configFile))
         except (ImportError, SyntaxError):
             sys.exit("[{0}] - Cannot import config file '{1}'".format(scriptName, configFile))
         # --- /Load configuration File
@@ -232,10 +237,8 @@ def main():
         sys.exit("[{0}] - Please give : configFile - runNumber(s)(optional if set up in configFile)".format(scriptName))
     # --- /Parse CLI arguments
 
-
-
     # --- Load List of runs
-    if runListArg is None: # if no runs on CLI, load list from configFile
+    if runListArg is None:  # if no runs on CLI, load list from configFile
         try:
             runList = conf.runList
         except AttributeError:
@@ -244,58 +247,57 @@ def main():
         runList = runListArg.split(',')
     # --- /Load List of runs
 
-
-
     for run in runList:
         checkPeriod(str(run), conf.runPeriod, configFile)
         runNumber = int(run)
-        print ("[{0}] - Looking for files to process for run '{1}' in {2}... ".format(scriptName, runNumber, conf.inputPath), end="")
-        stringToFind = conf.inputFile.format(runNumber) # 'DHCAL_%d_SO_Antoine' % runNumber
+        print(
+            "[{0}] - Looking for files to process for run '{1}' in {2}... ".format(scriptName, runNumber,
+                                                                                   conf.inputPath),
+            end="")
+        stringToFind = conf.inputFile.format(runNumber)  # 'DHCAL_%d_SO_Antoine' % runNumber
         if os.path.exists(conf.inputPath) is False:
             sys.exit("\n[{0}] - Folder '{1}' does not exist...exiting".format(scriptName, conf.inputPath))
 
         found = findFile(conf.inputPath, stringToFind)
         if found is False:
             sys.exit('Exiting')
-        print ('OK')
+        print('OK')
 
         conf.glob.LCIOInputFiles = conf.inputPath + conf.inputFile.format(runNumber)
+        print(conf.glob.LCIOInputFiles)
         outputFile = conf.outputPath + conf.outputFile.format(runNumber)
         conf.triventProc.LCIOOutputFile = outputFile + ".slcio"
         conf.triventProc.ROOTOutputFile = outputFile + ".root"
-        print ("[{0}] - output file : {1}.slcio".format(scriptName, outputFile))
-        print ("[{0}] - MARLIN_DLL: {1}".format(scriptName, conf.marlinLib))
+        print("[{0}] - output file : {1}.slcio".format(scriptName, outputFile))
+        print("[{0}] - MARLIN_DLL: {1}".format(scriptName, conf.marlinLib))
 
         # Checking if trivent alredy run
         # if os.path.exists("{0}.slcio".format(outputFile)) is True:
         #     sys.exit("[{0}] - OutputFile already present...exiting".format(scriptName))
 
-
         # Looking for or generating xml Geometry File
         if os.path.exists(conf.geomFile) is False:
-            print ("[{0}] - No geometry file found, creating one from database for period '{1}'...".format(scriptName, conf.runPeriod))
+            print("[{0}] - No geometry file found, creating one from database for period '{1}'...".format(
+                scriptName, conf.runPeriod))
             generateXMLGeometryFile(conf.runPeriod)
-            print ("[{0}] - No geometry file found, creating one from database for period '{1}'...OK -> '{2}' ".format(scriptName, conf.runPeriod, conf.geomFile))
+            print("[{0}] - No geometry file found, creating one from database for period '{1}'...OK -> '{2}' ".format(
+                scriptName, conf.runPeriod, conf.geomFile))
         else:
-            print ("[{0}] - Found geometry file '{1}'".format(scriptName, conf.geomFile))
-
-
+            print("[{0}] - Found geometry file '{1}'".format(scriptName, conf.geomFile))
 
         # xmlParameterList = {}
         # generateXML(inputFiles, outputFile, xmlParameterList)
-
 
         # Printing modification to xml file
         print("\n[{0}] ========================".format(scriptName))
         print("[{0}] --- Dumping modified xml parameters: ".format(scriptName))
         for par, value in vars(conf.glob).items():
             if par != 'name':
-                print ("[{0}] \t\t{1}:\t{2}".format(scriptName, par, value))
+                print("[{0}] \t\t{1}:\t{2}".format(scriptName, par, value))
         for par, value in vars(conf.triventProc).items():
             if par != 'name':
-                print ("[{0}] \t\t{1}:\t{2}".format(scriptName, par, value))
+                print("[{0}] \t\t{1}:\t{2}".format(scriptName, par, value))
         print("[{0}] ========================\n".format(scriptName))
-
 
         # Marlin configuration
         marlinCfgFile = conf.marlinCfgFile.format(runNumber)
@@ -303,31 +305,28 @@ def main():
         marlin.setXMLConfig(conf.xmlFile)
         marlin.setLibraries(conf.marlinLib)
         marlin.setILCSoftScript(conf.initILCSoftScript)
-        setCliOptions(marlin, conf.glob) # TODO: Move to Marlin.py
+        setCliOptions(marlin, conf.glob)  # TODO: Move to Marlin.py
         setCliOptions(marlin, conf.triventProc)
         marlin.writeConfigFile(marlinCfgFile)
 
-
-
-
         # Running locally
         if conf.runOnGrid is False:
-            log = open(conf.logFile.format(conf.logPath, runNumber), "w", 1) # line-buffered
+            log = open(conf.logFile.format(conf.logPath, runNumber), "w", 1)  # line-buffered
 
             print("\n[{0}] ========================".format(scriptName))
-            print ('[{0}] --- Running Marlin...'.format(scriptName))
-            print ("[{0}] --- Ouput is logged to '{1}'".format(scriptName, log))
+            print('[{0}] --- Running Marlin...'.format(scriptName))
+            print("[{0}] --- Ouput is logged to '{1}'".format(scriptName, log))
             beginTime = time.time()
             # subprocess.call(["Marlin", conf.xmlFile], env=dict(os.environ, MARLIN_DLL=conf.marlinLib, MARLINDEBUG="1"), stdout=log)
             if conf.logToFile is True:
                 subprocess.call(['python', 'run_marlin.py', marlinCfgFile], stdout=log, stderr=log)
             else:
                 subprocess.call(['python', 'run_marlin.py', marlinCfgFile])
-            print ('[{0}] - Running Marlin...OK - '.format(scriptName), end='')
+            print('[{0}] - Running Marlin...OK - '.format(scriptName), end='')
             try:
                 elapsedTime(beginTime)
             except ValueError:
-                print ("Can't print time...")
+                print("Can't print time...")
             print("[{0}] ========================\n".format(scriptName))
 
             # print ('[{0}] - Removing xmlFile...', end='')
@@ -348,24 +347,24 @@ def main():
                 ymlfile.write(yaml.dump(cfg, default_flow_style=False))
 
             try:
-                print ("[{0}] --- Submiting Job ... ".format(scriptName))
+                print("[{0}] --- Submiting Job ... ".format(scriptName))
                 # Navigate jobtree, if folder doesn't exist create it
-                treePath = conf.runPeriod + '/' + scriptName[:-3] # Remove .py at end of scriptName
+                treePath = conf.runPeriod + '/' + scriptName[:-3]  # Remove .py at end of scriptName
                 # if jobtree.exists(treePath) is False: # Always returns true...
-                jobtree.cd('/') # make sure we are in root folder
-                try :
+                jobtree.cd('/')  # make sure we are in root folder
+                try:
                     jobtree.cd(treePath)
                 except TreeError:
                     try:
                         jobtree.mkdir(treePath)
-                    except: # mkdir should write all missing folder if any....apparently not true
+                    except:  # mkdir should write all missing folder if any....apparently not true
                         print("WhatThe?")
                         jobtree.mkdir(conf.runPeriod)
                         jobtree.mkdir(treePath)
                     jobtree.cd(treePath)
 
-                eos_installation ='/afs/cern.ch/project/eos/installation/user/'
-                eos_home='/eos/user/a/apingaul/CALICE/'
+                eos_installation = '/afs/cern.ch/project/eos/installation/user/'
+                eos_home = '/eos/user/a/apingaul/CALICE/'
 
                 # Update ganga configuration for eos access
                 config.Output.MassStorageFile['defaultProtocol'] = 'root://eosuser.cern.ch'
@@ -374,44 +373,49 @@ def main():
                 config.Output.MassStorageFile['uploadOptions']['mkdir_cmd'] = eos_installation + 'bin/eos.select mkdir'
                 config.Output.MassStorageFile['uploadOptions']['path'] = eos_home
                 # Print it
-                print (config.Output.MassStorageFile['defaultProtocol'])
-                print (config.Output.MassStorageFile['uploadOptions']['cp_cmd'])
-                print (config.Output.MassStorageFile['uploadOptions']['ls_cmd'])
-                print (config.Output.MassStorageFile['uploadOptions']['mkdir_cmd'])
-                print (config.Output.MassStorageFile['uploadOptions']['path'])
-
-
-
+                print(config.Output.MassStorageFile['defaultProtocol'])
+                print(config.Output.MassStorageFile['uploadOptions']['cp_cmd'])
+                print(config.Output.MassStorageFile['uploadOptions']['ls_cmd'])
+                print(config.Output.MassStorageFile['uploadOptions']['mkdir_cmd'])
+                print(config.Output.MassStorageFile['uploadOptions']['path'])
 
                 inputFiles = []
                 for f in conf.gridInputFiles:
                     inputFiles.append(LocalFile(f))
                 inputFiles.append(LocalFile(marlinCfgFile))
-                print ('inputFiles:\n', inputFiles)
+                print('inputFiles:\n', inputFiles)
 
-                inputData=[]
+                inputData = []
                 inputDataFileList = []
                 inputDataFileList.append(conf.glob.LCIOInputFiles)
                 for item in [inputDataFileList]:
                     l = []
-                    print ("\nitem=",item,"\n")
+                    print("\nitem=", item, "\n")
                     for f in item:
                         l.append(MassStorageFile(f))
-                    print ("\nl=",l,"\n")
+                    print("\nl=", l, "\n")
                     for f in l:
-                        print ("\nf=",f,"\n")
+                        print("\nf=", f, "\n")
 
                 inputData = GangaDataset(treat_as_inputfiles=False, files=[f for f in l])
 
-                print ('\n\ninputDataType:\n', type(inputData))
-                print ('\n\ninputData:\n', inputData)
+                print('\n\ninputDataType:\n', type(inputData))
+                print('\n\ninputData:\n', inputData)
                 for item in inputData:
-                    print (type(item))
-                    print (item)
+                    print(type(item))
+                    print(item)
 
-                j = createJob(executable='run_marlin.py', args=[marlinCfgFile], name=str(runNumber), backend=conf.backend, backendCE=conf.CE, voms=conf.voms)
+                j = createJob(
+                    executable='run_marlin.py',
+                    args=[marlinCfgFile],
+                    name=str(runNumber),
+                    backend=conf.backend,
+                    backendCE=conf.CE,
+                    voms=conf.voms)
                 j.comment = "Trivent " + conf.runPeriod
-                j.outputfiles = [MassStorageFile(namePattern="*.*", outputfilenameformat='GridOutput/Trivent/{jid}/{fname}')]
+                j.outputfiles = [
+                    MassStorageFile(namePattern="*.*", outputfilenameformat='GridOutput/Trivent/{jid}/{fname}')
+                ]
                 j.inputfiles = inputFiles
                 j.inputdata = inputData
 
@@ -420,12 +424,13 @@ def main():
 
                 jobtree.add(j)
                 j.submit()
-                print ("\n[{0}] ... submitting job done.\n".format(scriptName))
+                print("\n[{0}] ... submitting job done.\n".format(scriptName))
 
                 #queues.add(j.submit)
             except:
-                print ("[{0}] --- Failed to submit job ".format(scriptName))
+                print("[{0}] --- Failed to submit job ".format(scriptName))
                 raise
 
-if  __name__ == '__main__':
+
+if __name__ == '__main__':
     main()

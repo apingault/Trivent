@@ -6,9 +6,9 @@
 #include <fstream>
 #include <limits.h>
 #include <cmath>
-#include <stdexcept>  
-#include <Rtypes.h> 
-#include <sstream>		
+#include <stdexcept>
+#include <Rtypes.h>
+#include <sstream>
 #include <string>
 
 using namespace std;
@@ -25,15 +25,15 @@ uint GainCorrect::getCellChan_id(int cell_id){
 void GainCorrect::gainCorrectionInit(std::map<int, LayerID  > _mapping){
   mean_hit_dif = new TH1F("mean_hit_dif","mean_hit_dif",500,0.,500.);
   GainHist _gain_tmp;
-  
-  for(std::map<int,LayerID>::iterator itt = _mapping.begin();itt!=_mapping.end();itt++){
+
+  for(std::map<int,LayerID>::iterator itt = _mapping.begin();itt!=_mapping.end();++itt){
     int dif_id = itt->first;
     _gain_tmp.noise_on_dif = new TH1F(Form("noise_on_dif_%i",dif_id),"noise_on_dif",3072,0,3072);
     _gain_tmp.gain_chan    = new TH1F(Form("gain_chan_%i",dif_id),"gain_chan",3072,0,3072);
     _h_gain[dif_id] = _gain_tmp;
   }
 }
-		
+
 void GainCorrect::gainCorrectionParser(LCCollection* col){
   try{
     for (int ihit(0); ihit < col->getNumberOfElements(); ++ihit) {
@@ -41,15 +41,15 @@ void GainCorrect::gainCorrectionParser(LCCollection* col){
       int Dif_id  =  getCellDif_id(rawhit->getCellID0());
       int Asic_id =  getCellAsic_id(rawhit->getCellID0());
       int Chan_id =  getCellChan_id(rawhit->getCellID0());
-  
-      for(std::map<int, GainHist >::iterator itt = _h_gain.begin();itt!=_h_gain.end();itt++){
+
+      for(std::map<int, GainHist >::iterator itt = _h_gain.begin();itt!=_h_gain.end();++itt){
 	if( Dif_id == itt->first ){
 	  itt->second.noise_on_dif->Fill(Chan_id + (Asic_id-1)*64);
 	}
       }
-  
+
     }
-  }catch (std::exception ec){
+  }catch (std::exception &ec){
     std::cout<<"No hits "<<std::endl;
   }
 }
@@ -58,9 +58,9 @@ void GainCorrect::gainCorrector(const string gain_file="gain_correction.txt"){
   ofstream gainFlux(gain_file.c_str());
   std::map<int,double> mean_gain_dif;
   TH1F * h_mean_gain_full =new  TH1F("h_mean_gain_full","mean_gain_full",100,0,10);
-  for(std::map<int, GainHist >::iterator itt = _h_gain.begin();itt!=_h_gain.end();itt++){
+  for(std::map<int, GainHist >::iterator itt = _h_gain.begin();itt!=_h_gain.end();++itt){
     mean_hit_dif->Clear();
-    
+
     for(int i=0; i < itt->second.noise_on_dif->GetNbinsX();i++){
       mean_hit_dif->Fill(itt->second.noise_on_dif->GetBinContent(i));
     }
@@ -68,7 +68,7 @@ void GainCorrect::gainCorrector(const string gain_file="gain_correction.txt"){
     TH1F * h_mean_gain =new TH1F("h_mean_gain","mean_gain",100,0,10);
     //double sigma = mean_hit_dif->GetRMS();
     //TH1F *noise_on_dif_copy = new TH1F("noise_on_dif_copy","noise_on_dif_copy",3072,0,3072);
-    for(int i=0; i < itt->second.noise_on_dif->GetNbinsX();i++){ // loop over the pad 
+    for(int i=0; i < itt->second.noise_on_dif->GetNbinsX();i++){ // loop over the pad
       //itt->second.noise_on_dif->GetBinContent(i);
       if(itt->second.noise_on_dif->GetBinContent(i) > 0.0){
 	//double gain = 1./( 1 + TMath::Exp((itt->second.noise_on_dif->GetBinContent(i)-mean)/mean));
@@ -76,30 +76,30 @@ void GainCorrect::gainCorrector(const string gain_file="gain_correction.txt"){
 	double gain = mean / (itt->second.noise_on_dif->GetBinContent(i));
 	itt->second.gain_chan->Fill(i,gain*itt->second.noise_on_dif->GetBinContent(i));
 	if(gain > 2. )gain = 1.99;
-	
+
 	h_mean_gain->Fill(gain);
 	//gainFlux<<"oa.ChangeGain("
-	//	  << itt->first <<"," 
+	//	  << itt->first <<","
 	//	  << (int(i/64) + 1)<<","
 	//	  << (i - 64*int(i/64)) <<","
 	//	  << gain <<")"
 	//	  <<endl;
       }
-    }//loop over pad 
-    
+    }//loop over pad
+
     double mean_gain = h_mean_gain->GetMean();
     mean_gain_dif.insert(std::pair<int,double>(itt->first,mean_gain));
     h_mean_gain_full->Fill(mean_gain);
     //for(int i=0; i < itt->second.noise_on_dif->GetNbinsX();i++){
     //if(itt->second.noise_on_dif->GetBinContent(i) > 0.0){
     //gain_chan->Fill(i,(mean + sigma)/(1.0*itt->second.noise_on_dif->GetBinContent(i)));
-    //double factor_rms = (itt->second.noise_on_dif->GetBinContent(i)- mean)/sigma; 
+    //double factor_rms = (itt->second.noise_on_dif->GetBinContent(i)- mean)/sigma;
     //double factor_rms = (itt->second.noise_on_dif->GetBinContent(i)-mean)/(1.0*mean);
     //double gain = ( mean + TMath::Exp( - factor_rms)*mean )/(mean + factor_rms * mean);
     //  double gain_new = 1./( 1 + TMath::Exp((itt->second.noise_on_dif->GetBinContent(i)-mean_new)/mean_new));
     //itt->second.gain_chan->Fill(i,gain_new*itt->second.noise_on_dif->GetBinContent(i));
     //	  gainFlux<<"oa.ChangeGain("
-    //	  << itt->first <<"," 
+    //	  << itt->first <<","
     //	  << (int(i/64) + 1)<<","
     //	  << (i - 64*int(i/64)) <<","
     //	  << gain_new <<")"
@@ -108,16 +108,16 @@ void GainCorrect::gainCorrector(const string gain_file="gain_correction.txt"){
     //}
     delete h_mean_gain;
   }// loop over the diff
-  
+
   double mean_gain_full = h_mean_gain_full->GetMean();
-  for(std::map<int, GainHist >::iterator itt = _h_gain.begin();itt!=_h_gain.end();itt++){
+  for(std::map<int, GainHist >::iterator itt = _h_gain.begin();itt!=_h_gain.end();++itt){
     mean_hit_dif->Clear();
     for(int i=0; i < itt->second.noise_on_dif->GetNbinsX();i++){
       mean_hit_dif->Fill(itt->second.noise_on_dif->GetBinContent(i));
     }
-    
+
     std::cout << "write file gain_correction.txt ..." << std::endl;
-    
+
     double mean =  mean_hit_dif->GetMean();
     for(int i=0; i < itt->second.noise_on_dif->GetNbinsX();i++){
       if(itt->second.noise_on_dif->GetBinContent(i) > 0.0){
@@ -125,16 +125,16 @@ void GainCorrect::gainCorrector(const string gain_file="gain_correction.txt"){
 	double gain_new =  (mean_gain_full/(mean_gain_dif.find(itt->first)->second))*gain;
 	if(gain_new > 2. )gain_new = 1.99;
 	gainFlux<<"oa.ChangeGain("
-		<< itt->first <<"," 
+		<< itt->first <<","
 		<< (int(i/64) + 1)<<","
 		<< (i - 64*int(i/64)) <<","
 		<< gain_new <<")"
 		<<endl;
       }
     }
-    
+
   }
-  
+
   delete h_mean_gain_full;
 }
 
@@ -205,7 +205,7 @@ void MyGainCorrection::analyseNoise()
   }
   meanAsicNoise/=noiseAsicMap.size();
   rmsAsicNoise=sqrt(rmsAsicNoise/noiseHitMap.size()-meanAsicNoise*meanAsicNoise);
-  
+
   for(std::map<int,int>::iterator it=noiseDifMap.begin(); it!=noiseDifMap.end(); ++it){
     meanDifNoise+=it->second;
     rmsDifNoise+=it->second*it->second;
@@ -213,7 +213,7 @@ void MyGainCorrection::analyseNoise()
   meanDifNoise/=noiseDifMap.size();
   rmsDifNoise=sqrt(rmsDifNoise/noiseHitMap.size()-meanDifNoise*meanDifNoise);
 
-  std::cout << "meanHitNoise = " << meanHitNoise << "\t" 
+  std::cout << "meanHitNoise = " << meanHitNoise << "\t"
 	    << "rmsHitNoise = " << rmsHitNoise  << "\t"
 	    << "mpvHitNoise = " << mpv << "\t"
 	    << "medHitNoise = " << med << std::endl;
@@ -245,7 +245,7 @@ void MyGainCorrection::writeChannelGainCorrectionFile()
     count++;
   }
   meanGain/=count;
-  
+
   count=0;
   for(std::map<int,int>::iterator it=noiseHitMap.begin(); it!=noiseHitMap.end(); ++it){
     if( getCellDif_id(it->first)==2 || getCellDif_id(it->first)==23 || getCellDif_id(it->first)==28 || getCellDif_id(it->first)==32 || getCellDif_id(it->first)==198)
@@ -262,7 +262,7 @@ void MyGainCorrection::writeChannelGainCorrectionFile()
       out << "print \"performed " << count << " gain rescale\" " << std::endl;
     if( getCellAsic_id(it->first)>48 || getCellChan_id(it->first)>64 )
       std::cout << getCellDif_id(it->first) << " " << getCellAsic_id(it->first) << " " << getCellChan_id(it->first) << std::endl;
-    
+
     tree->Fill();
   }
   out << "print \"s.uploadChanges()\"" << std::endl;

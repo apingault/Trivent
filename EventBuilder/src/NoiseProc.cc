@@ -13,9 +13,9 @@
 #include <cmath>
 #include <EVENT/LCFloatVec.h>
 #include <EVENT/LCParameters.h>
-#include <stdexcept>  
-#include <Rtypes.h> 
-#include <sstream>		
+#include <stdexcept>
+#include <Rtypes.h>
+#include <sstream>
 #include <UTIL/CellIDEncoder.h>
 #include "Mapping.h"
 #include "TObject.h"
@@ -36,26 +36,26 @@ NoiseProc::NoiseProc()
     _outputTree(0)//,
 			//_hitArray(0)
 {
-  
+
   streamlog_out( MESSAGE )<< "Trivent ... begin " << endl;
   _rejectedNum = 0;
-  
-  // collection 
-  std::vector<std::string> hcalCollections;    
+
+  // collection
+  std::vector<std::string> hcalCollections;
   hcalCollections.push_back(std::string("DHCALRawHits"));
-  registerInputCollections( LCIO::RAWCALORIMETERHIT , 
-			    "HCALCollections"       ,  
-			    "HCAL Collection Names" ,  
-			    _hcalCollections        , 
-			    hcalCollections         ); 
-  
+  registerInputCollections( LCIO::RAWCALORIMETERHIT ,
+			    "HCALCollections"       ,
+			    "HCAL Collection Names" ,
+			    _hcalCollections        ,
+			    hcalCollections         );
+
   //maping on XML file
   _geomXML = "setup_geometry.xml";
   registerProcessorParameter("setup_geometry" ,
                              "Dif geometry and position on the detector XML",
                              _geomXML,
                              _geomXML);
-  
+
   //maping on txt file
   _mappingfile = "mapping_ps.txt";
   registerProcessorParameter("DIFMapping" ,
@@ -67,15 +67,15 @@ NoiseProc::NoiseProc()
   registerProcessorParameter("electronic_noise_cut" ,
                              "number of hit max on time stamp",
                              _elec_noise_cut,
-                             _elec_noise_cut);  
-} 
+                             _elec_noise_cut);
+}
 
 void NoiseProc::XMLReader(std::string xmlfile){
   TiXmlDocument doc(xmlfile.c_str());
-  bool load_key = doc.LoadFile();  
+  bool load_key = doc.LoadFile();
   if(load_key){
     streamlog_out( MESSAGE ) << green << "File : " << xmlfile.c_str() << normal <<std::endl;
-    // tout ici 
+    // tout ici
     TiXmlHandle hDoc(&doc);
     TiXmlElement* pElem;
     TiXmlHandle hRoot(0);
@@ -85,7 +85,7 @@ void NoiseProc::XMLReader(std::string xmlfile){
       // should always have a valid root but handle gracefully if it does
       if (!pElem) streamlog_out( WARNING ) << red << "error elem" << normal << std::endl;
       streamlog_out( MESSAGE ) << green << pElem->Value() << normal << std::endl;
-      
+
       // save this for later
       hRoot=TiXmlHandle(pElem);
     }
@@ -94,14 +94,12 @@ void NoiseProc::XMLReader(std::string xmlfile){
       m_parameters.clear();
       pElem=hRoot.FirstChild("parameter").Element();
       std::string key = pElem->Attribute("name");
-      streamlog_out( MESSAGE ) << green << key.c_str() << normal << std::endl; 
+      streamlog_out( MESSAGE ) << green << key.c_str() << normal << std::endl;
       streamlog_out( DEBUG1 ) << green
-			      <<"parameter : " 
-			      << pElem->Attribute("name") 
-			      << normal 
+			      <<"parameter : "
+			      << pElem->Attribute("name")
+			      << normal
 			      << std::endl;
-    
-      std::vector<std::string> lines;
       {
 	std::string value = pElem->GetText() ;
 	std::vector<std::string> lines;
@@ -112,10 +110,10 @@ void NoiseProc::XMLReader(std::string xmlfile){
 	for(unsigned int iline = 0; iline < lines.size(); iline++){
 	  std::string line = lines.at(iline);
 	  streamlog_out( MESSAGE ) << red << line << normal << std::endl;
-	  
+
 	  stringstream ss( line.c_str() );
 	  vector<string> result;
-	  
+
 	  LayerID mapp;
 	  int Dif_id;
 	  while( ss.good() )
@@ -137,11 +135,10 @@ void NoiseProc::XMLReader(std::string xmlfile){
       // ChamberGeom  Node.
       {
 	streamlog_out( DEBUG1 ) << green
-				<<"parameter : " 
-				<< pElem->Attribute("name") 
-				<< normal 
+				<<"parameter : "
+				<< pElem->Attribute("name")
+				<< normal
 				<< std::endl;
-	std::vector<std::string> lines;
 	{
 	  std::string value = pElem->GetText() ;
 	  std::vector<std::string> lines;
@@ -152,10 +149,10 @@ void NoiseProc::XMLReader(std::string xmlfile){
 	  for(unsigned int iline = 0; iline < lines.size(); iline++){
 	    std::string line = lines.at(iline);
 	    streamlog_out( MESSAGE ) << red << line << normal << std::endl;
-	    
+
 	    stringstream ss( line.c_str() );
 	    vector<string> result;
-	    
+
 	    double position;
 	    int Dif_id;
 	    while( ss.good() )
@@ -166,7 +163,7 @@ void NoiseProc::XMLReader(std::string xmlfile){
 	      }
 	    istringstream ( result.at(0) ) >> Dif_id;
 	    istringstream ( result.at(3) ) >> position;
-	    
+
 	    _chamber_pos[Dif_id] = position;
 	  }
 	}
@@ -178,20 +175,20 @@ void NoiseProc::XMLReader(std::string xmlfile){
 }
 
 void NoiseProc::readDifGeomFile(std::string geomfile){
-  
+
   cout << "read the mapping file .."<< endl;
-  
+
   LayerID contenu;
   ifstream file(geomfile.c_str(), ios::in);
-  if(file){ 
+  if(file){
     while(!file.eof()){
       int Dif_id;
       char co;
-      file >> Dif_id >> co 
-	   >> contenu.K >> co 
-	   >> contenu.DifX >> co 
-	   >> contenu.DifY >> co  
-	   >> contenu.IncX >> co  
+      file >> Dif_id >> co
+	   >> contenu.K >> co
+	   >> contenu.DifX >> co
+	   >> contenu.DifY >> co
+	   >> contenu.IncX >> co
 	   >> contenu.IncY ;
       _mapping [Dif_id] = contenu;
     }
@@ -202,10 +199,10 @@ void NoiseProc::readDifGeomFile(std::string geomfile){
 }
 
 void NoiseProc::printDifGeom(){
-  
-  for(std::map<int,LayerID>::iterator itt = _mapping.begin();itt!=_mapping.end();itt++)     {
-    streamlog_out( MESSAGE ) << itt->first << "\t" << itt->second.K 
-			     <<"\t"<<itt->second.DifX 
+
+  for(std::map<int,LayerID>::iterator itt = _mapping.begin();itt!=_mapping.end();++itt)     {
+    streamlog_out( MESSAGE ) << itt->first << "\t" << itt->second.K
+			     <<"\t"<<itt->second.DifX
 			     <<"\t"<<itt->second.DifY
 			     <<"\t"<<itt->second.IncX
 			     <<"\t"<<itt->second.IncY
@@ -226,9 +223,8 @@ uint NoiseProc::getCellChan_id(int cell_id){
 
 uint* NoiseProc::getPadIndex(uint dif_id, uint asic_id, uint chan_id){
   _index[0]=_index[1]=_index[2]=0;
-  double DifY = -1.,DifZ = -1.;
-  DifZ = _mapping.find(dif_id)->second.K;
-  DifY = _mapping.find(dif_id)->second.DifY;
+  double DifZ = _mapping.find(dif_id)->second.K;
+  double DifY = _mapping.find(dif_id)->second.DifY;
   _index[0] = (1+MapILargeHR2[chan_id]+AsicShiftI[asic_id]);
   _index[1] = (32-(MapJLargeHR2[chan_id]+AsicShiftJ[asic_id]))+int(DifY);
   _index[2] = abs(int(DifZ));
@@ -247,12 +243,12 @@ void NoiseProc::init() {
   trig_count = 0;
   //========================
   //readDifGeomFile(_mappingfile.c_str());
-  
+
   // ========================
-  
+
   printParameters();
   // new process
-  
+
   char cnormal[8] =  {0x1b,'[','0',';','3','9','m',0};
   char cred[8]     = {0x1b,'[','1',';','3','1','m',0};
   char cgreen[8]   = {0x1b,'[','1',';','3','2','m',0};
@@ -277,49 +273,48 @@ void NoiseProc::init() {
 }
 //==================================================================================
 //void NoiseProc::setTriggerRawHit() {
-  
+
 //}
 //==================================================================================
 void NoiseProc::processRunHeader( LCRunHeader * runHd ) {
-  
+
 }
 
 //==================================================================================
-void NoiseProc::processEvent( LCEvent * evtP ) 
-{	
+void NoiseProc::processEvent( LCEvent * evtP )
+{
   if (evtP != NULL){
     try{
-      
+
       _eventNr=evtP->getEventNumber();
       for(unsigned int i=0; i< _hcalCollections.size(); i++){//!loop over collection
 	try{
-	  
-	  LCCollection * col = NULL;
-	  col = evtP ->getCollection(_hcalCollections[i].c_str());
-	  int numElements = col->getNumberOfElements();// hit number 
-	  
-	  
+
+	  LCCollection * col = evtP ->getCollection(_hcalCollections[i].c_str());
+	  int numElements = col->getNumberOfElements();// hit number
+
+
 	  streamlog_out( MESSAGE ) << yellow << "Trigger number == " << trig_count++ << normal << std::endl;
-	  
+
 	  if(col == NULL )  {
 	    streamlog_out( WARNING )<< red << "TRIGGER SKIPED ..."<< normal <<std::endl;
 	    break;
 	  }
-	  
+
 	  if(numElements > _elec_noise_cut)  {
 	    streamlog_out( MESSAGE ) << red << "TRIGGER SKIPED ..."<< normal <<std::endl;
 	    break;
 	  }
-	  
-	  // set raw hits 
+
+	  // set raw hits
 	  _trigger_raw_hit.clear();
 	  std::vector<int> vTrigger;
 	  for (int ihit(0); ihit < col->getNumberOfElements(); ++ihit) {// loop over the hits
-	    RawCalorimeterHit *raw_hit = 
+	    RawCalorimeterHit *raw_hit =
 	      dynamic_cast<RawCalorimeterHit*>( col->getElementAt(ihit)) ;
 	    if (NULL != raw_hit){
 	      _trigger_raw_hit.push_back(raw_hit);
-	      //extract abolute bcid information: 
+	      //extract abolute bcid information:
 	      unsigned int difid = getCellDif_id(raw_hit->getCellID0());
 	      unsigned int asicid = getCellAsic_id(raw_hit->getCellID0());
 	      unsigned int chanid = getCellChan_id(raw_hit->getCellID0());
@@ -334,33 +329,33 @@ void NoiseProc::processEvent( LCEvent * evtP )
 		  _bcid1=vTrigger[4] ;
 		  _bcid2=vTrigger[3] ;
 		  unsigned long long Shift=16777216ULL;//to shift the value from the 24 first bits
-		  unsigned long long theBCID_=_bcid1*Shift+_bcid2; 
+		  unsigned long long theBCID_=_bcid1*Shift+_bcid2;
 		  streamlog_out( DEBUG1 ) << "trigger time : " << theBCID_ << std::endl;
 		}
 	      }
 	      if(raw_hit->getTimeStamp()!=0){
-		//std::cout << "1st : " 
-		//	  << raw_hit->getCellID0() << "\t" 
-		//	  << difid << "\t" 
-		//	  << asicid << "\t" 
+		//std::cout << "1st : "
+		//	  << raw_hit->getCellID0() << "\t"
+		//	  << difid << "\t"
+		//	  << asicid << "\t"
 		//	  << chanid << std::endl;
 		gainCorrection->fillHitsInMap(raw_hit);
 	      }
 	    }
 	  }
-	}catch (lcio::DataNotAvailableException zero) {}
+	}catch (lcio::DataNotAvailableException &zero) {}
       }
-    }catch (lcio::DataNotAvailableException err) {}
+    }catch (lcio::DataNotAvailableException &err) {}
   }
-}	
+}
 //==============================================================
 void NoiseProc::end()
-{       
+{
   streamlog_out( MESSAGE )<< "Trivent Select "<<_rejectedNum <<" Condidate event"<<std::endl;
   streamlog_out( MESSAGE )<< "Trivent end"<<std::endl;
   //cc.StoreHistos("test.root");
   //_lcWriter->close();
-  
+
   gainCorrection->analyseNoise();
   gainCorrection->writeChannelGainCorrectionFile();
   delete gainCorrection;
@@ -368,4 +363,4 @@ void NoiseProc::end()
 //==============================================================
 
 
- 
+

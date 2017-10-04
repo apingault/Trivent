@@ -8,13 +8,13 @@
 
 unsigned long long DIFUnpacker::GrayToBin(unsigned long long n)
 {
-unsigned long long ish, ans, idiv, ishmax;
-ishmax = sizeof(unsigned long long)*8; 
+unsigned long long ish, ans, ishmax;
+ishmax = sizeof(unsigned long long)*8;
 ish = 1;
 ans = n;
-while(true) 
+while(true)
 		{
-			idiv = ans >> ish;
+			unsigned long long idiv = ans >> ish;
 			ans ^= idiv;
 			if (idiv <= 1 || ish == ishmax) return ans;
 			ish <<= 1;
@@ -29,7 +29,7 @@ uint32_t DIFUnpacker::getStartOfDIF(unsigned char* cbuf,uint32_t size_buf,uint32
     {
       if (cbuf[i]!=DU_START_OF_DIF && cbuf[i]!=DU_START_OF_DIF_TEMP) continue;
       id0=i;
-      //if (cbuf[id0+DU_ID_SHIFT]>0xFF) continue; 
+      //if (cbuf[id0+DU_ID_SHIFT]>0xFF) continue;
       break;
     }
   return id0;
@@ -108,7 +108,7 @@ uint32_t DIFUnpacker::getFrameAsicHeader(unsigned char* framePtr)
 
 uint32_t DIFUnpacker::getFrameBCID(unsigned char* framePtr)
 {
-  
+
   unsigned long long igray=(framePtr[DU_FRAME_BCID_SHIFT]<<16)+(framePtr[DU_FRAME_BCID_SHIFT+1]<<8)+framePtr[DU_FRAME_BCID_SHIFT+2];
   return DIFUnpacker::GrayToBin(igray);
 }
@@ -116,14 +116,14 @@ uint32_t DIFUnpacker::getFrameBCID(unsigned char* framePtr)
 bool DIFUnpacker::getFramePAD(unsigned char* framePtr,uint32_t ip)
 {
   uint32_t* iframe=(uint32_t*) &framePtr[DU_FRAME_DATA_SHIFT];
-  
+
   return ((iframe[3-ip/32]>>(ip%32)) & 0x1);
 }
 
 bool DIFUnpacker::getFrameLevel(unsigned char* framePtr,uint32_t ip,uint32_t level)
 {
   return ((framePtr[DU_FRAME_DATA_SHIFT+((3-ip/16)*4+(ip%16)/4)]>>(7-(((ip%16)%4)*2+level))) & 0x1);
-  
+
   //uint32_t ibyte=((3-ip/16)*4+(ip%16)/4);
   //uint32_t ibshift=(7-(((ip%16)%4)*2+level));
   //printf("channel %d level %d byte %d bit %d \n",ip,level,ibyte,ibshift);
@@ -131,7 +131,7 @@ bool DIFUnpacker::getFrameLevel(unsigned char* framePtr,uint32_t ip,uint32_t lev
   //return DIFUnpacker::getFramePAD(framePtr,2*ip+level);
 }
 
-uint32_t DIFUnpacker::getAnalogPtr(std::vector<unsigned char*> &vLines,unsigned char* cb,uint32_t idx) throw (std::string) 
+uint32_t DIFUnpacker::getAnalogPtr(std::vector<unsigned char*> &vLines,unsigned char* cb,uint32_t idx) throw (std::string)
 {
   uint32_t fshift=idx;
   if (cb[fshift]!=DU_START_OF_LINES)
@@ -163,7 +163,7 @@ uint32_t DIFUnpacker::getFramePtr(std::vector<unsigned char*> &vFrame,std::vecto
 //    printf("%02x",cb[i]);
 //  printf("\n");
   //}
-  if (cb[fshift]!=DU_START_OF_FRAME) 
+  if (cb[fshift]!=DU_START_OF_FRAME)
     {
       printf("This is not a start of frame %02x \n",cb[fshift]);
       return fshift;
@@ -190,9 +190,9 @@ uint32_t DIFUnpacker::getFramePtr(std::vector<unsigned char*> &vFrame,std::vecto
 
 	}
       vFrame.push_back(&cb[fshift]);fshift+=DU_FRAME_SIZE;
-      if (fshift>max_size) 
+      if (fshift>max_size)
 	{
-	  printf("fshift %d exceed %d \n",fshift,max_size);
+	  printf("fshift %x exceed %d \n",fshift,max_size);
 	  return fshift;
 	}
       //printf("%x \n",cb[fshift]);
@@ -212,12 +212,12 @@ void DIFUnpacker::dumpFrameOld(unsigned char* buf)
   uint32_t idx1=4;
   for(int ik=0;ik<4;ik++)
     {
-      
+
       unsigned long PadEtat= swap_bytes(4,&buf[idx1]);
       idx1+=4;
-      
+
       for(int e=0;e<32;e++)
-	{	
+	{
 	  PAD[((3-ik)*32)+(31-e)]=PadEtat & un; //binary operation
 	  PadEtat=PadEtat>>1;	//décalage des bit de 1
 	}
@@ -227,14 +227,14 @@ void DIFUnpacker::dumpFrameOld(unsigned char* buf)
     {
       l0[p]=(bool)PAD[(2*p)]; //_Lev0 (PAD paire)
       l1[p]=(bool)PAD[(2*p)+1]; //_Lev1 (PAD impaires)
-      
+
     }
   std::bitset<64> bs0(0);
   std::bitset<64> bs1(0);
   for (uint32_t ip=0;ip<64;ip++) {bs0.set(ip,l0[ip]);bs1.set(ip,l1[ip]);}
 
   std::cout<<"\t \t"<<bs0<<std::endl;
-  std::cout<<"\t \t"<<bs1<<std::endl;      
+  std::cout<<"\t \t"<<bs1<<std::endl;
 }
 
 unsigned long DIFUnpacker::swap_bytes(unsigned int n,unsigned char* buf)

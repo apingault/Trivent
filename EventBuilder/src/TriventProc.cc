@@ -22,7 +22,7 @@
  *          too close events
  *
  */
- 
+
 // -- Trivent include
 #include <TriventProc.hh>
 
@@ -117,7 +117,7 @@ TriventProc::TriventProc()
                            "HCAL Collection Names",
                            m_outputCollectionName,
                            m_outputCollectionName);
-                           
+
   // Option of output file with clean events
   registerProcessorParameter("LCIOOutputFile",
                              "LCIO file",
@@ -323,7 +323,7 @@ void TriventProc::XMLReader(std::string xmlfile)
 //=============================================================================
 void TriventProc::printDifGeom()
 {
-  for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); itt++)
+  for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); ++itt)
   {
     streamlog_out(MESSAGE) << itt->first << "\t" << itt->second.K
                            << "\t" << itt->second.DifX
@@ -380,7 +380,7 @@ std::vector<int> TriventProc::getPadIndex(const int dif_id, const int asic_id, c
   {
     streamlog_out(ERROR) << " [getPadIndex] difId '" << dif_id <<"' not found in geometry file" << std::endl;
     return index; // empty
-  }  
+  }
   index[0] = (1 + MapILargeHR2[chan_id] + AsicShiftI[asic_id]);
   index[1] = (32 - (MapJLargeHR2[chan_id] + AsicShiftJ[asic_id])) + findIter->second.DifY;
   index[2] = findIter->second.K;
@@ -404,7 +404,7 @@ void TriventProc::getMaxTime()
 {
   m_maxTime = 0;
   try {
-    for (std::vector<EVENT::RawCalorimeterHit *>::const_iterator raw_hit = m_trigger_raw_hit.begin(); raw_hit != m_trigger_raw_hit.end(); raw_hit++)
+    for (std::vector<EVENT::RawCalorimeterHit *>::const_iterator raw_hit = m_trigger_raw_hit.begin(); raw_hit != m_trigger_raw_hit.end(); ++raw_hit)
     {
       int time = static_cast<int>((*raw_hit)->getTimeStamp());
 
@@ -414,7 +414,7 @@ void TriventProc::getMaxTime()
       }
     }
   }
-  catch (std::exception ec) {
+  catch (std::exception &ec) {
     streamlog_out(WARNING) << "No hits " << std::endl;
   }
 }
@@ -425,7 +425,7 @@ std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))
 {
   std::vector<int> time_spectrum(m_maxTime + 1);
   try {
-    for (std::vector<EVENT::RawCalorimeterHit *>::const_iterator raw_hit = m_trigger_raw_hit.begin(); raw_hit != m_trigger_raw_hit.end(); raw_hit++)
+    for (std::vector<EVENT::RawCalorimeterHit *>::const_iterator raw_hit = m_trigger_raw_hit.begin(); raw_hit != m_trigger_raw_hit.end(); ++raw_hit)
     {
       int time = static_cast<int>((*raw_hit)->getTimeStamp());
       if (time > m_maxTime)
@@ -439,7 +439,7 @@ std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))
       }
     }
   }
-  catch (std::exception ec) {
+  catch (std::exception &ec) {
     streamlog_out(WARNING) << "No hits " << std::endl;
   }
   return time_spectrum;
@@ -481,7 +481,7 @@ void TriventProc::eventBuilder(LCCollection *col_event, int time_peak, int prev_
   std::map<int, int> asicMap;
   try {
     std::map<int, int> hitKeys;
-    for (std::vector<EVENT::RawCalorimeterHit *>::const_iterator rawhit = m_trigger_raw_hit.begin(); rawhit != m_trigger_raw_hit.end(); rawhit++)
+    for (std::vector<EVENT::RawCalorimeterHit *>::const_iterator rawhit = m_trigger_raw_hit.begin(); rawhit != m_trigger_raw_hit.end(); ++rawhit)
     {
       const int rawHitTime = static_cast<int>((*rawhit)->getTimeStamp());
 
@@ -515,7 +515,7 @@ void TriventProc::eventBuilder(LCCollection *col_event, int time_peak, int prev_
           streamlog_out(WARNING) << yellow << "[eventBuilder] - Dif '" << Dif_id << "' not found in geometry file...skipping hit" << normal << std::endl;
           continue;
         }
-        
+
         const int I = padIndex[0];
         const int J = padIndex[1];
         const int K = padIndex[2];
@@ -768,7 +768,7 @@ void TriventProc::init()
 
   // Create a list of unique Layers from geometry file
   std::set<int> layerSet;
-  for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); itt++)
+  for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); ++itt)
   {
     layerSet.insert(itt->second.K);
   }
@@ -824,7 +824,7 @@ void TriventProc::processRunHeader(LCRunHeader * /*runHd*/)
 void TriventProc::findCerenkovHits(int timePeak)
 {
   std::vector<EVENT::RawCalorimeterHit *>::const_iterator cerHit;
-  for (cerHit = m_cerenkov_raw_hit.begin(); cerHit != m_cerenkov_raw_hit.end(); cerHit++)
+  for (cerHit = m_cerenkov_raw_hit.begin(); cerHit != m_cerenkov_raw_hit.end(); ++cerHit)
   {
     const int bifTime = static_cast<int>((*cerHit)->getTimeStamp());
     // const int bifBCID = static_cast<int>((*cerHit)->getCellID1());
@@ -853,7 +853,7 @@ void TriventProc::findCerenkovHits(int timePeak)
       m_cerAsic = Asic_id;
       m_cerChan = Chan_id;
       m_cerThreshold = hitThreshold;
-      
+
       switch (hitThreshold)
       {
       case 1:
@@ -899,8 +899,7 @@ void TriventProc::processEvent(LCEvent *evtP)
       for (unsigned int i = 0; i < m_hcalCollections.size(); i++)   //!loop over collection
       {
         try {
-          LCCollection *col = NULL;
-          col = evtP->getCollection(m_hcalCollections[i].c_str());
+          LCCollection *col = evtP->getCollection(m_hcalCollections[i].c_str());
           const int numElements = col->getNumberOfElements();// hit number in trigger
 
           ++m_trigCount;
@@ -963,9 +962,9 @@ void TriventProc::processEvent(LCEvent *evtP)
             }
           }
           streamlog_out(MESSAGE) << blue << " Trigger '" << m_trigCount << "' Found  " << m_cerenkov_raw_hit.size() << " raw hits in BIF! at time : " << normal << std::endl;
-          
+
           std::vector<EVENT::RawCalorimeterHit *>::const_iterator cerHit;
-          for (cerHit = m_cerenkov_raw_hit.begin(); cerHit != m_cerenkov_raw_hit.end(); cerHit++)
+          for (cerHit = m_cerenkov_raw_hit.begin(); cerHit != m_cerenkov_raw_hit.end(); ++cerHit)
           {
             streamlog_out(MESSAGE) << blue << " \t '" << static_cast<int>((*cerHit)->getTimeStamp()) << normal << std::endl;
           }
@@ -985,9 +984,9 @@ void TriventProc::processEvent(LCEvent *evtP)
           const auto& endTime   = time_spectrum.end();
           auto        timeIter  = beginTime;
           auto        prevMaxIter = beginTime;
-          
+
           streamlog_out(WARNING) << blue << "[processEvent] - Trigger '" << m_trigCount << "' - beginTime : " << *beginTime << " endTime : " << distance(beginTime, endTime) << " ts.size: " << time_spectrum.size() << normal << std::endl;
-          
+
           /**
            * Old Method used before to find peak ( does not take into account the time window)
            */
@@ -1003,7 +1002,7 @@ void TriventProc::processEvent(LCEvent *evtP)
             {
               auto lowerBound = timeIter;
               auto upperBound = timeIter;
-              // Ensure we are not lookinf before/after begin/end of time_spectrum  
+              // Ensure we are not lookinf before/after begin/end of time_spectrum
               if (distance(beginTime, timeIter) > m_timeWin)
                 lowerBound = std::prev(timeIter, m_timeWin);
               else if (distance(beginTime, timeIter) > 1 )
@@ -1013,7 +1012,7 @@ void TriventProc::processEvent(LCEvent *evtP)
               }
               else
                 streamlog_out(DEBUG0) << red << "[processEvent] - shit lowerBound! m_timeWin : " << m_timeWin << " distance(beginTime, timeIter) = " << distance(beginTime, timeIter) << normal << std::endl;
-                
+
               if (distance(timeIter, endTime) > m_timeWin)
                 upperBound = std::next(timeIter, m_timeWin);
               else
@@ -1022,16 +1021,16 @@ void TriventProc::processEvent(LCEvent *evtP)
                 streamlog_out(DEBUG0) << green << "[processEvent] - small upperBound! m_timeWin : " << m_timeWin << " distance(timeIter, endTime) = " << distance(timeIter, endTime) << normal << std::endl;
               }
               // find the bin in +- timeWin with max hits
-              
+
               const auto& maxIter = std::max_element(lowerBound, upperBound); //max in [lower,upper)
               streamlog_out(DEBUG0) << yellow << "[processEvent] - upperBound '" << distance(beginTime, upperBound) << "' lowerBound '" << distance(beginTime, lowerBound) << " max '" << distance(beginTime, maxIter) << "' : " << *maxIter << normal << std::endl;
-                
+
               if ( maxIter <= prevMaxIter && distance(beginTime, timeIter) > 0 )
               {
                 streamlog_out(DEBUG0) << yellow << "[processEvent] - Found duplicate peak, at time '" << distance(time_spectrum.begin(), maxIter) << "' previous peak : '" << distance(time_spectrum.begin(), prevMaxIter) << "'..." << normal << std::endl;
                 ++timeIter;
               }
-              
+
               // streamlog_out(WARNING) << yellow << "*maxIter: " << *maxIter
                                     //  << "' *timeIter: " << *timeIter
                                     //  << "' m_timeWin: " << m_timeWin
@@ -1144,7 +1143,7 @@ void TriventProc::processEvent(LCEvent *evtP)
                   m_isTooCloseInTime = true;
                   delete outcol;
                 }
-                
+
                 if (m_nCerenkov1>0 || m_nCerenkov2>0 || m_nCerenkov3>0) {
                   ++m_cerenkovEvts;
                 }
@@ -1171,10 +1170,10 @@ void TriventProc::processEvent(LCEvent *evtP)
           // m_vTimeSpectrum = time_spectrum;
           // m_triggerTree->Fill();
         }
-        catch (lcio::DataNotAvailableException zero) {}
+        catch (lcio::DataNotAvailableException &zero) {}
       }
     }
-    catch (lcio::DataNotAvailableException err) {}
+    catch (lcio::DataNotAvailableException &err) {}
   }
 }
 
