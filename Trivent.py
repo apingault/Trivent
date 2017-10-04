@@ -250,10 +250,7 @@ def main():
         checkPeriod(str(run), conf.runPeriod, configFile)
         runNumber = int(run)
         print ("[{0}] - Looking for files to process for run '{1}' in {2}... ".format(scriptName, runNumber, conf.inputPath), end="")
-        #   TODO Remove Hardcoding here
-        # stringToFind = 'DHCAL_%d_SO_Antoine' % runNumber
-        # stringToFind = 'DHCAL_%d_SO' % runNumber
-        stringToFind = 'DHCAL_%d_I0_0' % runNumber
+        stringToFind = conf.inputFile.format(runNumber) # 'DHCAL_%d_SO_Antoine' % runNumber
         if os.path.exists(conf.inputPath) is False:
             sys.exit("\n[{0}] - Folder '{1}' does not exist...exiting".format(scriptName, conf.inputPath))
 
@@ -262,8 +259,8 @@ def main():
             sys.exit('Exiting')
         print ('OK')
 
-        conf.glob.LCIOInputFiles = conf.inputFile.format(conf.inputPath, runNumber)
-        outputFile = conf.outputFile.format(conf.outputPath, runNumber)
+        conf.glob.LCIOInputFiles = conf.inputPath + conf.inputFile.format(runNumber)
+        outputFile = conf.outputPath + conf.outputFile.format(runNumber)
         conf.triventProc.LCIOOutputFile = outputFile + ".slcio"
         conf.triventProc.ROOTOutputFile = outputFile + ".root"
         print ("[{0}] - output file : {1}.slcio".format(scriptName, outputFile))
