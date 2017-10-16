@@ -2,6 +2,7 @@ build/
 doc/
 lib/
 output/
+.vscode
 
 *.*~
 *.pcm
