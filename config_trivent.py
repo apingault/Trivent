@@ -99,8 +99,11 @@ voms = 'calice'
 # CE = 'lyogrid07.in2p3.fr:8443/cream-pbs-calice'
 # CE = 'lpnhe-cream.in2p3.fr:8443/cream-pbs-calice'
 CE = 'grid-cr0.desy.de:8443/cream-pbs-desy'
-LCG_CATALOG_TYPE = 'lfc'
-LFC_HOST = 'grid-lfc.desy.de'
+SE = 'lyogrid06.in2p3.fr'
+
+lcg_catalog_type = 'lfc'
+lfc_host = 'grid-lfc.desy.de'
+
 carefulLoaderDir = '/eos/user/a/apingaul/CALICE/script/'
 gridDownloader = carefulLoaderDir + 'carefulDownload.sh'
 gridUploader = carefulLoaderDir + 'carefulUpload.sh'
@@ -113,10 +116,12 @@ gridProcessorPath = eos_home + "Software/Trivent/"
 # Global variables
 ####################
 logToFile = False
-ilcSoftVersion = "v01-19-04"
-
+ilcSoftVersion = "v01-19-05"
+gridIlcSoftVersion = 'v01-19-05'
 ilcSoftPath = '/opt/ilcsoft/'
 gridIlcSoftPath = '/cvmfs/ilc.desy.de/sw/x86_64_gcc49_sl6/'
+processorType = 'Trivent Laurent'
+# processorType = 'Trivent'
 
 # General Path to find/store data: the following assumes that all data is in a subfolder of dataPath
 # Overwritten by gridDataPath if runOnGrid is True
@@ -175,6 +180,32 @@ if runOnGrid is True:
 
 
 ####################
+# Scp section for autoDownload before running
+####################
+# If file not available, use serverName to scp it from.
+# serverName = 'lyoac29'
+serverName = 'lyoac30'
+# serverName = 'lyosdhcal10'
+# serverName = 'lyosdhcal12'
+
+serverDataPath = ''
+if runPeriod == 'SPS_12_2014':
+    serverDataPath = '/data/NAS/December2014/'
+if runPeriod == 'SPS_04_2015':
+    serverDataPath = '/data/NAS/Avril2015/'
+if runPeriod == 'SPS_06_2015':
+    serverDataPath = '/data/NAS/May2015/'
+if runPeriod == 'SPS_10_2015':
+    serverDataPath = '/data/NAS/October2015/'
+if runPeriod == 'SPS_06_2016':
+    serverDataPath = '/data/NAS/June2016/'
+if runPeriod == 'SPS_10_2016':
+    serverDataPath = '/data/NAS/Oct2016/'
+if runPeriod == 'SPS_09_2017':
+    serverDataPath = '/data/NAS/H2SEPT2017/'
+
+
+####################
 # Marlin parameters
 ####################
 class xmlOptionSection(object):
@@ -194,26 +225,26 @@ glob.LCIOInputFiles = []
 
 # Processor param
 ###
-triventProc = xmlOptionSection('MyTriventProcessor')
-triventProc.Verbosity = Verb
+marlinProc = xmlOptionSection('MyTriventProcessor')
+marlinProc.Verbosity = Verb
 
-triventProc.InputCollectionNames = "DHCALRawHits"
-triventProc.OutputCollectionName = "SDHCAL_HIT"
+marlinProc.InputCollectionNames = "DHCALRawHits"
+marlinProc.OutputCollectionName = "SDHCAL_HIT"
 
-triventProc.GainCorrectionMode = False
-triventProc.ElectronicNoiseCut = 500000
-triventProc.LayerGap = 2.8  # Not used
-triventProc.LayerCut = 7
-triventProc.NoiseCut = 10
-triventProc.TimeWin = 2
+marlinProc.GainCorrectionMode = False
+marlinProc.ElectronicNoiseCut = 500000
+marlinProc.LayerGap = 2.8  # Not used
+marlinProc.LayerCut = 7
+marlinProc.NoiseCut = 10
+marlinProc.TimeWin = 2
 
 # Cerenkov
-triventProc.HasCerenkovDif = True
-triventProc.CerenkovDifId = 3
-triventProc.CerenkovTimeWindow = 10
+marlinProc.HasCerenkovDif = True
+marlinProc.CerenkovDifId = 3
+marlinProc.CerenkovTimeWindow = 10
 
 if runPeriod.find("2012") != -1:
-    triventProc.HasCerenkovDif = False
+    marlinProc.HasCerenkovDif = False
     geomFile = geomFile2012
 
 elif runPeriod.find("2014") != -1:
@@ -230,6 +261,8 @@ elif runPeriod.find("2017") != -1:
     geomFile = geomFileSept2017
     # TODO: Check for geom change within TB
 
-triventProc.SetupGeometry = geomFile
 if runOnGrid is True:
+    marlinProc.SetupGeometry = geomFile
     gridInputFiles.append(geomPath + geomFile)
+else:
+    marlinProc.SetupGeometry = geomPath + geomFile
