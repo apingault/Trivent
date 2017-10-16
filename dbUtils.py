@@ -1,44 +1,42 @@
+#!/usr/bin/env python
+
 '''
     Utils to to get informations from GEOMETRY db
     After installing mysql server
     sudo mysqld_safe
     mysql -u root
-    mysql> CREATE DATABASE GEOMETRY; 
-    mysql> USE GEOMETRY; 
+    mysql> CREATE DATABASE GEOMETRY;
+    mysql> USE GEOMETRY;
     mysql> CREATE USER 'acqilc'@'localhost'
     mysql> GRANT ALL PRIVILEGES ON GEOMETRY.* TO 'acqilc'@'localhost';
-    # ON lyosdhcal10 
+    # ON lyosdhcal10
     mysqldump -u acqilc -pRPC_2008  GEOMETRY > geometry_m3_2017.sql
     #locally
     mysqldump -u acqilc -pRPC_2008  GEOMETRY < geometry_m3_2017.sql
-    if not working: 
+    if not working:
     mysql -u acqilc -pRPC_2008
     use GEOMETRY;
     source geometry_m3_2017;
 '''
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
-from __future__ import print_function # import print function from py3 if running py2.x
-import sys
-from lxml import etree
 import MySQLdb as mdb
 
+from __future__ import print_function  # import print function from py3 if running py2.x
+import sys
 
 
 # -----------------------------------------------------------------------------
-'''
-'''
 def selectListOfTestBeams(dbcursor):
+    '''
+    '''
     dbcursor.execute("SELECT * FROM VERSIONS")
     return dbcursor.fetchall()
 
 
 # -----------------------------------------------------------------------------
-'''
-    Dump list of dif in TestBeam db
-'''
 def dumpDifList(dbcursor, testBeamId):
+    ''' Dump list of dif in TestBeam db
+    '''
     rows = selectDifList(dbcursor, testBeamId).fetchall()
     print ("\n\n--------------- Dumping Dif List ---------------")
     print ("------------------------------------------------")
@@ -51,10 +49,9 @@ def dumpDifList(dbcursor, testBeamId):
 
 
 # -----------------------------------------------------------------------------
-'''
-    Dump list of chamber in TestBeam db
-'''
 def dumpLayerList(dbcursor, testBeamId):
+    ''' Dump list of chamber in TestBeam db
+    '''
     rows = selectLayerList(dbcursor, testBeamId).fetchall()
     print ("--- Dumping Chambers ---")
     print (" - - - - - - - - - - - - - - - -")
@@ -66,9 +63,9 @@ def dumpLayerList(dbcursor, testBeamId):
 
 
 # -----------------------------------------------------------------------------
-'''
-'''
 def dumpLayerPositions(dbcursor, testBeamId):
+    '''
+    '''
     rows = selectLayerPositionList(dbcursor, testBeamId).fetchall()
     print ("--- Dumping Chambers Position ---")
     print (" - - - - - - - - - - - - - - - -")
@@ -78,76 +75,70 @@ def dumpLayerPositions(dbcursor, testBeamId):
 
 
 # -----------------------------------------------------------------------------
-'''
-    Get Idx for selected TestBeam
-'''
 def selectTestBeam(dbcursor, testBeamName):
+    ''' Get Idx for selected TestBeam
+    '''
     rows = selectListOfTestBeams(dbcursor)
     found = False
     for row in rows:
         if testBeamName in row:
             found = True
             dbcursor.execute("SELECT IDX FROM VERSIONS WHERE TESTNAME = %s", testBeamName)
-            return dbcursor.fetchone()[0] # testBeamIdx
+            return dbcursor.fetchone()[0]  # testBeamIdx
     if found is False:
         print ("[dbUtils.py] - Selected Test Beam '%s' not found in database..." % testBeamName)
         rows = selectListOfTestBeams(dbcursor)
         print ("[dbUtils.py] - List of available Test Beam :")
         for line in rows:
-             print ("\t\t- '%s' " % str(line[1]))
+            print ("\t\t- '%s' " % str(line[1]))
         sys.exit(0)
 
 
 # -----------------------------------------------------------------------------
-'''
-    Get list of layers ( Not very useful now...)
-'''
 def selectLayerList(dbcursor, testBeamId):
+    ''' Get list of layers ( Not very useful now...)
+    '''
     dbcursor.execute("SELECT NUM,X0,Y0,Z0 FROM PLANS WHERE VERSIONID = (%s)", testBeamId)
     return dbcursor
 
+
 # -----------------------------------------------------------------------------
-'''
-    Get list of layers with positions    
-'''
 def selectLayerPositionList(dbcursor, testBeamId):
+    '''Get list of layers with positions
+    '''
     dbcursor.execute("select NUM,X0,Y0,Z0,X1,Y1,Z1,TYPE,(SELECT NUM FROM PLANS WHERE PLANS.IDX=CHAMBERS.PLANID) FROM CHAMBERS WHERE (SELECT NUM FROM PLANS WHERE PLANS.IDX=CHAMBERS.PLANID) IS NOT NULL AND VERSIONID = (%s)", testBeamId)
     return dbcursor
 
 
 # -----------------------------------------------------------------------------
-'''
-    Get List of difs/Chambers/difposition associated with testBeam 
-'''
 def selectDifList(dbcursor, testBeamId):
+    '''Get List of difs/Chambers/difposition associated with testBeam
+    '''
     dbcursor.execute("select NUM,(SELECT NUM FROM CHAMBERS WHERE CHAMBERS.IDX=DIFS.CHAMBERID),DI,DJ,POLI,POLJ FROM DIFS WHERE (SELECT NUM FROM CHAMBERS WHERE CHAMBERS.IDX=DIFS.CHAMBERID) IS NOT NULL AND VERSIONID = (%s)", testBeamId)
     return dbcursor
 
 
-
 # -----------------------------------------------------------------------------
-'''
-    Get energy associated with runNumber 
-'''
 def selectEnergyFromRun(dbcursor, runNumber):
+    '''Get energy associated with runNumber
+    '''
     dbcursor.execute("SELECT ENERGY FROM LOGBOOK WHERE RUN = (%s)" % runNumber)
     return dbcursor
 
 
 # -----------------------------------------------------------------------------
-'''
-    Get filePath associated with runNumber
-'''
 def selectFilePathFromRun(dbcursor, runNumber, isCompressed=False):
+    '''Get filePath associated with runNumber
+    '''
     dbcursor.execute("select LOCATION from FILES WHERE RUN=(SELECT RUN FROM RUNS WHERE RUN = (%s))  AND COMPRESS = (%s)" % (runNumber, isCompressed))
     # print (dbcursor.fetchall())
     return dbcursor
 
+
 # -----------------------------------------------------------------------------
-'''
-    Get fileName associated with runNumber 
-'''
 def selectFileNameFromRun(dbcursor, runNumber, isCompressed=False):
+    '''Get fileName associated with runNumber
+    '''
     filePath = selectFilePathFromRun(dbcursor, runNumber, isCompressed)
     fileList = []
     for row in filePath.fetchall()[0]:
@@ -156,10 +147,11 @@ def selectFileNameFromRun(dbcursor, runNumber, isCompressed=False):
     print (fileList)
     return dbcursor
 
+
 # -----------------------------------------------------------------------------
-'''
-'''
 def xmlValueBuilder(rootHandle, xmlHandleName, value, parameterType=None, option=None, optionValue=None, xmlParList=None):
+    '''
+    '''
     xmlHandle = etree.SubElement(rootHandle, "parameter", name=xmlHandleName)
     if parameterType is not None:
         xmlHandle.set("type", parameterType)
@@ -172,6 +164,8 @@ def xmlValueBuilder(rootHandle, xmlHandleName, value, parameterType=None, option
 
 # -----------------------------------------------------------------------------
 def buildList(dbList, rowElements):
+    '''
+    '''
     rowList = ['\n']
     for difRow in dbList:
         row = []
@@ -188,8 +182,12 @@ def buildList(dbList, rowElements):
     difList = selectDifList(dbcursror, testBeamIdx).fetchall()
     chamberList = selectLayerList(dbcursror, testBeamIdx).fetchall()
 '''
+
+
 # -----------------------------------------------------------------------------
 def createGeomXml(xmlFileName, difList, layerList):
+    '''
+    '''
     rootHandle = etree.Element('setup_geom')
 
     difToPrint = buildList(difList, 6)
@@ -204,11 +202,12 @@ def createGeomXml(xmlFileName, difList, layerList):
     with open(xmlFileName, "w") as outFile:
         outFile.write(s)
 
+
 # -----------------------------------------------------------------------------
 # -----------------------------------------------------------------------------
-'''
-'''
 def main():
+    '''
+    '''
     try:
         db = mdb.connect(host='localhost', user='acqilc', passwd='RPC_2008', db='GEOMETRY')
         testName = "SPS_06_2015"
@@ -218,15 +217,14 @@ def main():
 
         testBeamIdx = selectTestBeam(cur, testName)
         print ("[dbUtils.py] - TestBeam index :", testBeamIdx)
-        
+
         # dumpDifList(cur, testBeamIdx)
-        
+
         difList = selectDifList(cur, testBeamIdx).fetchall()
         layerList = selectLayerList(cur, testBeamIdx).fetchall()
-        
+
         xmlName = "geometry_%s.xml" % testName
         createGeomXml(xmlName, difList, layerList)
-        
 
         # selectPathFileFromRun(cur, '726254')
         selectEnergyFromRun(cur, '726254')
@@ -236,26 +234,24 @@ def main():
         selectFileNameFromRun(cur, '726254')
         print (cur.fetchall())
 
-                    
         # dumpListOfTestBeams(cur)
         # dumpDifList(cur, testBeamIdx)
 
-        # Get files location for given Energy and TestBeamId, 
+        # Get files location for given Energy and TestBeamId,
         # cur.execute("select LOCATION from FILES WHERE RUN  in (SELECT RUN FROM RUNS WHERE ENERGY = (%s) AND VERSIONID = (%s) ) AND COMPRESS= %s", (energy, versionId, isCompressed)
-        
+
         # Retrieve all rows at once
-                    # print row[0], row[1]
+        # print row[0], row[1]
 
-                        # print ('[Streamout.py] - Running Marlin...OK, - ', end='')
-
+        # print ('[Streamout.py] - Running Marlin...OK, - ', end='')
 
         # Retrieve data one row at a time
         # for i in range(cur.rowcount):
-            # row = cur.fetchone()
-            # print row
-            
+        #     row = cur.fetchone()
+        #     print row
+
         # create Dict Cursor -> Return data as python dict instead of python list
-        # -> can use print row["Id"], row["Name"]   
+        # -> can use print row["Id"], row["Name"]
 
         # cur =db.cursor(mdb.cursors.DictCursor)
         # cur.execute("SELECT * FROM Writers LIMIT 4")
@@ -263,9 +259,8 @@ def main():
         # rows = cur.fetchall()
 
         # for row in rows:
-            # print row["Id"], row["Name"]   
-        
-        
+        #     print row["Id"], row["Name"]
+
         # Close all cursors
         cur.close()
         # Close all databases
@@ -275,5 +270,6 @@ def main():
         print ("*** *** Error %d: %s" % (e.args[0], e.args[1]))
         sys.exit(1)
 
-if  __name__ == '__main__':
-    main()        
+
+if __name__ == '__main__':
+    main()
