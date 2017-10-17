@@ -842,7 +842,7 @@ void TriventProc::findCerenkovHits(int timePeak)
         continue;
       }
 
-      streamlog_out(MESSAGE) << "[findCerenkov] - Found Cerenkov hit at time '" << m_timeCerenkov
+      streamlog_out(DEBUG) << "[findCerenkov] - Found Cerenkov hit at time '" << m_timeCerenkov
                              << "'\t Asic " << Asic_id
                              << "'\t Chan " << Chan_id
                              << "'\t Threshold " << hitThreshold
@@ -874,7 +874,7 @@ void TriventProc::findCerenkovHits(int timePeak)
   m_nCerenkovTrigger += (m_nCerenkov1 + m_nCerenkov2 + m_nCerenkov3);
   if (m_nCerenkovTrigger > m_cerenkov_raw_hit.size())
   {
-    streamlog_out(DEBUG) << red << "[findCerenkov] - Cerenkov hit associated with multiple event in Trigger : Associated hit/total bif_hit in trigger : '" << m_nCerenkovTrigger << "'/" << m_cerenkov_raw_hit.size() << normal << std::endl;
+    streamlog_out(WARNING) << red << "[findCerenkov] - Cerenkov hit associated with multiple event in Trigger : Associated hit/total bif_hit in trigger : '" << m_nCerenkovTrigger << "'/" << m_cerenkov_raw_hit.size() << normal << std::endl;
     m_hasTooManyCerenkov = true;
   }
 }
@@ -964,7 +964,7 @@ void TriventProc::processEvent(LCEvent *evtP)
           std::vector<EVENT::RawCalorimeterHit *>::const_iterator cerHit;
           for (cerHit = m_cerenkov_raw_hit.begin(); cerHit != m_cerenkov_raw_hit.end(); ++cerHit)
           {
-            streamlog_out(MESSAGE) << blue << " \t '" << static_cast<int>((*cerHit)->getTimeStamp()) << normal << std::endl;
+            streamlog_out(DEBUG) << blue << " \t '" << static_cast<int>((*cerHit)->getTimeStamp()) << normal << std::endl;
           }
 
           getMaxTime();
@@ -983,7 +983,7 @@ void TriventProc::processEvent(LCEvent *evtP)
           auto        timeIter  = beginTime;
           auto        prevMaxIter = beginTime;
 
-          streamlog_out(WARNING) << blue << "[processEvent] - Trigger '" << m_trigCount << "' - beginTime : " << *beginTime << " endTime : " << distance(beginTime, endTime) << " ts.size: " << time_spectrum.size() << normal << std::endl;
+          streamlog_out(DEBUG) << blue << "[processEvent] - Trigger '" << m_trigCount << "' - beginTime : " << *beginTime << " endTime : " << distance(beginTime, endTime) << " ts.size: " << time_spectrum.size() << normal << std::endl;
 
           /**
            * Old Method used before to find peak ( does not take into account the time window)
@@ -1077,7 +1077,7 @@ void TriventProc::processEvent(LCEvent *evtP)
                 m_hitI.clear();
                 m_hitJ.clear();
                 m_hitK.clear();
-		m_hitThreshold.clear();
+                m_hitThreshold.clear();
 
                 // Event Building
                 int timePeak = distance(time_spectrum.begin(), timeIter);
@@ -1183,7 +1183,8 @@ void TriventProc::end()
   streamlog_out(MESSAGE) << "Trivent Selected " << m_selectedNum << " Condidate event" << std::endl;
   streamlog_out(MESSAGE) << "Cerenkov Event Selected " << m_cerenkovEvts << std::endl;
   // TODO:   CerenkovTime>-40 needs to depend on the cerenkov  time window from the configFile!
-  m_eventTree->Draw("CerenkovTime>>hcer","CerenkovTime>-40");
+  std::string cerCut = "CerenkovTime>-" + std::to_string(m_cerenkovTimeWindow);
+  m_eventTree->Draw("CerenkovTime>>hcer", cerCut.c_str());
   TH1I *hcer = (TH1I*)gDirectory->Get("hcer");
   streamlog_out(MESSAGE) << "Cerenkov Probable time shift at " << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin()) << " with " << hcer->GetBinContent(hcer->GetMaximumBin()) << "/" << m_cerenkovEvts << " event tagged" << std::endl;
   int cerTagInTime = 0;
