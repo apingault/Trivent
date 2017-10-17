@@ -143,8 +143,13 @@ marlinCfgFile = "marlinCfg_{}.yml"  # .format(runNumber) cfgFile name written by
 marlinCfgPath = processorPath
 
 # All data are assumed to be in a perPeriod subfolder
-inputPath = '{}/Raw/'.format(dataPath)
-# inputPath = '{}/Streamout/'.format(dataPath)
+if 'Laurent' in processorType:
+    inputPath = '{}/Raw/'.format(dataPath)
+    outputFile = 'TDHCAL_Laurent_{}'  # extension slcio/root added in xml # .format(runNumber)
+else:
+    inputPath = '{}/Streamout/'.format(dataPath)
+    outputFile = 'TDHCAL_Antoine_{}POS'  # extension slcio/root added in xml # .format(runNumber)
+
 outputPath = '{}/Trivent/'.format(dataPath)
 plotPath = '{}/Plots/'.format(dataPath)
 logPath = '{}/Logs/'.format(dataPath)
@@ -153,8 +158,6 @@ geomPath = '{}/DifGeom/'.format(processorPath)
 logFile = '{}/triventLog_{}'  # .format(logPath, runNumber)
 # inputFile = 'DHCAL_{}_SO_Antoine.slcio'  # .format(runNumber)
 inputFile = 'DHCAL_{}_I0_0.slcio'  # .format(runNumber)
-# outputFile = 'TDHCAL_Antoine_{}POS'  # extension slcio/root added in xml # .format(runNumber)
-outputFile = 'TDHCAL_Laurent_{}'  # extension slcio/root added in xml # .format(runNumber)
 xmlFile = 'TriventProcessor.xml'
 libExt = 'so'
 if sys.platform == 'darwin':
@@ -171,7 +174,6 @@ geomFileSept2017 = 'TRIVENTsdhcal_07_09_2017.xml'
 gridInputFiles = []
 if runOnGrid is True:
     gridInputFiles.append(gridProcessorPath + xmlFile)
-    # gridInputFiles.append(gridProcessorPath + '/lib/' + marlinLib)
     gridInputFiles.append(initILCSoftScript)
     gridInputFiles.append(gridProcessorPath + 'processor.tgz')
     gridInputFiles.append(gridProcessorPath + 'marlin.py')
