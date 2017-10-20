@@ -409,133 +409,135 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
     if (getCellDif_id(rawhit->getCellID0()) == m_cerenkovDifId)
       timeWindow = m_cerenkovTimeWindow;
 
-    if ((std::fabs(rawHitTime - time_peak) <= timeWindow) && (rawHitTime > prev_time_peak + m_timeWin)) {
-      const int Dif_id  = getCellDif_id(rawhit->getCellID0());
-      int       Asic_id = getCellAsic_id(
-          rawhit->getCellID0()); // Can't be const to correct for cerenkovAsicId bug (in data from 2014>2016)
-      const int Chan_id = getCellChan_id(rawhit->getCellID0());
-      const int thresh  = rawhit->getAmplitude();
+    assert(time_peak - prev_time_peak > m_timeWin);
 
-      if ((Asic_id < 1) || (Asic_id > 48)) {
-        if (m_hasCherenkov && Dif_id == m_cerenkovDifId) {
-          streamlog_out(WARNING) << yellow << "Cerenkov has a weird asicId : '" << Asic_id
-                                 << " correcting it... to asicId = 1" << normal << std::endl;
-          Asic_id = 1;
-        } else {
-          streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... "
-                               << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << normal << std::endl;
-          continue;
-        }
-      }
-      if (Chan_id > 63) {
-        streamlog_out(ERROR) << yellow << "[eventBuilder] - Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... "
-                             << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << normal << std::endl;
+    if ((std::fabs(rawHitTime - time_peak) > timeWindow) || (rawHitTime - prev_time_peak < m_timeWin))
+      continue;
+
+    const int Dif_id  = getCellDif_id(rawhit->getCellID0());
+    int       Asic_id = getCellAsic_id(
+        rawhit->getCellID0()); // Can't be const to correct for cerenkovAsicId bug (in data from 2014>2016)
+    const int Chan_id = getCellChan_id(rawhit->getCellID0());
+    const int thresh  = rawhit->getAmplitude();
+
+    if ((Asic_id < 1) || (Asic_id > 48)) {
+      if (m_hasCherenkov && Dif_id == m_cerenkovDifId) {
+        streamlog_out(WARNING) << yellow << "Cerenkov has a weird asicId : '" << Asic_id
+                               << " correcting it... to asicId = 1" << normal << std::endl;
+        Asic_id = 1;
+      } else {
+        streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... " << Dif_id
+                             << "/" << Asic_id << "/" << Chan_id << "/" << thresh << normal << std::endl;
         continue;
       }
-      const std::vector<int> padIndex = getPadIndex(Dif_id, Asic_id, Chan_id); // return (0,0,0) if dif_id not found
-      if (padIndex[0] == 0 || padIndex[1] == 0 || padIndex[2] == 0) {
-        streamlog_out(WARNING) << yellow << "[eventBuilder] - Dif '" << Dif_id
-                               << "' not found in geometry file...skipping hit" << normal << std::endl;
-        continue;
-      }
-
-      // find and remove square events
-      const int asicKey = getAsicKey(padIndex);
-      assert(asicKey > 0);
-      if (asicMap[asicKey]) {
-        ++asicMap[asicKey];
-      } else {
-        asicMap[asicKey] = 1;
-      }
-
-      if (asicMap[asicKey] == 64 && Dif_id != m_cerenkovDifId) {
-        streamlog_out(WARNING) << yellow << "[eventBuilder] - Rejecting event with full asic. Dif '" << Dif_id
-                               << "' asic '" << Asic_id << "' at time '" << time_peak << "'" << normal << std::endl;
-
-        m_firedLayersSet.clear();
-        hitKeys.clear();
-        asicMap.clear();
-        m_isSelected  = false;
-        m_hasFullAsic = true;
-      }
-
-      // Creating Calorimeter Hit
-      float pos[3];
-      pos[0] = padIndex[0] * m_cellSizeI;
-      pos[1] = padIndex[1] * m_cellSizeJ;
-      pos[2] = padIndex[2] * m_layerThickness;
-
-      CalorimeterHitImpl *caloHit = new CalorimeterHitImpl();
-      caloHit->setTime(static_cast<float>(rawhit->getTimeStamp()));
-
-      const float hitShiftedAmplitude = static_cast<float>(rawhit->getAmplitude() & 3);
-      if (hitShiftedAmplitude > 2.5)
-        caloHit->setEnergy(hitShiftedAmplitude); // 3rd threshold
-      else if (hitShiftedAmplitude > 1.5)
-        caloHit->setEnergy(hitShiftedAmplitude - 1); // 2nd threshold ?
-      else
-        caloHit->setEnergy(hitShiftedAmplitude + 1); // 1st threshold ?
-
-      // Create hit Key
-      const int aHitKey = IJKToKey(padIndex);
-
-      // Avoid two hit in the same cell
-      std::map<int, int>::const_iterator findIter = hitKeys.find(aHitKey);
-
-      if (findIter != hitKeys.end()) {
-        if (Dif_id != m_cerenkovDifId) {
-          delete caloHit;
-          continue;
-        } else {
-          streamlog_out(ERROR) << yellow << " So much Hit in my cherenkov " << normal << std::endl;
-          abort();
-        }
-      }
-
-      const int I = padIndex[0];
-      const int J = padIndex[1];
-      const int K = padIndex[2];
-
-      // set the cell id
-      cellIdEncoder["I"]   = I;
-      cellIdEncoder["J"]   = J;
-      cellIdEncoder["K-1"] = K - 1;
-      cellIdEncoder["M"]   = 0;
-      cellIdEncoder["S-1"] = 3;
-
-      if (Dif_id == m_cerenkovDifId) {
-        m_totCerenkovHits++;
-        streamlog_out(DEBUG0) << " m_totCerenkovHits == " << m_totCerenkovHits << " I == " << I << " J == " << J
-                              << " K == " << K << " dif == " << Dif_id << " asic == " << Asic_id
-                              << " chan == " << Chan_id
-                              // << " pos[0] == " << pos[0]
-                              // << " pos[1] == " << pos[1]
-                              // << " pos[2] == " << pos[2]
-                              << " ahitKey == " << aHitKey << " time == " << rawhit->getTimeStamp()
-                              << " time_peak == " << time_peak << " prev_time_peak == " << prev_time_peak
-                              << " time - time_peak == " << rawhit->getTimeStamp() - time_peak << std::endl;
-        m_vHitMapPerLayer.back()->Fill(I, J);
-      } else {
-        // Fill hitsMap for each Layer, starting at K-1 = 0
-        // streamlog_out(DEBUG) << yellow << "Filling hitMap for Layer '" << K << "'..." << normal << std::endl;
-        assert(m_vHitMapPerLayer.at(K - 1));
-        m_vHitMapPerLayer.at(K - 1)->Fill(I, J);
-        // streamlog_out(DEBUG) << blue << "Filling hitMap for Layer '" << K << "'...OK" << normal << std::endl;
-      }
-
-      cellIdEncoder.setCellID(caloHit);
-      // add layer to list of unique touched layers
-      m_firedLayersSet.insert(K);
-      caloHit->setPosition(pos);
-      col_event->addElement(caloHit);
-      hitKeys.insert(std::pair<int, int>(aHitKey, rawHitTime));
-      m_hitI.push_back(I);
-      m_hitJ.push_back(J);
-      m_hitK.push_back(K);
-      // m_hitBCID.push_back((*rawhit)->getTimeStamp());
-      m_hitThreshold.push_back(thresh);
     }
-  } // loop over the hit
+    if (Chan_id > 63) {
+      streamlog_out(ERROR) << yellow << "[eventBuilder] - Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... "
+                           << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << normal << std::endl;
+      continue;
+    }
+    const std::vector<int> padIndex = getPadIndex(Dif_id, Asic_id, Chan_id); // return (0,0,0) if dif_id not found
+    if (padIndex[0] == 0 || padIndex[1] == 0 || padIndex[2] == 0) {
+      streamlog_out(WARNING) << yellow << "[eventBuilder] - Dif '" << Dif_id
+                             << "' not found in geometry file...skipping hit" << normal << std::endl;
+      continue;
+    }
+
+    // find and remove square events
+    const int asicKey = getAsicKey(padIndex);
+    assert(asicKey > 0);
+    if (asicMap[asicKey]) {
+      ++asicMap[asicKey];
+    } else {
+      asicMap[asicKey] = 1;
+    }
+
+    if (asicMap[asicKey] == 64 && Dif_id != m_cerenkovDifId) {
+      streamlog_out(WARNING) << yellow << "[eventBuilder] - Rejecting event with full asic. Dif '" << Dif_id
+                             << "' asic '" << Asic_id << "' at time '" << time_peak << "'" << normal << std::endl;
+
+      m_firedLayersSet.clear();
+      hitKeys.clear();
+      asicMap.clear();
+      m_isSelected  = false;
+      m_hasFullAsic = true;
+    }
+
+    // Creating Calorimeter Hit
+    float pos[3];
+    pos[0] = padIndex[0] * m_cellSizeI;
+    pos[1] = padIndex[1] * m_cellSizeJ;
+    pos[2] = padIndex[2] * m_layerThickness;
+
+    CalorimeterHitImpl *caloHit = new CalorimeterHitImpl();
+    caloHit->setTime(static_cast<float>(rawhit->getTimeStamp()));
+
+    const float hitShiftedAmplitude = static_cast<float>(rawhit->getAmplitude() & 3);
+    if (hitShiftedAmplitude > 2.5)
+      caloHit->setEnergy(hitShiftedAmplitude); // 3rd threshold
+    else if (hitShiftedAmplitude > 1.5)
+      caloHit->setEnergy(hitShiftedAmplitude - 1); // 2nd threshold ?
+    else
+      caloHit->setEnergy(hitShiftedAmplitude + 1); // 1st threshold ?
+
+    // Create hit Key
+    const int aHitKey = IJKToKey(padIndex);
+
+    // Avoid two hit in the same cell
+    std::map<int, int>::const_iterator findIter = hitKeys.find(aHitKey);
+
+    if (findIter != hitKeys.end()) {
+      if (Dif_id != m_cerenkovDifId) {
+        delete caloHit;
+        continue;
+      } else {
+        streamlog_out(ERROR) << yellow << " So much Hit in my cherenkov " << normal << std::endl;
+        abort();
+      }
+    }
+
+    const int I = padIndex[0];
+    const int J = padIndex[1];
+    const int K = padIndex[2];
+
+    // set the cell id
+    cellIdEncoder["I"]   = I;
+    cellIdEncoder["J"]   = J;
+    cellIdEncoder["K-1"] = K - 1;
+    cellIdEncoder["M"]   = 0;
+    cellIdEncoder["S-1"] = 3;
+
+    if (Dif_id == m_cerenkovDifId) {
+      m_totCerenkovHits++;
+      streamlog_out(DEBUG0) << " m_totCerenkovHits == " << m_totCerenkovHits << " I == " << I << " J == " << J
+                            << " K == " << K << " dif == " << Dif_id << " asic == " << Asic_id << " chan == " << Chan_id
+                            // << " pos[0] == " << pos[0]
+                            // << " pos[1] == " << pos[1]
+                            // << " pos[2] == " << pos[2]
+                            << " ahitKey == " << aHitKey << " time == " << rawhit->getTimeStamp()
+                            << " time_peak == " << time_peak << " prev_time_peak == " << prev_time_peak
+                            << " time - time_peak == " << rawhit->getTimeStamp() - time_peak << std::endl;
+      m_vHitMapPerLayer.back()->Fill(I, J);
+    } else {
+      // Fill hitsMap for each Layer, starting at K-1 = 0
+      // streamlog_out(DEBUG) << yellow << "Filling hitMap for Layer '" << K << "'..." << normal << std::endl;
+      assert(m_vHitMapPerLayer.at(K - 1));
+      m_vHitMapPerLayer.at(K - 1)->Fill(I, J);
+      // streamlog_out(DEBUG) << blue << "Filling hitMap for Layer '" << K << "'...OK" << normal << std::endl;
+    }
+
+    cellIdEncoder.setCellID(caloHit);
+    // add layer to list of unique touched layers
+    m_firedLayersSet.insert(K);
+    caloHit->setPosition(pos);
+    col_event->addElement(caloHit);
+    hitKeys.insert(std::pair<int, int>(aHitKey, rawHitTime));
+    m_hitI.push_back(I);
+    m_hitJ.push_back(J);
+    m_hitK.push_back(K);
+    // m_hitBCID.push_back((*rawhit)->getTimeStamp());
+    m_hitThreshold.push_back(thresh);
+  }
   m_nFiredLayers = m_firedLayersSet.size();
 }
 
