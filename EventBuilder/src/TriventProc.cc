@@ -190,13 +190,12 @@ void TriventProc::XMLReader(std::string xmlfile) {
       // streamlog_out( MESSAGE ) << blue << line << normal << std::endl;
       lines.push_back(line);
     }
-    streamlog_out(MESSAGE) << yellow << "Found " << lines.size() << " difs in geometry file corresponding to : "
-                           << (unsigned int)lines.size() / 3 << " layers + " << lines.size() % 3 << " difs"
-                           << normal << std::endl;
-
-    for (std::vector<std::string>::const_iterator lineIter = lines.begin(); lineIter != lines.end(); ++lineIter)
-    {
-      std::stringstream        ss(lineIter->c_str());
+    streamlog_out(MESSAGE) << yellow << "Found " << lines.size()
+                           << " difs in geometry file corresponding to : " << (unsigned int)lines.size() / 3
+                           << " layers + " << lines.size() % 3 << " difs" << normal << std::endl;
+    // for (std::vector<std::string>::const_iterator lineIter = lines.begin(); lineIter != lines.end(); ++lineIter) {
+    for (const auto &lineIter : lines) {
+      std::stringstream        ss(lineIter.c_str());
       std::vector<std::string> result;
 
       while (ss.good()) {
@@ -232,14 +231,12 @@ void TriventProc::XMLReader(std::string xmlfile) {
 }
 
 //=============================================================================
-  for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); ++itt)
-  {
-    streamlog_out(MESSAGE) << itt->first << "\t" << itt->second.K
-                           << "\t" << itt->second.DifX
-                           << "\t" << itt->second.DifY
-                           << "\t" << itt->second.IncX
-                           << "\t" << itt->second.IncY
-                           << std::endl;
+void TriventProc::printDifGeom() {
+  streamlog_out(DEBUG1) << "--- Dumping geomtry File: " << std::endl;
+  // for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); ++itt) {
+  for (const auto &itt : m_mDifMapping) {
+    streamlog_out(DEBUG1) << itt.first << "\t" << itt.second.K << "\t" << itt.second.DifX << "\t" << itt.second.DifY
+                          << "\t" << itt.second.IncX << "\t" << itt.second.IncY << std::endl;
   }
 }
 
@@ -267,16 +264,16 @@ int TriventProc::getCellChan_id(int cell_id) { return (cell_id & 0x3F0000) >> 16
 // ============ ============ ============ ============ ============ ============ ============
 
 //=============================================================================
-std::vector<int> TriventProc::getPadIndex(const int dif_id, const int asic_id, const int chan_id)
-{
+//=============================================================================
+std::vector<int> TriventProc::getPadIndex(const int &dif_id, const int &asic_id, const int &chan_id) {
   std::vector<int> index(3, 0);
   std::map<int, LayerID>::const_iterator findIter = m_mDifMapping.find(dif_id);
 
-  if (findIter == m_mDifMapping.end())
-  {
-    streamlog_out(ERROR) << " [getPadIndex] difId '" << dif_id <<"' not found in geometry file" << std::endl;
+  if (findIter == m_mDifMapping.end()) {
+    streamlog_out(ERROR) << " [getPadIndex] difId '" << dif_id << "' not found in geometry file" << std::endl;
     return index; // empty
   }
+
   index[0] = (1 + MapILargeHR2[chan_id] + AsicShiftI[asic_id]);
   index[1] = (32 - (MapJLargeHR2[chan_id] + AsicShiftJ[asic_id])) + findIter->second.DifY;
   index[2] = findIter->second.K;
@@ -298,14 +295,11 @@ std::vector<int> TriventProc::getPadIndex(const int dif_id, const int asic_id, c
 void TriventProc::getMaxTime() {
   m_maxTime = 0;
   try {
-    for (std::vector<EVENT::RawCalorimeterHit *>::const_iterator raw_hit = m_trigger_raw_hit.begin(); raw_hit != m_trigger_raw_hit.end(); ++raw_hit)
-    {
-      int time = static_cast<int>((*raw_hit)->getTimeStamp());
-
-      if (time >= 0)
-      {
-        m_maxTime = max(m_maxTime, time);
-      }
+  for (const auto &raw_hit : m_trigger_raw_hit) {
+    assert(raw_hit);
+    int time = static_cast<int>(raw_hit->getTimeStamp());
+    if (time >= 0) {
+      m_maxTime = max(m_maxTime, time);
     }
   }
   catch (std::exception &ec) {
@@ -318,18 +312,16 @@ std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))
 {
   std::vector<int> time_spectrum(m_maxTime + 1);
   try {
-    for (std::vector<EVENT::RawCalorimeterHit *>::const_iterator raw_hit = m_trigger_raw_hit.begin(); raw_hit != m_trigger_raw_hit.end(); ++raw_hit)
-    {
-      int time = static_cast<int>((*raw_hit)->getTimeStamp());
-      if (time > m_maxTime)
-      {
-        streamlog_out(WARNING) << "\t *** WARNING *** Found Hit after m_maxTime -> hitTime: " << time << " / maxTime: " << m_maxTime << std::endl;
-        continue;
-      }
-      if (time >= 0)
-      {
-        ++time_spectrum.at(time);
-      }
+  for (auto &raw_hit : m_trigger_raw_hit) {
+    assert(raw_hit);
+    int time = static_cast<int>(raw_hit->getTimeStamp());
+    if (time > m_maxTime) {
+      streamlog_out(WARNING) << "\t *** WARNING *** Found Hit after m_maxTime -> hitTime: " << time
+                             << " / maxTime: " << m_maxTime << std::endl;
+      continue;
+    }
+    if (time >= 0) {
+      ++time_spectrum.at(time);
     }
   }
   catch (std::exception &ec) {
