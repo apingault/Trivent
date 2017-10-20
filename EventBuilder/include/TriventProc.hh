@@ -34,7 +34,7 @@ public:
   Processor *newProcessor() { return new TriventProc; }
 
   TriventProc();
-  ~TriventProc();
+  ~TriventProc() { ; };
 
   void init();
   void processEvent(LCEvent *evtP);

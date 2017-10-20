@@ -152,13 +152,6 @@ TriventProc::TriventProc()
   registerProcessorParameter("PlotFolder", "Folder Path to save Plot", m_plotFolder, m_plotFolder);
 }
 
-
-TriventProc::~TriventProc()
-{
-  delete m_rootFile;
-}
-
-
 //=============================================================================
 void TriventProc::XMLReader(std::string xmlfile) {
   TiXmlDocument xml(xmlfile.c_str());
