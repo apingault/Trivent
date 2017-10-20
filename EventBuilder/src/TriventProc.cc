@@ -936,16 +936,6 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
         std::unique_ptr<LCCollectionVec> outCol = make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
 
-        // reset Flags
-        m_isSelected         = false;
-        m_isNoise            = false;
-        m_hasNotEnoughLayers = false;
-        m_hasFullAsic        = false;
-        m_isTooCloseInTime   = false;
-        m_hitI.clear();
-        m_hitJ.clear();
-        m_hitK.clear();
-        m_hitThreshold.clear();
 
         // Event Building
         int timePeak = distance(time_spectrum.begin(), timeIter);
