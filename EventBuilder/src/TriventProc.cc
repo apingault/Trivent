@@ -307,7 +307,7 @@ std::vector<int> TriventProc::getPadIndex(const int &dif_id, const int &asic_id,
 }
 
 //=============================================================================
-const int TriventProc::getMaxTime() {
+int TriventProc::getMaxTime() {
   int maxTime = 0;
   for (const auto &raw_hit : m_trigger_raw_hit) {
     assert(raw_hit);
@@ -320,7 +320,7 @@ const int TriventProc::getMaxTime() {
 }
 
 //=============================================================================
-const std::vector<int> TriventProc::getTimeSpectrum(const int &maxTime) //__attribute__((optimize(0)))
+std::vector<int> TriventProc::getTimeSpectrum(const int &maxTime) //__attribute__((optimize(0)))
 {
   std::vector<int> time_spectrum(maxTime + 1);
   for (auto &raw_hit : m_trigger_raw_hit) {

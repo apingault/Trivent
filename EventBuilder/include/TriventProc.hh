@@ -48,9 +48,9 @@ public:
   int getCellAsic_id(int cell_id);
   int getCellChan_id(int cell_id);
 
-  const int getMaxTime();
+  int getMaxTime();
 
-  const std::vector<int> getTimeSpectrum(const int &maxTime);
+  std::vector<int> getTimeSpectrum(const int &maxTime);
 
   /**
    * @brief Implementation of std::make_unique from c++14
