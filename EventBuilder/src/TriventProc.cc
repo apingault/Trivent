@@ -71,7 +71,6 @@ TriventProc::TriventProc()
       m_totCerenkovHits(0),
       m_cerenkovEvts(0),
       m_maxCerenkovTime(0),
-      m_maxTime(0),
       m_trigNbr(0),
       m_trigCount(0),
       m_evtNum(0),
@@ -160,7 +159,7 @@ void TriventProc::XMLReader(std::string xmlfile) {
   if (load_key) {
     streamlog_out(MESSAGE) << yellow << "Found Geometry File : " << xmlfile.c_str() << normal << std::endl;
 
-    TiXmlHandle xmlHandle(&xml);
+    TiXmlHandle   xmlHandle(&xml);
     TiXmlElement *pElem = xmlHandle.FirstChildElement().Element();
 
     // should always have a valid root but handle gracefully if it does not
@@ -308,34 +307,34 @@ std::vector<int> TriventProc::getPadIndex(const int &dif_id, const int &asic_id,
 }
 
 //=============================================================================
-void TriventProc::getMaxTime() {
-  m_maxTime = 0;
+const int TriventProc::getMaxTime() {
+  int maxTime = 0;
   for (const auto &raw_hit : m_trigger_raw_hit) {
     assert(raw_hit);
     int time = static_cast<int>(raw_hit->getTimeStamp());
     if (time >= 0) {
-      m_maxTime = max(m_maxTime, time);
+      maxTime = max(maxTime, time);
     }
   }
+  return maxTime;
 }
 
 //=============================================================================
-std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))
+const std::vector<int> TriventProc::getTimeSpectrum(const int &maxTime) //__attribute__((optimize(0)))
 {
-  std::vector<int> time_spectrum(m_maxTime + 1);
+  std::vector<int> time_spectrum(maxTime + 1);
   for (auto &raw_hit : m_trigger_raw_hit) {
     assert(raw_hit);
     int time = static_cast<int>(raw_hit->getTimeStamp());
-    if (time > m_maxTime) {
-      streamlog_out(WARNING) << "\t *** WARNING *** Found Hit after m_maxTime -> hitTime: " << time
-                             << " / maxTime: " << m_maxTime << std::endl;
+    if (time > maxTime) {
+      streamlog_out(ERROR) << red << "\t *** WARNING *** Found Hit after maxTime -> hitTime: " << time
+                             << " / maxTime: " << maxTime << normal << std::endl;
       continue;
     }
     if (time >= 0) {
       ++time_spectrum.at(time);
     }
   }
-
   return time_spectrum;
 }
 
@@ -783,13 +782,12 @@ void TriventProc::processEvent(LCEvent *evtP) {
       continue;
     }
 
-    const int numElements = inputLCCol->getNumberOfElements(); // hit number in trigger
-
     ++m_trigCount;
     if (0 == m_trigCount % 100) {
       streamlog_out(MESSAGE) << yellow << "Trigger number == " << m_trigCount << normal << std::endl;
     }
 
+    const int numElements = inputLCCol->getNumberOfElements(); // hit number in trigger
     if (numElements > m_elecNoiseCut) {
       streamlog_out(MESSAGE) << yellow << "TRIGGER number " << m_trigCount
                              << " SKIPPED ... hitNumber > m_elecNoiseCut : " << numElements << " > " << m_elecNoiseCut
@@ -849,8 +847,8 @@ void TriventProc::processEvent(LCEvent *evtP) {
       streamlog_out(DEBUG1) << blue << " \t '" << static_cast<int>(cerHit->getTimeStamp()) << " Cerenkov --> '"
                             << cerHit << normal << std::endl;
     }
-    getMaxTime();
-    std::vector<int> time_spectrum = getTimeSpectrum();
+    const int        maxTime       = getMaxTime();
+    std::vector<int> time_spectrum = getTimeSpectrum(maxTime);
 
     //---------------------------------------------------------------
     //! Find the condidate event
