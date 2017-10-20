@@ -60,6 +60,18 @@ public:
   void fillRawHitTrigger(const LCCollection &inputLCCol);
 
   /**
+   * @brief
+   *
+   * @param beginTime
+   * @param endTime
+   * @param candidateTime
+   * @return std::vector<std::vector<int>::iterator>
+   */
+  std::vector<std::vector<int>::iterator> getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime,
+                                                                     std::vector<int>::iterator &endTime,
+                                                                     std::vector<int>::iterator &candidateTime);
+
+  /**
    * @brief Implementation of std::make_unique from c++14
    *
    * @tparam T
