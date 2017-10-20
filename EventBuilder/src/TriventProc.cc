@@ -70,7 +70,6 @@ TriventProc::TriventProc()
       m_timeCerenkov(0),
       m_totCerenkovHits(0),
       m_cerenkovEvts(0),
-      m_maxCerenkovTime(0),
       m_trigNbr(0),
       m_trigCount(0),
       m_evtNum(0),
@@ -287,8 +286,7 @@ std::vector<int> TriventProc::getPadIndex(const int &dif_id, const int &asic_id,
   }
 
   std::vector<int> index{1 + MapILargeHR2[chan_id] + AsicShiftI[asic_id],
-                         32 - (MapJLargeHR2[chan_id] + AsicShiftJ[asic_id]),
-                         static_cast<int>(findIter->second.K)};
+                         32 - (MapJLargeHR2[chan_id] + AsicShiftJ[asic_id]), static_cast<int>(findIter->second.K)};
   std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
   // Cerenkov layer is not in the layerSet as it's not a physical layer, needs to account for that when checking the pad
   // limits
@@ -311,9 +309,9 @@ int TriventProc::getMaxTime() {
   int maxTime = 0;
   for (const auto &raw_hit : m_trigger_raw_hit) {
     assert(raw_hit);
-    int time = static_cast<int>(raw_hit->getTimeStamp());
-    if (time >= 0) {
-      maxTime = max(maxTime, time);
+    int hitTime = static_cast<int>(raw_hit->getTimeStamp());
+    if (hitTime >= 0) {
+      maxTime = std::max(maxTime, hitTime);
     }
   }
   return maxTime;

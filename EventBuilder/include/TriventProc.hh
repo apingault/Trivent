@@ -132,17 +132,15 @@ protected:
   bool         m_hasTooManyCerenkov; // if m_nCerenkovTrigger > bifHit in trigger
   int          m_timeCerenkov;       // Timing between peak and Cerenkov signal
   unsigned int m_totCerenkovHits;
-  unsigned int m_cerenkovEvts;    // Number of events tagged with the cerenkov
-  int          m_maxCerenkovTime; // CerenkovTime with most occurrence ->MPV for cerenkov timeShift
+  unsigned int m_cerenkovEvts; // Number of events tagged with the cerenkov
 
-  unsigned int           m_trigNbr;
-  unsigned int           m_trigCount;
-  unsigned int           m_evtNum;
-  unsigned int           m_selectedNum;
-  unsigned int           m_rejectedNum;
-  std::set<unsigned int> m_firedLayersSet;
-  int                    m_bcid1;
-  int                    m_bcid2;
+  unsigned int m_trigNbr;
+  unsigned int m_trigCount;
+  unsigned int m_evtNum;
+  unsigned int m_selectedNum;
+  unsigned int m_rejectedNum;
+  int          m_bcid1;
+  int          m_bcid2;
 
   // Color for streamlog output
   std::string normal;
@@ -183,12 +181,13 @@ protected:
   std::vector<int> m_hitK; // Hit position
   std::vector<int> m_hitThreshold;
 
-  unsigned int m_nFiredLayers;       // Number of Layers touched in evt
-  bool         m_isSelected;         // Event is selected/rejected
-  bool         m_isNoise;            // If rejected, is it noise
-  bool         m_isTooCloseInTime;   // If rejected, is it too close from previous evt
-  bool         m_hasNotEnoughLayers; // If rejected, has not touched sufficient layers
-  bool         m_hasFullAsic;        // If rejected, has full asics
+  std::set<unsigned int> m_firedLayersSet;     // set of Layers touched in evt
+  unsigned int           m_nFiredLayers;       // Number of Layers touched in evt = m_firedLayersSet.size()
+  bool                   m_isSelected;         // Event is selected/rejected
+  bool                   m_isNoise;            // If rejected, is it noise
+  bool                   m_isTooCloseInTime;   // If rejected, is it too close from previous evt
+  bool                   m_hasNotEnoughLayers; // If rejected, has not touched sufficient layers
+  bool                   m_hasFullAsic;        // If rejected, has full asics
 };
 
 #endif
