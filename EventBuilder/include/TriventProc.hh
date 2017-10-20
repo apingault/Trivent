@@ -125,7 +125,6 @@ protected:
   unsigned int m_cerenkovEvts;    // Number of events tagged with the cerenkov
   int          m_maxCerenkovTime; // CerenkovTime with most occurrence ->MPV for cerenkov timeShift
 
-  int                    m_maxTime;
   unsigned int           m_trigNbr;
   unsigned int           m_trigCount;
   unsigned int           m_evtNum;

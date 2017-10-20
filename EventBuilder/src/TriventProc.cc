@@ -328,7 +328,7 @@ const std::vector<int> TriventProc::getTimeSpectrum(const int &maxTime) //__attr
     int time = static_cast<int>(raw_hit->getTimeStamp());
     if (time > maxTime) {
       streamlog_out(ERROR) << red << "\t *** WARNING *** Found Hit after maxTime -> hitTime: " << time
-                             << " / maxTime: " << maxTime << normal << std::endl;
+                           << " / maxTime: " << maxTime << normal << std::endl;
       continue;
     }
     if (time >= 0) {
@@ -538,17 +538,14 @@ void TriventProc::defineColors() {
 }
 
 //=============================================================================
-// std::unique_ptr<TTree> TriventProc::getOrCreateTree(const std::string &treeName, const std::string &treeDescription) {
 TTree *TriventProc::getOrCreateTree(const std::string &treeName, const std::string &treeDescription) {
-  // std::unique_ptr<TTree> tree(static_cast<TTree *>(m_rootFile->Get(treeName.c_str())));
   TTree *tree = static_cast<TTree *>(m_rootFile->Get(treeName.c_str()));
 
   if (!tree) {
     streamlog_out(DEBUG0) << "Creating tree '" << treeName << "'" << std::endl;
-    // tree = make_unique<TTree>(treeName.c_str(), treeDescription.c_str());
     tree = new TTree(treeName.c_str(), treeDescription.c_str());
   }
-
+  assert(tree);
   return tree;
 }
 
@@ -559,8 +556,6 @@ void TriventProc::init() {
   m_evtNum    = 0; // event number
   // ========================
   printParameters();
-
-  // Define colors for
   defineColors();
 
   // Create writer for lcio output file
@@ -571,7 +566,6 @@ void TriventProc::init() {
   // Read and print geometry file
   try {
     XMLReader(m_geomXMLFile);
-    // printDifGeom();
   } catch (std::string &e) {
     std::cout << "\n------------------------------------------------------------------------------------------"
               << std::endl;
@@ -594,12 +588,10 @@ void TriventProc::init() {
    */
 
   m_rootFile = new TFile(m_rootFileName.c_str(), "RECREATE");
-  // m_rootFile = std::unique_ptr<TFile>(new TFile(m_rootFileName.c_str(), "RECREATE"));
   assert(m_rootFile);
 
   // Create Trigger tree & Branches
   // m_triggerTree = getOrCreateTree("TriggerTree", "Trigger variables");
-
   // m_triggerTree->Branch("TriggerNumber",                    &m_trigNbr);
   // m_triggerTree->Branch("NumberOfEvents",                   &m_nEvt);
   // m_triggerTree->Branch("TimeSpectrum", "std::vector<int>", &m_vTimeSpectrum);
@@ -633,19 +625,6 @@ void TriventProc::init() {
   TDirectory *rootDir   = gDirectory;
   TDirectory *hitMapDir = rootDir->mkdir("HitMapPerLayer");
   hitMapDir->cd();
-
-  // Create a list of unique Layers from geometry file
-  // std::set<int> layerSet;
-  // for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); ++itt) {
-  // for (const auto &itt : m_mDifMapping) {
-  // layerSet.insert(itt.second.K);
-  // }
-
-  // Find last layer and resize the vector of hitMap
-  // const auto maxLayer = std::max_element(layerSet.begin(), layerSet.end());
-  // streamlog_out(DEBUG0) << yellow << "Max LayerId in geometryFile: '" << *maxLayer << "'" << normal << std::endl;
-  // m_vHitMapPerLayer.resize(*maxLayer);
-  // m_vHitMapPerLayer.resize(m_layerSet.size());
 
   // Check if first layer is numbered 0 or 1
   // Prevent accessing non defined element in vectors...
@@ -688,8 +667,6 @@ void TriventProc::init() {
 //=============================================================================
 
 TH2 *TriventProc::makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle) {
-  // m_vHitMapPerLayer.at(iLayer) = new TH2D(oss.str().c_str(), oss.str().c_str(), 96, 1, 97, 96, 1, 97);
-  // std::unique_ptr<TH2D> h2Map = make_unique<TH2D>(oss.str().c_str(), oss.str().c_str(), 96, 1, 97, 96, 1, 97);
   TH2 *hMap = new TH2D(title.c_str(), title.c_str(), 96, 1, 97, 96, 1, 97);
   hMap->GetXaxis()->SetTitle(xTitle.c_str());
   hMap->GetYaxis()->SetTitle(yTitle.c_str());
@@ -718,9 +695,6 @@ void TriventProc::findCerenkovHits(int timePeak) {
 
       streamlog_out(DEBUG) << "[findCerenkov] - Found Cerenkov hit at time '" << m_timeCerenkov << "'\t Asic '"
                            << Asic_id << "'\t Chan '" << Chan_id << "'\t Threshold " << hitThreshold << std::endl;
-      // streamlog_out(DEBUG) << "[findCerenkov] - address --> '" << cerHit.get() << "' use_count: " <<
-      // cerHit.use_count() << std::endl;
-      streamlog_out(DEBUG) << "[findCerenkov] - address --> '" << cerHit << std::endl;
 
       m_cerAsic      = Asic_id;
       m_cerChan      = Chan_id;
@@ -767,11 +741,8 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
   for (unsigned int i = 0; i < m_hcalCollections.size(); i++) //! loop over collection
   {
-    // std::shared_ptr<LCCollection> inputLCCol;
     LCCollection *inputLCCol;
     try {
-      // inputLCCol = std::shared_ptr<LCCollection>(evtP->getCollection(m_hcalCollections.at(i).c_str()));
-      // auto keepAlive = inputLCCol;
       inputLCCol = evtP->getCollection(m_hcalCollections.at(i).c_str());
     } catch (lcio::DataNotAvailableException &zero) {
       streamlog_out(ERROR) << red << "No data found in collection " << i << normal << std::endl;
@@ -851,7 +822,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
     std::vector<int> time_spectrum = getTimeSpectrum(maxTime);
 
     //---------------------------------------------------------------
-    //! Find the condidate event
+    //! Find the candidate event
     int prevTimePeak     = 0; //  the previous bin center
     m_nCerenkovTrigger   = 0;
     m_hasTooManyCerenkov = false;
@@ -867,21 +838,12 @@ void TriventProc::processEvent(LCEvent *evtP) {
                           << " endTime : " << distance(beginTime, endTime) << " ts.size: " << time_spectrum.size()
                           << normal << std::endl;
 
-    /**
-     * Old Method used before to find peak ( does not take into account the time window)
-     */
-    // while (ibin < (m_maxTime + 1)) {
-    //   if (time_spectrum[ibin] >= m_noiseCut &&
-    //       time_spectrum[ibin] >= time_spectrum[ibin + 1] &&
-    //       time_spectrum[ibin] >= time_spectrum[ibin - 1] &&
-    //       time_spectrum[ibin] >= time_spectrum[ibin - 2] &&
-    //       time_spectrum[ibin] >= time_spectrum[ibin + 2] ) {
     while (distance(timeIter, endTime) > 0) // Ensure that timeIter < endTime
     {
       if (*(timeIter) >= m_noiseCut) {
         auto lowerBound = timeIter;
         auto upperBound = timeIter;
-        // Ensure we are not lookinf before/after begin/end of time_spectrum
+        // Ensure we are not looking before/after begin/end of time_spectrum
         if (distance(beginTime, timeIter) > m_timeWin)
           lowerBound = std::prev(timeIter, m_timeWin);
         else if (distance(beginTime, timeIter) > 1) {
