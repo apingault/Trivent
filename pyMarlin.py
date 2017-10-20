@@ -111,7 +111,7 @@ def checkPeriod(runNumber, runPeriod, configFile):
     '''
     def periodError(goodPeriod):
         return "[{}] - RunNumber '{}' is from TestBeam '{}', you selected '{}' in configFile '{}'".format(
-            os.path.basename(__file__), runNumber, goodPeriod, conf.runPeriod, configFile)
+            os.path.basename(__file__), runNumber, goodPeriod, runPeriod, configFile)
 
     if runNumber < '726177' and (runPeriod != 'SPS_08_2012' or runPeriod != 'SPS_11_2012'):
         sys.exit(periodError('SPS_08_2012 or SPS_11_2012'))
@@ -253,6 +253,7 @@ def main():
     if conf.runOnGrid is True:
         makeArxiv('./', 'processor.tgz', ['./.git', './.vscode', './build', './lib', './*.pyc', './*.yml'])
 
+    fileNotFoundList = []
     for run in runList:
         # Check if runNumber match given period in configFile
         checkPeriod(str(run), conf.runPeriod, configFile)
@@ -276,8 +277,21 @@ def main():
                 inputDataFileList = [
                     f for f in subprocess.check_output(['lfc-ls', gridInputPath]).splitlines() if str(runNumber) in f
                 ]
+                # check if the folder is softlinked before stopping
+                if not inputDataFileList:
+                    out = subprocess.check_output(['lfc-ls', '-l', gridInputPath])
+                    if '->' in out:
+                        lnPath = str(out.split(' ')[-1].strip('\n'))
+                        inputDataFileList = [
+                            f for f in subprocess.check_output(['lfc-ls', lnPath]).splitlines() if str(runNumber) in f
+                        ]
+
             except (subprocess.CalledProcessError, OSError):
                 sys.exit("\n[{}] - Folder '{}' not found...exiting".format(scriptName, gridInputPath))
+
+            if not inputDataFileList:
+                fileNotFoundList.append(str(runNumber))
+                print("\n[{}] - File  for run '{}' not found in '{}'".format(scriptName, str(runNumber), gridInputPath))
 
         if conf.runOnGrid is False:
             outputFile = conf.outputPath + conf.outputFile.format(runNumber)
@@ -286,8 +300,8 @@ def main():
         else:  # file is uploaded to the local folder on the WorkerNode
             marlinLib = 'lib/' + conf.marlinLib
             outputFile = conf.outputFile.format(runNumber)
-        conf.glob.LCIOInputFiles = ' '.join(inputDataFileList)
 
+        conf.glob.LCIOInputFiles = ' '.join(inputDataFileList)
         conf.marlinProc.LCIOOutputFile = outputFile + ".slcio"
         conf.marlinProc.ROOTOutputFile = outputFile + ".root"
 
@@ -448,14 +462,19 @@ def main():
                         se_rpath=conf.outputPath,
                         lfc_host=conf.lfc_host,
                         se=conf.SE,
-                        credential_requirements=VomsProxy(vo=conf.voms)),
-                    LCGSEFile(
-                        namePattern=outputFile + ".root",
-                        se_rpath=conf.outputPath,
-                        lfc_host=conf.lfc_host,
-                        se=conf.SE,
                         credential_requirements=VomsProxy(vo=conf.voms))
                 ]
+                # TODO: Remove ugly 'hack'
+                if 'Streamout' not in conf.processorType:
+                    j.outputfiles += [
+                        LCGSEFile(
+                            namePattern=outputFile + ".root",
+                            se_rpath=conf.outputPath,
+                            lfc_host=conf.lfc_host,
+                            se=conf.SE,
+                            credential_requirements=VomsProxy(vo=conf.voms))
+                    ]
+
                 j.inputfiles = inputFiles
                 j.inputdata = inputData
 
@@ -464,12 +483,21 @@ def main():
                 j.postprocessors.append(CustomChecker(module='GangaCheckerMoveFileOnGrid.py'))
                 jobtree.add(j)
 
-                queues.add(j.submit)
+                # Don't submit if inputdata is empty
+                if j.inputdata.files:
+                    queues.add(j.submit)
                 # j.submit()
                 print("\n[{}] ... submitting job done.\n".format(scriptName))
 
             except IncompleteJobSubmissionError:
                 sys.exit("[{}] --- Failed to submit job ".format(scriptName))
+
+    if fileNotFoundList:
+        print('-' * 120)
+        print("[{}] --- Following files were not found: ".format(scriptName))
+        for f in fileNotFoundList:
+            print("\t\t" + str(f))
+        print('-' * 120)
 
 
 # -----------------------------------------------------------------------------
