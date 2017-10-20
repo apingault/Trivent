@@ -310,7 +310,6 @@ std::vector<int> TriventProc::getPadIndex(const int &dif_id, const int &asic_id,
 //=============================================================================
 void TriventProc::getMaxTime() {
   m_maxTime = 0;
-  try {
   for (const auto &raw_hit : m_trigger_raw_hit) {
     assert(raw_hit);
     int time = static_cast<int>(raw_hit->getTimeStamp());
@@ -318,16 +317,12 @@ void TriventProc::getMaxTime() {
       m_maxTime = max(m_maxTime, time);
     }
   }
-  catch (std::exception &ec) {
-    streamlog_out(WARNING) << "No hits " << std::endl;
-  }
 }
 
 //=============================================================================
 std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))
 {
   std::vector<int> time_spectrum(m_maxTime + 1);
-  try {
   for (auto &raw_hit : m_trigger_raw_hit) {
     assert(raw_hit);
     int time = static_cast<int>(raw_hit->getTimeStamp());
@@ -339,9 +334,6 @@ std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))
     if (time >= 0) {
       ++time_spectrum.at(time);
     }
-  }
-  catch (std::exception &ec) {
-    streamlog_out(WARNING) << "No hits " << std::endl;
   }
 
   return time_spectrum;
@@ -374,7 +366,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
   CellIDEncoder<CalorimeterHitImpl> cellIdEncoder("M:3,S-1:3,I:9,J:9,K-1:6", col_event);
 
   std::map<int, int> asicMap;
-  try {
     std::map<int, int> hitKeys;
     for (std::vector<EVENT::RawCalorimeterHit *>::const_iterator rawhit = m_trigger_raw_hit.begin(); rawhit != m_trigger_raw_hit.end(); ++rawhit)
     {
@@ -528,11 +519,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
       }
     }//loop over the hit
     hitKeys.clear();
-  }
-  catch (DataNotAvailableException& e) {
-    streamlog_out(WARNING) << " collection not available" << std::endl;
-  }
-}
 
 
 //=============================================================================
@@ -776,24 +762,25 @@ void TriventProc::findCerenkovHits(int timePeak)
 void TriventProc::processEvent(LCEvent *evtP) {
   assert(evtP != NULL);
 
-  {
-    try {
-      m_trigNbr = evtP->getEventNumber();
-      if (m_trigNbr > 1E6)
-      {
-        streamlog_out(ERROR) << yellow << "Trigger number == " << m_trigNbr << normal << std::endl;
-        return;
-      }
+  m_trigNbr = evtP->getEventNumber();
+  if (m_trigNbr > 1E6) {
+    streamlog_out(ERROR) << red << "Too much Triggers : " << m_trigNbr << normal << std::endl;
+    return;
+  }
 
-      for (unsigned int i = 0; i < m_hcalCollections.size(); i++)   //!loop over collection
-      {
-        try {
-          LCCollection *col = evtP->getCollection(m_hcalCollections[i].c_str());
-          if (col == NULL)
-          {
-            streamlog_out(WARNING) << red << "TRIGGER SKIPED ... col == NULL" << normal << std::endl;
-            break;
-          }
+  for (unsigned int i = 0; i < m_hcalCollections.size(); i++) //! loop over collection
+  {
+    LCCollection *inputLCCol;
+    try {
+      inputLCCol = evtP->getCollection(m_hcalCollections.at(i).c_str());
+    } catch (lcio::DataNotAvailableException &zero) {
+      streamlog_out(ERROR) << red << "No data found in collection " << i << normal << std::endl;
+    }
+
+    if (!inputLCCol) {
+      streamlog_out(WARNING) << red << "TRIGGER SKIPED ... col is nullptr" << normal << std::endl;
+      continue;
+    }
 
           const int numElements = col->getNumberOfElements();// hit number in trigger
 
@@ -1060,10 +1047,8 @@ void TriventProc::processEvent(LCEvent *evtP) {
           // m_vTimeSpectrum = time_spectrum;
           // m_triggerTree->Fill();
         }
-        catch (lcio::DataNotAvailableException &zero) {}
       }
     }
-    catch (lcio::DataNotAvailableException &err) {}
   }
 }
 
