@@ -539,11 +539,14 @@ void TriventProc::defineColors() {
 }
 
 //=============================================================================
+// std::unique_ptr<TTree> TriventProc::getOrCreateTree(const std::string &treeName, const std::string &treeDescription) {
 TTree *TriventProc::getOrCreateTree(const std::string &treeName, const std::string &treeDescription) {
+  // std::unique_ptr<TTree> tree(static_cast<TTree *>(m_rootFile->Get(treeName.c_str())));
   TTree *tree = static_cast<TTree *>(m_rootFile->Get(treeName.c_str()));
 
   if (!tree) {
     streamlog_out(DEBUG0) << "Creating tree '" << treeName << "'" << std::endl;
+    // tree = make_unique<TTree>(treeName.c_str(), treeDescription.c_str());
     tree = new TTree(treeName.c_str(), treeDescription.c_str());
   }
 
@@ -592,6 +595,7 @@ void TriventProc::init() {
    */
 
   m_rootFile = new TFile(m_rootFileName.c_str(), "RECREATE");
+  // m_rootFile = std::unique_ptr<TFile>(new TFile(m_rootFileName.c_str(), "RECREATE"));
   assert(m_rootFile);
 
   // Create Trigger tree & Branches
@@ -764,8 +768,11 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
   for (unsigned int i = 0; i < m_hcalCollections.size(); i++) //! loop over collection
   {
+    // std::shared_ptr<LCCollection> inputLCCol;
     LCCollection *inputLCCol;
     try {
+      // inputLCCol = std::shared_ptr<LCCollection>(evtP->getCollection(m_hcalCollections.at(i).c_str()));
+      // auto keepAlive = inputLCCol;
       inputLCCol = evtP->getCollection(m_hcalCollections.at(i).c_str());
     } catch (lcio::DataNotAvailableException &zero) {
       streamlog_out(ERROR) << red << "No data found in collection " << i << normal << std::endl;
@@ -799,6 +806,9 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
     for (int ihit(0); ihit < numElements; ++ihit) // loop over the hits
     {
+      // std::unique_ptr<RawCalorimeterHit> raw_hit(dynamic_cast<RawCalorimeterHit *>(inputLCCol->getElementAt(ihit)));
+      // Need a shared_ptr as we push it to a vector
+      // std::shared_ptr<RawCalorimeterHit> raw_hit(dynamic_cast<RawCalorimeterHit *>(inputLCCol->getElementAt(ihit)));
       RawCalorimeterHit *raw_hit = dynamic_cast<RawCalorimeterHit *>(inputLCCol->getElementAt(ihit));
       if (raw_hit) {
         // extract abolute bcid information:
@@ -1059,6 +1069,7 @@ void TriventProc::end() {
 
   std::string cerCut = "CerenkovTime>-" + std::to_string(m_cerenkovTimeWindow);
   m_eventTree->Draw("CerenkovTime>>hcer", cerCut.c_str());
+  // std::unique_ptr<TH1> hcer(dynamic_cast<TH1 *>(gDirectory->Get("hcer")));
   TH1 *hcer = dynamic_cast<TH1 *>(gDirectory->Get("hcer"));
   streamlog_out(MESSAGE) << "Cerenkov Probable time shift at " << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin())
                          << " with " << hcer->GetBinContent(hcer->GetMaximumBin()) << "/" << m_cerenkovEvts
@@ -1075,6 +1086,7 @@ void TriventProc::end() {
   m_lcWriter->close();
 
   // TCanvas *c1 = new TCanvas();
+  // std::unique_ptr<TCanvas> c1 = make_unique<TCanvas>();
   // c1->SetCanvasSize(2048, 1024);
   // c1->Update();
   // c1->cd();

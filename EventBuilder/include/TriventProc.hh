@@ -72,6 +72,7 @@ public:
 
   TH2 *makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle);
 
+  // std::unique_ptr<TTree> getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
   TTree *getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
   void findCerenkovHits(const int timePeak);
 
@@ -79,6 +80,8 @@ protected:
   std::unique_ptr<LCWriter>               m_lcWriter;
   std::vector<EVENT::RawCalorimeterHit *> m_trigger_raw_hit;
   std::vector<EVENT::RawCalorimeterHit *> m_cerenkov_raw_hit;
+  // std::vector<std::shared_ptr<EVENT::RawCalorimeterHit>> m_trigger_raw_hit;
+  // std::vector<std::shared_ptr<EVENT::RawCalorimeterHit>> m_cerenkov_raw_hit;
 
   std::string              m_outputCollectionName;
   std::string              m_outFileName;
@@ -142,14 +145,18 @@ protected:
   std::string white;
 
   // ROOT histograms
+  // std::unique_ptr<TFile> m_rootFile;
   TFile *m_rootFile;
+  // std::vector<std::unique_ptr<TH2>> m_vHitMapPerLayer; // HitMap of selected evt for each Layer
   std::vector<TH2 *> m_vHitMapPerLayer; // HitMap of selected evt for each Layer
   unsigned int       m_runNumber;
   std::string        m_plotFolder;
 
   // Trees
   // TTree *m_triggerTree;
+  // std::unique_ptr<TTree> m_triggerTree;
   TTree *m_eventTree;
+  // std::unique_ptr<TTree> m_eventTree;
 
   // Trigger branches
   // unsigned int m_trigNbr;              // Current trigger number
