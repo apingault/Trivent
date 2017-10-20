@@ -535,7 +535,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
       m_hitThreshold.push_back(thresh);
     }
   } // loop over the hit
-  hitKeys.clear();
+  m_nFiredLayers = m_firedLayersSet.size();
 }
 
 //=============================================================================
