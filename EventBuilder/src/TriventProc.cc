@@ -836,181 +836,179 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
     while (distance(timeIter, endTime) > 0) // Ensure that timeIter < endTime
     {
-      if (*(timeIter) >= m_noiseCut) {
-        auto lowerBound = timeIter;
-        auto upperBound = timeIter;
-        // Ensure we are not looking before/after begin/end of time_spectrum
-        if (distance(beginTime, timeIter) > m_timeWin)
-          lowerBound = std::prev(timeIter, m_timeWin);
-        else if (distance(beginTime, timeIter) > 1) {
-          streamlog_out(DEBUG0) << green << "[processEvent] - small lowerBound! m_timeWin : " << m_timeWin
-                                << " distance(beginTime, timeIter) = " << distance(beginTime, timeIter) << normal
-                                << std::endl;
-          lowerBound = std::prev(timeIter, distance(beginTime, timeIter));
-        } else
-          streamlog_out(DEBUG0) << red << "[processEvent] - shit lowerBound! m_timeWin : " << m_timeWin
-                                << " distance(beginTime, timeIter) = " << distance(beginTime, timeIter) << normal
-                                << std::endl;
-
-        if (distance(timeIter, endTime) > m_timeWin)
-          upperBound = std::next(timeIter, m_timeWin);
-        else {
-          upperBound = std::next(timeIter, distance(timeIter, endTime)); // distance > 0 already met in while loop
-          streamlog_out(DEBUG0) << green << "[processEvent] - small upperBound! m_timeWin : " << m_timeWin
-                                << " distance(timeIter, endTime) = " << distance(timeIter, endTime) << normal
-                                << std::endl;
-        }
-        // find the bin in +- timeWin with max hits
-
-        const auto &maxIter = std::max_element(lowerBound, upperBound); // max in [lower,upper)
-        streamlog_out(DEBUG0) << yellow << "[processEvent] - upperBound '" << distance(beginTime, upperBound)
-                              << "' lowerBound '" << distance(beginTime, lowerBound) << " max '"
-                              << distance(beginTime, maxIter) << "' : " << *maxIter << normal << std::endl;
-
-        if (maxIter <= prevMaxIter && distance(beginTime, timeIter) > 0) {
-          streamlog_out(DEBUG0) << yellow << "[processEvent] - Found duplicate peak, at time '"
-                                << distance(time_spectrum.begin(), maxIter) << "' previous peak : '"
-                                << distance(time_spectrum.begin(), prevMaxIter) << "'..." << normal << std::endl;
-          ++timeIter;
-        }
-
-        // streamlog_out(WARNING) << yellow << "*maxIter: " << *maxIter
-        //  << "' *timeIter: " << *timeIter
-        //  << "' m_timeWin: " << m_timeWin
-        //  << normal << std::endl;
-
-        // find if the current bin has the max or equal hits
-        if ((maxIter == timeIter) || (*(maxIter) == *(timeIter))) // if bin > other bins or bin is equal to biggest bin
-        {
-          streamlog_out(DEBUG) << blue << "[processEvent] - Found Peak, at time '"
-                               << distance(time_spectrum.begin(), maxIter) << "' - hits : " << *maxIter << normal
-                               << std::endl;
-          prevMaxIter = maxIter;
-          // Found a peak at time *(timeIter)
-          // std::cout << yellow
-          //           << "\tmaxIter: " << std::distance(maxIter, timeIter)
-          //           << "\tm_timeWin: " << m_timeWin
-          //           << "\t m_noiseCut: " << m_noiseCut
-          //           << "\t time: " << *(timeIter)
-          //           << "\t nextTime: " << *(std::next(timeIter))
-          //           << "\t prevTime: " << *(std::prev(timeIter))
-          //           << "\t 2nextTime: " << *(std::next(timeIter, 2))
-          //           << "\t 2prevTime: " << *(std::prev(timeIter, 2))
-          //           << normal << std::endl;
-          std::unique_ptr<LCEventImpl> lcEvt = make_unique<LCEventImpl>(); // create the event
-
-          //---------- set event paramters ------
-          const std::string parname_trigger = "trigger";
-          const std::string parname_energy  = "beamEnergy";
-          const std::string parname_bcid1   = "bcid1";
-          const std::string parname_bcid2   = "bcid2";
-          lcEvt->parameters().setValue(parname_trigger, evtP->getEventNumber());
-          lcEvt->parameters().setValue(parname_energy, m_beamEnergy);
-          lcEvt->parameters().setValue(parname_bcid1, m_bcid1);
-          lcEvt->parameters().setValue(parname_bcid2, m_bcid2);
-          lcEvt->setRunNumber(evtP->getRunNumber());
-          m_runNumber = evtP->getRunNumber();
-          //-------------------------------------
-
-          std::unique_ptr<LCCollectionVec> outCol = make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
-
-          // reset Flags
-          m_isSelected         = false;
-          m_isNoise            = false;
-          m_hasNotEnoughLayers = false;
-          m_hasFullAsic        = false;
-          m_isTooCloseInTime   = false;
-          m_hitI.clear();
-          m_hitJ.clear();
-          m_hitK.clear();
-          m_hitThreshold.clear();
-
-          // Event Building
-          int timePeak = distance(time_spectrum.begin(), timeIter);
-          streamlog_out(DEBUG0) << blue << " EventBuilding with timePeak '" << timePeak
-                                << "' prevTimePeak: " << prevTimePeak << normal << std::endl;
-          TriventProc::eventBuilder(outCol, timePeak, prevTimePeak);
-          streamlog_out(DEBUG0) << blue << " EventBuilding...OK" << normal << std::endl;
-
-          m_evtTrigNbr   = m_trigNbr;
-          m_evtNbr       = m_evtNum; // rejected event will have same number as last accepted !
-          m_nHit         = outCol->getNumberOfElements();
-          m_nFiredLayers = static_cast<int>(m_firedLayersSet.size());
-          m_nCerenkov1   = 0;
-          m_nCerenkov2   = 0;
-          m_nCerenkov3   = 0;
-          m_timeCerenkov = -2 * m_cerenkovTimeWindow;
-
-          if (m_hasCherenkov) {
-            // streamlog_out( MESSAGE ) << green << "hit in bif: " << m_cerenkov_raw_hit.size() << normal <<
-            // std::endl;
-
-            streamlog_out(DEBUG0) << " Find Cer " << m_cerenkov_raw_hit.size() << std::endl;
-            findCerenkovHits(timePeak);
-            streamlog_out(DEBUG0) << " Find Cer OK" << normal << std::endl;
-
-            if (m_timeCerenkov != -2 * m_cerenkovTimeWindow) // InitialValue
-            {
-              streamlog_out(DEBUG) << "[processEvent] - " << green << "Trig# " << m_evtTrigNbr << " TrigCount "
-                                   << m_trigCount << " Evt# " << m_evtNum << "\tFound Cerenkov!"
-                                   << "\t cer1 = " << m_nCerenkov1 << "\t cer2 = " << m_nCerenkov2
-                                   << "\t cer3 = " << m_nCerenkov3 << normal << std::endl;
-            }
-          }
-
-          streamlog_out(DEBUG0) << "_firedLayersSet.size() = " << m_nFiredLayers << "\t _LayerCut = " << m_layerCut
-                                << std::endl;
-
-          // Apply cut on min number of firedLayer +
-          if (static_cast<int>(m_nFiredLayers) < m_layerCut) {
-            streamlog_out(DEBUG0) << green << " Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
-                                  << " m_layerCut: " << m_layerCut << normal << std::endl;
-            m_rejectedNum++;
-            m_isSelected         = false;
-            m_hasNotEnoughLayers = true;
-          }
-          //  Apply cut on time between two events
-          else if (abs(timePeak - prevTimePeak) > m_time2prevEventCut) {
-            streamlog_out(DEBUG0) << green << " Trivent find event at :==> " << red << timePeak << green
-                                  << "\t :Nhit: ==> " << magenta << outCol->getNumberOfElements() << normal
-                                  << std::endl;
-            lcEvt->setEventNumber(++m_evtNum);
-
-            lcEvt->addCollection(outCol.release(), m_outputCollectionName);
-            m_lcWriter->writeEvent(lcEvt.get());
-            assert(lcEvt);
-
-            ++m_selectedNum;
-            m_isSelected = true;
-          } else {
-            streamlog_out(MESSAGE) << blue << " Event rejected, Events too close. eventTime: " << timePeak
-                                   << " prevEventTime: " << prevTimePeak << normal << std::endl;
-            ++m_rejectedNum;
-            m_isSelected       = false;
-            m_isTooCloseInTime = true;
-          }
-
-          if (m_nCerenkov1 > 0 || m_nCerenkov2 > 0 || m_nCerenkov3 > 0) {
-            ++m_cerenkovEvts;
-          }
-
-          m_eventTree->Fill();
-
-          prevTimePeak = timePeak;
-          timeIter     = std::next(timeIter, m_timeWin + 1);
-        } else // is not a peak, look in next frame
-        {
-          ++timeIter;
-        }
-      } else // Not enough hit in frame, look in next one ( previous bin has already been looked into )
-      {
+      if (*(timeIter) < m_noiseCut) { // Not enough hit in frame, look in next one
         // if (*timeIter >5)
         // streamlog_out(WARNING) <<yellow<< "[NoiseCut] - Event rejected : " << *(timeIter) << normal <<
         // std::endl;
         ++timeIter;
+        continue;
+      }
+
+      auto lowerBound = timeIter;
+      auto upperBound = timeIter;
+      // Ensure we are not looking before/after begin/end of time_spectrum
+      if (distance(beginTime, timeIter) > m_timeWin)
+        lowerBound = std::prev(timeIter, m_timeWin);
+      else if (distance(beginTime, timeIter) > 1) {
+        streamlog_out(DEBUG0) << green << "[processEvent] - small lowerBound! m_timeWin : " << m_timeWin
+                              << " distance(beginTime, timeIter) = " << distance(beginTime, timeIter) << normal
+                              << std::endl;
+        lowerBound = std::prev(timeIter, distance(beginTime, timeIter));
+      } else
+        streamlog_out(DEBUG0) << red << "[processEvent] - shit lowerBound! m_timeWin : " << m_timeWin
+                              << " distance(beginTime, timeIter) = " << distance(beginTime, timeIter) << normal
+                              << std::endl;
+
+      if (distance(timeIter, endTime) > m_timeWin)
+        upperBound = std::next(timeIter, m_timeWin);
+      else {
+        upperBound = std::next(timeIter, distance(timeIter, endTime)); // distance > 0 already met in while loop
+        streamlog_out(DEBUG0) << green << "[processEvent] - small upperBound! m_timeWin : " << m_timeWin
+                              << " distance(timeIter, endTime) = " << distance(timeIter, endTime) << normal
+                              << std::endl;
+      }
+      // find the bin in +- timeWin with max hits
+
+      const auto &maxIter = std::max_element(lowerBound, upperBound); // max in [lower,upper)
+      streamlog_out(DEBUG0) << yellow << "[processEvent] - upperBound '" << distance(beginTime, upperBound)
+                            << "' lowerBound '" << distance(beginTime, lowerBound) << " max '"
+                            << distance(beginTime, maxIter) << "' : " << *maxIter << normal << std::endl;
+
+      if (maxIter <= prevMaxIter && distance(beginTime, timeIter) > 0) {
+        streamlog_out(DEBUG0) << yellow << "[processEvent] - Found duplicate peak, at time '"
+                              << distance(time_spectrum.begin(), maxIter) << "' previous peak : '"
+                              << distance(time_spectrum.begin(), prevMaxIter) << "'..." << normal << std::endl;
+        ++timeIter;
+      }
+
+      // streamlog_out(WARNING) << yellow << "*maxIter: " << *maxIter
+      //  << "' *timeIter: " << *timeIter
+      //  << "' m_timeWin: " << m_timeWin
+      //  << normal << std::endl;
+
+      // find if the current bin has the max or equal hits
+      if ((maxIter == timeIter) || (*(maxIter) == *(timeIter))) // if bin > other bins or bin is equal to biggest bin
+      {
+        streamlog_out(DEBUG) << blue << "[processEvent] - Found Peak, at time '"
+                             << distance(time_spectrum.begin(), maxIter) << "' - hits : " << *maxIter << normal
+                             << std::endl;
+        prevMaxIter = maxIter;
+        // Found a peak at time *(timeIter)
+        // std::cout << yellow
+        //           << "\tmaxIter: " << std::distance(maxIter, timeIter)
+        //           << "\tm_timeWin: " << m_timeWin
+        //           << "\t m_noiseCut: " << m_noiseCut
+        //           << "\t time: " << *(timeIter)
+        //           << "\t nextTime: " << *(std::next(timeIter))
+        //           << "\t prevTime: " << *(std::prev(timeIter))
+        //           << "\t 2nextTime: " << *(std::next(timeIter, 2))
+        //           << "\t 2prevTime: " << *(std::prev(timeIter, 2))
+        //           << normal << std::endl;
+        std::unique_ptr<LCEventImpl> lcEvt = make_unique<LCEventImpl>(); // create the event
+
+        //---------- set event paramters ------
+        const std::string parname_trigger = "trigger";
+        const std::string parname_energy  = "beamEnergy";
+        const std::string parname_bcid1   = "bcid1";
+        const std::string parname_bcid2   = "bcid2";
+        lcEvt->parameters().setValue(parname_trigger, evtP->getEventNumber());
+        lcEvt->parameters().setValue(parname_energy, m_beamEnergy);
+        lcEvt->parameters().setValue(parname_bcid1, m_bcid1);
+        lcEvt->parameters().setValue(parname_bcid2, m_bcid2);
+        lcEvt->setRunNumber(evtP->getRunNumber());
+        m_runNumber = evtP->getRunNumber();
+        //-------------------------------------
+
+        std::unique_ptr<LCCollectionVec> outCol = make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
+
+        // reset Flags
+        m_isSelected         = false;
+        m_isNoise            = false;
+        m_hasNotEnoughLayers = false;
+        m_hasFullAsic        = false;
+        m_isTooCloseInTime   = false;
+        m_hitI.clear();
+        m_hitJ.clear();
+        m_hitK.clear();
+        m_hitThreshold.clear();
+
+        // Event Building
+        int timePeak = distance(time_spectrum.begin(), timeIter);
+        streamlog_out(DEBUG0) << blue << " EventBuilding with timePeak '" << timePeak
+                              << "' prevTimePeak: " << prevTimePeak << normal << std::endl;
+        TriventProc::eventBuilder(outCol, timePeak, prevTimePeak);
+        streamlog_out(DEBUG0) << blue << " EventBuilding...OK" << normal << std::endl;
+
+        m_evtTrigNbr   = m_trigNbr;
+        m_evtNbr       = m_evtNum; // rejected event will have same number as last accepted !
+        m_nHit         = outCol->getNumberOfElements();
+        m_nFiredLayers = static_cast<int>(m_firedLayersSet.size());
+        m_nCerenkov1   = 0;
+        m_nCerenkov2   = 0;
+        m_nCerenkov3   = 0;
+        m_timeCerenkov = -2 * m_cerenkovTimeWindow;
+
+        if (m_hasCherenkov) {
+          // streamlog_out( MESSAGE ) << green << "hit in bif: " << m_cerenkov_raw_hit.size() << normal <<
+          // std::endl;
+
+          streamlog_out(DEBUG0) << " Find Cer " << m_cerenkov_raw_hit.size() << std::endl;
+          findCerenkovHits(timePeak);
+          streamlog_out(DEBUG0) << " Find Cer OK" << normal << std::endl;
+
+          if (m_timeCerenkov != -2 * m_cerenkovTimeWindow) // InitialValue
+          {
+            streamlog_out(DEBUG) << "[processEvent] - " << green << "Trig# " << m_evtTrigNbr << " TrigCount "
+                                 << m_trigCount << " Evt# " << m_evtNum << "\tFound Cerenkov!"
+                                 << "\t cer1 = " << m_nCerenkov1 << "\t cer2 = " << m_nCerenkov2
+                                 << "\t cer3 = " << m_nCerenkov3 << normal << std::endl;
+          }
+        }
+
+        streamlog_out(DEBUG0) << "_firedLayersSet.size() = " << m_nFiredLayers << "\t _LayerCut = " << m_layerCut
+                              << std::endl;
+
+        // Apply cut on min number of firedLayer +
+        if (static_cast<int>(m_nFiredLayers) < m_layerCut) {
+          streamlog_out(DEBUG0) << green << " Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
+                                << " m_layerCut: " << m_layerCut << normal << std::endl;
+          m_rejectedNum++;
+          m_isSelected         = false;
+          m_hasNotEnoughLayers = true;
+        }
+        //  Apply cut on time between two events
+        else if (abs(timePeak - prevTimePeak) > m_time2prevEventCut) {
+          streamlog_out(DEBUG0) << green << " Trivent find event at :==> " << red << timePeak << green
+                                << "\t :Nhit: ==> " << magenta << outCol->getNumberOfElements() << normal << std::endl;
+          lcEvt->setEventNumber(++m_evtNum);
+
+          lcEvt->addCollection(outCol.release(), m_outputCollectionName);
+          m_lcWriter->writeEvent(lcEvt.get());
+          assert(lcEvt);
+
+          ++m_selectedNum;
+          m_isSelected = true;
+        } else {
+          streamlog_out(MESSAGE) << blue << " Event rejected, Events too close. eventTime: " << timePeak
+                                 << " prevEventTime: " << prevTimePeak << normal << std::endl;
+          ++m_rejectedNum;
+          m_isSelected       = false;
+          m_isTooCloseInTime = true;
+        }
+
+        if (m_nCerenkov1 > 0 || m_nCerenkov2 > 0 || m_nCerenkov3 > 0) {
+          ++m_cerenkovEvts;
+        }
+
+        m_eventTree->Fill();
+
+        prevTimePeak = timePeak;
+        timeIter     = std::next(timeIter, m_timeWin + 1);
+      } else // is not a peak, look in next frame
+      {
+        ++timeIter;
       }
     }
-
     // m_vTimeSpectrum = time_spectrum;
     // m_triggerTree->Fill();
   }
