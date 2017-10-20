@@ -74,6 +74,19 @@ public:
   bool checkPadLimits(const std::vector<int> &padIndex, const std::vector<int> &padLimits);
 
   std::vector<int> getPadIndex(const int &dif_id, const int &asic_id, const int &chan_id);
+
+  /**
+   * @brief
+   *
+   */
+  void resetEventParameters();
+
+  /**
+   * @brief
+   *
+   */
+  void resetTriggerParameters();
+
   void eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event, const int &time_peak, const int &prev_time_peak);
   void end();
 

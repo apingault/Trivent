@@ -358,9 +358,38 @@ int TriventProc::getAsicKey(const std::vector<int> &padIndex) {
 }
 
 //=============================================================================
-void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event, const int &time_peak, const int &prev_time_peak) {
+void TriventProc::resetTriggerParameters() {
+  m_nCerenkovTrigger   = 0;
+  m_hasTooManyCerenkov = false;
+}
 
+//=============================================================================
+void TriventProc::resetEventParameters() {
+  // reset Flags
+  m_isSelected         = false;
+  m_isNoise            = false;
+  m_hasNotEnoughLayers = false;
+  m_hasFullAsic        = false;
+  m_isTooCloseInTime   = false;
+  m_nHit               = 0;
+  m_hitI.clear();
+  m_hitJ.clear();
+  m_hitK.clear();
+  m_hitThreshold.clear();
   m_firedLayersSet.clear();
+
+  m_nFiredLayers = 0;
+  m_nCerenkov1   = 0;
+  m_nCerenkov2   = 0;
+  m_nCerenkov3   = 0;
+  m_timeCerenkov = -2 * m_cerenkovTimeWindow;
+}
+
+//=============================================================================
+void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event, const int &time_peak,
+                               const int &prev_time_peak) {
+
+  resetEventParameters();
 
   col_event->setFlag(col_event->getFlag() | (1 << LCIO::RCHBIT_LONG));
   col_event->setFlag(col_event->getFlag() | (1 << LCIO::RCHBIT_TIME));
@@ -807,9 +836,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
     //---------------------------------------------------------------
     //! Find the candidate event
-    int prevTimePeak     = 0; //  the previous bin center
-    m_nCerenkovTrigger   = 0;
-    m_hasTooManyCerenkov = false;
+    resetTriggerParameters();
 
     // Event is built at peakTime+-TimeWindow
     // Loop on time_spectrum vector without going out of range
