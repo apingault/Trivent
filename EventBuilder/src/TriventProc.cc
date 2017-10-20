@@ -398,6 +398,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
 
   std::map<int, int> asicMap;
   std::map<int, int> hitKeys;
+  // TODO: reduce m_trigger_raw_hit after each built event so it doesnt iterate over the whole trigger each time !
   for (const auto &rawhit : m_trigger_raw_hit) {
     assert(rawhit);
     const int rawHitTime = static_cast<int>(rawhit->getTimeStamp());
@@ -796,8 +797,8 @@ std::vector<std::vector<int>::iterator>
 TriventProc::getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime, std::vector<int>::iterator &endTime,
                                         std::vector<int>::iterator &candidateTime) {
   assert(beginTime < endTime);
-  assert(candidateTime > beginTime);
-  assert(candidateTime < endTime);
+  assert(candidateTime >= beginTime);
+  assert(candidateTime < endTime); // Can't be equal otherwise we'll access outofbound value on next ++timeIter call
   std::vector<int>::iterator lowerBound = endTime;
   std::vector<int>::iterator upperBound = beginTime;
 
@@ -806,13 +807,10 @@ TriventProc::getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime, s
   if (timeDistance > m_timeWin)
     lowerBound = std::prev(candidateTime, m_timeWin);
   // Don't throw a potential candidate found in the first few frames of the trigger
-  else if (timeDistance > 1) {
+  else {
     streamlog_out(DEBUG0) << green << "[processEvent] - small lowerBound! m_timeWin : " << m_timeWin
                           << " distance(beginTime, candidateTime) = " << timeDistance << normal << std::endl;
     lowerBound = std::prev(candidateTime, timeDistance);
-  } else { // Should never happen as we have an assert before
-    streamlog_out(ERROR) << red << "[processEvent] - Weird lowerBound! m_timeWin : " << m_timeWin
-                         << " distance(beginTime, candidateTime) = " << timeDistance << normal << std::endl;
   }
 
   // Check we are sufficiently far from end of time_spectrum
@@ -827,6 +825,8 @@ TriventProc::getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime, s
   streamlog_out(DEBUG0) << "low: " << distance(beginTime, lowerBound) << " up " << distance(beginTime, upperBound)
                         << std::endl;
   assert(lowerBound < upperBound);
+  assert(std::distance(upperBound, lowerBound) <= 2 * m_timeWin);
+  assert(std::distance(lowerBound, upperBound) > m_timeWin);
   return {lowerBound, upperBound};
 }
 
@@ -884,7 +884,6 @@ void TriventProc::processEvent(LCEvent *evtP) {
     std::vector<int>::iterator timeIter      = beginTimeIter;
     std::vector<int>::iterator prevMaxIter   = beginTimeIter;
 
-
     while (std::distance(timeIter, endTimeIter) > 0) { // Ensure that timeIter < endTime
       if (*(timeIter) < m_noiseCut) {                  // Not enough hit in frame, look in next one
         ++timeIter;
@@ -892,13 +891,14 @@ void TriventProc::processEvent(LCEvent *evtP) {
       }
 
       // find timeBoundaries to build the event
-      const auto boundaries = getCandidateTimeBoundaries(prevMaxIter, endTimeIter, timeIter);
+      const auto  boundaries = getCandidateTimeBoundaries(prevMaxIter, endTimeIter, timeIter);
+      const auto &maxIter    = std::max_element(boundaries[0], boundaries[1]); // max in [lower,upper))
+      // We are moving frame by frame, maxIter should not be before current timeIter
+      assert(maxIter >= timeIter);
 
-      // find the bin in +- timeWin with max hits
-      const auto &maxIter = std::max_element(boundaries[0], boundaries[1]); // max in [lower,upper))
-      if (maxIter != timeIter) {
-        // is not a peak, look in next frame
-        timeIter = std::next(timeIter, std::distance(timeIter, maxIter));
+      if (maxIter > timeIter) {
+        // timeIter is not a real peak yet, look in next frame
+        ++timeIter;
         continue;
       }
 
@@ -968,7 +968,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
       if (static_cast<int>(m_nFiredLayers) < m_layerCut) {
         streamlog_out(DEBUG0) << green << " Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
                               << " m_layerCut: " << m_layerCut << normal << std::endl;
-        m_rejectedNum++;
+        ++m_rejectedNum;
         m_isSelected         = false;
         m_hasNotEnoughLayers = true;
       }
@@ -1000,10 +1000,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
       }
 
       m_eventTree->Fill();
-
-      // prevTimePeak = timePeak;
-      ++timeIter;
-      // timeIter = std::next(timeIter, m_timeWin);
+      timeIter = std::next(timeIter, m_timeWin + 1);
     }
     // m_vTimeSpectrum = time_spectrum;
     // m_triggerTree->Fill();
