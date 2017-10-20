@@ -7,20 +7,18 @@ void DIFSlowControl::FillHR1(int header_shift,unsigned char *cbuf)
   int nasic = cbuf[header_shift-1]; int idx=header_shift;
   for (int k=0;k<nasic;k++)
     {
-      bitset<72*8> bs;
-      //printf("%x %x \n",cbuf[idx+k*72+69],cbuf[idx+k*72+70]);
-      for (int l =71;l>=0;l--)
-	{
-	  //  printf("%d %x : %d -->",l,cbuf[idx+k*72+l],(71-l)*8);
-	  for (int m=0;m<8;m++)
-	    {
-	      if ( ( (1<<m) & cbuf[idx+k*72+l]) !=0 )
-		bs.set((71-l)*8+m,1);
-	      else
-		bs.set((71-l)*8+m,0);
-	      //printf("%d",(int) bs[(71-l)*8+m]);
-	    }
-	  //printf("\n");
+    std::bitset<72 * 8> bs;
+    // printf("%x %x \n",cbuf[idx+k*72+69],cbuf[idx+k*72+70]);
+    for (int l = 71; l >= 0; l--) {
+      //  printf("%d %x : %d -->",l,cbuf[idx+k*72+l],(71-l)*8);
+      for (int m = 0; m < 8; m++) {
+        if (((1 << m) & cbuf[idx + k * 72 + l]) != 0)
+          bs.set((71 - l) * 8 + m, 1);
+        else
+          bs.set((71 - l) * 8 + m, 0);
+        // printf("%d",(int) bs[(71-l)*8+m]);
+      }
+      // printf("\n");
 	}
 
       FillAsicHR1(bs);
@@ -35,20 +33,18 @@ void DIFSlowControl::FillHR2(int header_shift,unsigned char *cbuf)
   //std::cout<<" DIFSlowControl::FillHR nasic "<<nasic<<std::endl;
   for (int k=0;k<nasic;k++)
     {
-      bitset<109*8> bs;
-      //printf("%x %x \n",cbuf[idx+k*109+69],cbuf[idx+k*109+70]);
-      for (int l =108;l>=0;l--)
-	{
-	  //  printf("%d %x : %d -->",l,cbuf[idx+k*109+l],(71-l)*8);
-	  for (int m=0;m<8;m++)
-	    {
-	      if ( ( (1<<m) & cbuf[idx+k*109+l]) !=0 )
-		bs.set((108-l)*8+m,1);
-	      else
-		bs.set((108-l)*8+m,0);
-	      //printf("%d",(int) bs[(71-l)*8+m]);
-	    }
-	  //printf("\n");
+    std::bitset<109 * 8> bs;
+    // printf("%x %x \n",cbuf[idx+k*109+69],cbuf[idx+k*109+70]);
+    for (int l = 108; l >= 0; l--) {
+      //  printf("%d %x : %d -->",l,cbuf[idx+k*109+l],(71-l)*8);
+      for (int m = 0; m < 8; m++) {
+        if (((1 << m) & cbuf[idx + k * 109 + l]) != 0)
+          bs.set((108 - l) * 8 + m, 1);
+        else
+          bs.set((108 - l) * 8 + m, 0);
+        // printf("%d",(int) bs[(71-l)*8+m]);
+      }
+      // printf("\n");
 	}
 
       FillAsicHR2(bs);

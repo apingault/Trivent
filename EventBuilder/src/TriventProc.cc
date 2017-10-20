@@ -207,16 +207,16 @@ void TriventProc::XMLReader(const std::string &xmlfile) {
       LayerID mapp{};
       int     Dif_id;
       while (ss.good()) {
-        string substr;
+        std::string substr;
         getline(ss, substr, ',');
         result.push_back(substr);
       }
-      istringstream(result.at(0)) >> Dif_id;
-      istringstream(result.at(1)) >> mapp.K;
-      istringstream(result.at(2)) >> mapp.DifX;
-      istringstream(result.at(3)) >> mapp.DifY;
-      istringstream(result.at(4)) >> mapp.IncX;
-      istringstream(result.at(5)) >> mapp.IncY;
+      std::istringstream(result.at(0)) >> Dif_id;
+      std::istringstream(result.at(1)) >> mapp.K;
+      std::istringstream(result.at(2)) >> mapp.DifX;
+      std::istringstream(result.at(3)) >> mapp.DifY;
+      std::istringstream(result.at(4)) >> mapp.IncX;
+      std::istringstream(result.at(5)) >> mapp.IncY;
       m_mDifMapping[Dif_id] = mapp;
       m_layerSet.insert(mapp.K);
     }
