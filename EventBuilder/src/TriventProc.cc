@@ -662,13 +662,18 @@ void TriventProc::init() {
 
     std::stringstream oss;
     oss << "hitMap_Layer" << iLayer;
-    m_vHitMapPerLayer.at(iLayer) = (new TH2D(oss.str().c_str(), oss.str().c_str(), 96, 1, 97, 96, 1, 97));
-    m_vHitMapPerLayer.at(iLayer)->GetXaxis()->SetTitle("I");
-    m_vHitMapPerLayer.at(iLayer)->GetYaxis()->SetTitle("J (DIFSide)");
-
     streamlog_out(DEBUG0) << "Booking hitMap for layer '" << iLayer << "'..." << std::endl;
+    m_vHitMapPerLayer.push_back(makeTH2(oss.str(), "I", "J (DIFSide)"));
+    assert(m_vHitMapPerLayer.back());
     streamlog_out(DEBUG0) << "Booking hitMap for layer '" << iLayer << "'...OK" << std::endl;
   }
+
+  std::stringstream oss;
+  oss << "hitMap_Cerenkov";
+  streamlog_out(DEBUG0) << "Booking hitMap for Cerenkov..." << std::endl;
+  m_vHitMapPerLayer.push_back(makeTH2(oss.str(), "I", "J (DIFSide)"));
+  assert(m_vHitMapPerLayer.back());
+  streamlog_out(DEBUG0) << "Booking hitMap for Cerenkov...OK" << std::endl;
 
   int iLayer = 0;
   for (auto const &histo : m_vHitMapPerLayer) {
@@ -681,6 +686,14 @@ void TriventProc::init() {
 
 //=============================================================================
 
+TH2 *TriventProc::makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle) {
+  // m_vHitMapPerLayer.at(iLayer) = new TH2D(oss.str().c_str(), oss.str().c_str(), 96, 1, 97, 96, 1, 97);
+  // std::unique_ptr<TH2D> h2Map = make_unique<TH2D>(oss.str().c_str(), oss.str().c_str(), 96, 1, 97, 96, 1, 97);
+  TH2 *hMap = new TH2D(title.c_str(), title.c_str(), 96, 1, 97, 96, 1, 97);
+  hMap->GetXaxis()->SetTitle(xTitle.c_str());
+  hMap->GetYaxis()->SetTitle(yTitle.c_str());
+  return hMap;
+}
 
 //=============================================================================
 void TriventProc::findCerenkovHits(int timePeak)

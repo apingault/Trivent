@@ -57,6 +57,7 @@ public:
   void end();
 
   TTree *getOrCreateTree(std::string treeName, std::string treeDescription);
+  TH2 *makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle);
   void findCerenkovHits(const int timePeak);
 
 protected:
