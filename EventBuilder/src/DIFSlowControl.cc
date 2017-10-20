@@ -96,14 +96,13 @@ DIFSlowControl::DIFSlowControl(unsigned int vers,unsigned short DIdi,unsigned ch
 
 
 }
-void DIFSlowControl::FillAsicHR1(bitset<72*8> &bs)
-{
+void DIFSlowControl::FillAsicHR1(std::bitset<72 * 8> &bs) {
   // Asic Id
   int asicid=0;
   for (int j=0;j<8;j++) if (bs[j+9]!=0) asicid += (1<<(7-j));
   char Name[256];
 
-  map<string,int> mAsic;
+  std::map<std::string, int> mAsic;
 
   // Slow Control
   mAsic["SSC0"]=(int)  bs[575];
@@ -130,7 +129,7 @@ void DIFSlowControl::FillAsicHR1(bitset<72*8> &bs)
       Gain[i]=0;
       for (int j=0;j<6;j++) if (bs[176+i*6+j]!=0) Gain[i]+= (1<<j);
       sprintf(Name,"Channel_%i_",i);
-      string name(Name);
+      std::string name(Name);
       mAsic[(name+"Gain")]=Gain[i];
     }
 
@@ -140,7 +139,7 @@ void DIFSlowControl::FillAsicHR1(bitset<72*8> &bs)
     {
       cTest[i]=bs[112+i];
       sprintf(Name,"Channel_%i_",i);
-      string name(Name);
+      std::string name(Name);
       mAsic[(name+"cTest")]=cTest[i];
 
     }
@@ -161,7 +160,7 @@ void DIFSlowControl::FillAsicHR1(bitset<72*8> &bs)
     {
       Valid_trig[j]=(int) bs[25+j];
       sprintf(Name,"Channel_%i_",j);
-      string name(Name);
+      std::string name(Name);
       mAsic[(name+"Valid_trig")]=Valid_trig[j];
 
     }
@@ -188,21 +187,20 @@ void DIFSlowControl::FillAsicHR1(bitset<72*8> &bs)
   return;
 
 }
-void DIFSlowControl::FillAsicHR2(bitset<109*8> &bs)
-{
+void DIFSlowControl::FillAsicHR2(std::bitset<109 * 8> &bs) {
   int asicid=0;
   for (int j=0;j<8;j++) if (bs[j+(108-7)*8+2]!=0) asicid += (1<<(7-j));
 
   //std::cout<<"DIFSlowControl::FillAsicHR2 "<<asicid<<std::endl;
   char Name[256];
-  map<string,int> mAsic;
+  std::map<std::string, int> mAsic;
 
   int cTest[64],gain[64];
   for(int i=0;i<64;i++)
     {
       cTest[i]=bs[i];
       sprintf(Name,"Channel_%i_",i);
-      string name(Name);
+      std::string name(Name);
       mAsic[(name+"cTest")]=cTest[i];
 
       gain[i]=0;
@@ -265,7 +263,7 @@ void DIFSlowControl::FillAsicHR2(bitset<109*8> &bs)
       mask[i]=0;
       for (int j=0;j<3;j++) if (bs[8*77+2+i*3+j]!=0) mask[i]+=(1<<j);
       sprintf(Name,"Channel_%i_",i);
-      string name(Name);
+      std::string name(Name);
       mAsic[(name+"Mask")]=mask[i];
     }
 
@@ -276,7 +274,7 @@ void DIFSlowControl::FillAsicHR2(bitset<109*8> &bs)
       B[i]=0;
       for (int j=0;j<10;j++) if (bs[8*102+2+i*10+j]!=0) B[i]+=(1<<j);
       sprintf(Name,"B%i",i);
-      string name(Name);
+      std::string name(Name);
       mAsic[name]=B[i];
     }
 
@@ -311,10 +309,9 @@ void DIFSlowControl::FillAsicHR2(bitset<109*8> &bs)
 void DIFSlowControl::Dump()
 {
 
-  for (map< int,map < string,int > >::iterator it=_mapSC.begin();it!=_mapSC.end();++it)
-    {
-      std::cout<<"ASIC " <<it->first<<std::endl;
-      for (map < string,int >::iterator jt =(it->second).begin(); jt!=(it->second).end();++jt)
-	std::cout<<jt->first<<" : "<<jt->second<<std::endl;
+  for (std::map<int, std::map<std::string, int>>::iterator it = _mapSC.begin(); it != _mapSC.end(); ++it) {
+    std::cout << "ASIC " << it->first << std::endl;
+    for (std::map<std::string, int>::iterator jt = (it->second).begin(); jt != (it->second).end(); ++jt)
+      std::cout << jt->first << " : " << jt->second << std::endl;
     }
 }
