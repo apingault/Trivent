@@ -320,7 +320,7 @@ int TriventProc::getMaxTime() {
 //=============================================================================
 std::vector<int> TriventProc::getTimeSpectrum(const int &maxTime) //__attribute__((optimize(0)))
 {
-  std::vector<int> time_spectrum(maxTime + 1);
+  std::vector<int> time_spectrum(maxTime + 1,0);
   for (auto &raw_hit : m_trigger_raw_hit) {
     assert(raw_hit);
     int time = static_cast<int>(raw_hit->getTimeStamp());
@@ -401,6 +401,8 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
   // TODO: reduce m_trigger_raw_hit after each built event so it doesnt iterate over the whole trigger each time !
   for (const auto &rawhit : m_trigger_raw_hit) {
     assert(rawhit);
+
+
     const int rawHitTime = static_cast<int>(rawhit->getTimeStamp());
 
     // TODO: Make it nicer. Here it just ensure cerenkov hit within m_cerenkovTimeWindow are not discarded from the
@@ -408,8 +410,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
     unsigned int timeWindow = m_timeWin;
     if (getCellDif_id(rawhit->getCellID0()) == m_cerenkovDifId)
       timeWindow = m_cerenkovTimeWindow;
-
-    assert(time_peak - prev_time_peak > m_timeWin);
 
     if ((std::fabs(rawHitTime - time_peak) > timeWindow) || (rawHitTime - prev_time_peak < m_timeWin))
       continue;
@@ -871,9 +871,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
     // set raw hits
     fillRawHitTrigger(*inputLCCol);
-
-    const int        maxTime       = getMaxTime();
-    std::vector<int> time_spectrum = getTimeSpectrum(maxTime);
+    std::vector<int> time_spectrum = getTimeSpectrum(getMaxTime());
 
     //---------------------------------------------------------------
     //! Find the candidate event
@@ -895,8 +893,6 @@ void TriventProc::processEvent(LCEvent *evtP) {
       // find timeBoundaries to build the event
       const auto  boundaries = getCandidateTimeBoundaries(prevMaxIter, endTimeIter, timeIter);
       const auto &maxIter    = std::max_element(boundaries[0], boundaries[1]); // max in [lower,upper))
-      // We are moving frame by frame, maxIter should not be before current timeIter
-      assert(maxIter >= timeIter);
 
       if (maxIter > timeIter) {
         // timeIter is not a real peak yet, look in next frame
