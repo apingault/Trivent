@@ -5,7 +5,6 @@
  * Trivent v0.3
  */
 
-
 /*
  *  TODO : LCIO parameters
  *          - startOfSpill Time Stamp
@@ -13,6 +12,7 @@
  *
  *      Add a cut if too much hit in One layer vs before/after (mean of +-3 layers)
  *          -> Remove Grounding Event?
+ *          -> Remove event if RamFull on DIF
  *      ROOT
  *        timeSpectrum + limit
  *        rejected event
@@ -27,192 +27,129 @@
 #include <TriventProc.hh>
 
 // -- std includes
-#include <fstream>    // std::stringstream
-#include <iterator>   // std::next
-#include <algorithm>  // std::max_element
+#include <algorithm> // std::max_element
+#include <fstream>   // std::stringstream
+#include <iterator>  // std::next
 
 // -- Root headers
 #include <TCanvas.h>
-
-
 
 TriventProc a_TriventProc_instance;
 
 //=========================================================
 TriventProc::TriventProc()
-  : Processor("TriventProc"),
-  m_lcWriter(nullptr),
-  // m_trigger_raw_hit(nullptr),
-  // m_cerenkov_raw_hit(nullptr),
-  m_outputCollectionName("SDHCAL_HIT"),
-  m_outFileName("TDHCAL.slcio"),
-  m_noiseFileName("noise_run.slcio"),
-  m_rootFileName("TDHCAL.root"),
-  m_treeName("EventTree"),
-  m_treeDescription("Event variables"),
-  m_geomXMLFile("setup_geometry"),
-  m_beamEnergy(0),
-  m_useGainCorrection(false),
-  m_elecNoiseCut(5000),
-  m_noiseCut(10),
-  m_layerCut(10),
-  m_timeWin(2),
-  m_time2prevEventCut(0),
-  m_cellSizeI(10.408),
-  m_cellSizeJ(10.408),
-  m_layerThickness(26.131),
-  m_hasCherenkov(true),
-  m_cerenkovDifId(3),
-  m_cerenkovTimeWindow(25),
-  m_cerAsic(0),
-  m_cerChan(0),
-  m_cerThreshold(0),
-  m_nCerenkov1(0),
-  m_nCerenkov2(0),
-  m_nCerenkov3(0),
-  m_nCerenkovTrigger(0),
-  m_hasTooManyCerenkov(false),
-  m_timeCerenkov(0),
-  m_totCerenkovHits(0),
-  m_cerenkovEvts(0),
-  m_maxCerenkovTime(0),
-  m_maxTime(0),
-  m_trigNbr(0),
-  m_trigCount(0),
-  m_evtNum(0),
-  m_selectedNum(0),
-  m_rejectedNum(0),
-  m_firedLayersSet(),
-  m_bcid1(0),
-  m_bcid2(0),
-  m_rootFile(nullptr),
-  m_runNumber(0),
-  // m_vHitMapPerLayer(nullptr),
-  m_plotFolder("./"),
-  m_eventTree(nullptr),
-  m_evtTrigNbr(0),
-  m_evtNbr(0),
-  m_nHit(0),
-  m_hitI(),
-  m_hitJ(),
-  m_hitK(),
-  m_hitThreshold(0),
-  m_nFiredLayers(0),
-  m_isSelected(false),
-  m_isNoise(false),
-  m_isTooCloseInTime(false),
-  m_hasNotEnoughLayers(false),
-  m_hasFullAsic(false)
-{
+    : Processor("TriventProc"),
+      m_outputCollectionName("SDHCAL_HIT"),
+      m_outFileName("TDHCAL.slcio"),
+      m_noiseFileName("noise_run.slcio"),
+      m_rootFileName("TDHCAL.root"),
+      m_treeName("EventTree"),
+      m_treeDescription("Event variables"),
+      m_geomXMLFile("setup_geometry"),
+      m_beamEnergy(0),
+      m_useGainCorrection(false),
+      m_elecNoiseCut(5000),
+      m_noiseCut(10),
+      m_layerCut(10),
+      m_timeWin(2),
+      m_time2prevEventCut(0),
+      m_cellSizeI(10.408),
+      m_cellSizeJ(10.408),
+      m_layerThickness(26.131),
+      m_hasCherenkov(true),
+      m_cerenkovDifId(3),
+      m_cerenkovTimeWindow(25),
+      m_cerAsic(0),
+      m_cerChan(0),
+      m_cerThreshold(0),
+      m_nCerenkov1(0),
+      m_nCerenkov2(0),
+      m_nCerenkov3(0),
+      m_nCerenkovTrigger(0),
+      m_hasTooManyCerenkov(false),
+      m_timeCerenkov(0),
+      m_totCerenkovHits(0),
+      m_cerenkovEvts(0),
+      m_maxCerenkovTime(0),
+      m_maxTime(0),
+      m_trigNbr(0),
+      m_trigCount(0),
+      m_evtNum(0),
+      m_selectedNum(0),
+      m_rejectedNum(0),
+      m_firedLayersSet{},
+      m_bcid1(0),
+      m_bcid2(0),
+      m_runNumber(0),
+      m_plotFolder("./"),
+      m_evtTrigNbr(0),
+      m_evtNbr(0),
+      m_nHit(0),
+      m_hitI{},
+      m_hitJ{},
+      m_hitK{},
+      m_hitThreshold(0),
+      m_nFiredLayers(0),
+      m_isSelected(false),
+      m_isNoise(false),
+      m_isTooCloseInTime(false),
+      m_hasNotEnoughLayers(false),
+      m_hasFullAsic(false) {
 
   // collection
   std::vector<std::string> hcalCollections;
   hcalCollections.push_back(std::string("DHCALRawHits"));
-  registerInputCollections(LCIO::RAWCALORIMETERHIT,
-                           "InputCollectionNames",
-                           "HCAL Collection Names",
-                           m_hcalCollections,
+  registerInputCollections(LCIO::RAWCALORIMETERHIT, "InputCollectionNames", "HCAL Collection Names", m_hcalCollections,
                            hcalCollections);
 
-  registerOutputCollection(LCIO::CALORIMETERHIT,
-                           "OutputCollectionName",
-                           "HCAL Collection Names",
-                           m_outputCollectionName,
-                           m_outputCollectionName);
+  registerOutputCollection(LCIO::CALORIMETERHIT, "OutputCollectionName", "HCAL Collection Names",
+                           m_outputCollectionName, m_outputCollectionName);
 
   // Option of output file with clean events
-  registerProcessorParameter("LCIOOutputFile",
-                             "LCIO file",
-                             m_outFileName,
-                             m_outFileName);
+  registerProcessorParameter("LCIOOutputFile", "LCIO file", m_outFileName, m_outFileName);
   // Energy
-  registerProcessorParameter("beamEnergy",
-                             "The beam ",
-                             m_beamEnergy,
-                             m_beamEnergy);
+  registerProcessorParameter("beamEnergy", "The beam ", m_beamEnergy, m_beamEnergy);
   // Option of output file with noise
-  registerProcessorParameter("NOISEutputFile",
-                             "NOISE file",
-                             m_noiseFileName,
-                             m_noiseFileName);
+  registerProcessorParameter("NOISEOutputFile", "NOISE file", m_noiseFileName, m_noiseFileName);
   // layer cut
-  registerProcessorParameter("LayerCut",
-                             "cut in number of layer 10 in default",
-                             m_layerCut,
-                             m_layerCut);
+  registerProcessorParameter("LayerCut", "cut in number of layer 10 in default", m_layerCut, m_layerCut);
 
   // noise cut
-  registerProcessorParameter("NoiseCut",
-                             "noise cut in time spectrum 10 in default",
-                             m_noiseCut,
-                             m_noiseCut);
+  registerProcessorParameter("NoiseCut", "noise cut in time spectrum 10 in default", m_noiseCut, m_noiseCut);
 
   // time windows
-  registerProcessorParameter("TimeWin",
-                             "time window = 2 in default",
-                             m_timeWin,
-                             m_timeWin);
-  //maping on XML file
-  registerProcessorParameter("SetupGeometry",
-                             "Dif geometry and position on the detector XML",
-                             m_geomXMLFile,
+  registerProcessorParameter("TimeWin", "time window = 2 in default", m_timeWin, m_timeWin);
+  // maping on XML file
+  registerProcessorParameter("SetupGeometry", "Dif geometry and position on the detector XML", m_geomXMLFile,
                              m_geomXMLFile);
 
   // electronic noise cut
-  registerProcessorParameter("ElectronicNoiseCut",
-                             "number of hit max on time stamp",
-                             m_elecNoiseCut,
-                             m_elecNoiseCut);
+  registerProcessorParameter("ElectronicNoiseCut", "number of hit max on time stamp", m_elecNoiseCut, m_elecNoiseCut);
 
   // electronic noise cut
-  registerProcessorParameter("_time2prev_event_cut",
-                             "cut on time to previous event (x 200 ns)",
-                             m_time2prevEventCut,
+  registerProcessorParameter("_time2prev_event_cut", "cut on time to previous event (x 200 ns)", m_time2prevEventCut,
                              m_time2prevEventCut);
 
-  //Root Tree
-  registerProcessorParameter("TreeName",
-                             "Logroot tree name",
-                             m_treeName,
-                             m_treeName);
+  // Root Tree
+  registerProcessorParameter("TreeName", "Logroot tree name", m_treeName, m_treeName);
 
-  //Root Tree
-  registerProcessorParameter("TreeDescription",
-                             "Logroot tree name",
-                             m_treeName,
-                             m_treeName);
+  // Root Tree
+  registerProcessorParameter("TreeDescription", "Logroot tree name", m_treeName, m_treeName);
 
   // histogram control tree
-  registerProcessorParameter("ROOTOutputFile",
-                             "Logroot name",
-                             m_rootFileName,
-                             m_rootFileName);
+  registerProcessorParameter("ROOTOutputFile", "Logroot name", m_rootFileName, m_rootFileName);
 
-  registerProcessorParameter("GainCorrectionMode",
-                             "m_useGainCorrection",
-                             m_useGainCorrection,
-                             m_useGainCorrection);
+  registerProcessorParameter("GainCorrectionMode", "m_useGainCorrection", m_useGainCorrection, m_useGainCorrection);
 
-
-  registerProcessorParameter("HasCerenkovDIF",
-                             "If Cerenkov dif was connected during data taking",
-                             m_hasCherenkov,
+  registerProcessorParameter("HasCerenkovDIF", "If Cerenkov dif was connected during data taking", m_hasCherenkov,
                              m_hasCherenkov);
 
-  registerProcessorParameter("CerenkovDifId",
-                             "Dif number for cerenkov data",
-                             m_cerenkovDifId,
-                             m_cerenkovDifId);
+  registerProcessorParameter("CerenkovDifId", "Dif number for cerenkov data", m_cerenkovDifId, m_cerenkovDifId);
 
-  registerProcessorParameter("CerenkovTimeWindow",
-                             "TimeWindow around timePeak in which to look for cerenkov data",
-                             m_cerenkovTimeWindow,
-                             m_cerenkovTimeWindow);
+  registerProcessorParameter("CerenkovTimeWindow", "TimeWindow around timePeak in which to look for cerenkov data",
+                             m_cerenkovTimeWindow, m_cerenkovTimeWindow);
 
-  registerProcessorParameter( "PlotFolder" ,
-                              "Folder Path to save Plot",
-                              m_plotFolder,
-                             m_plotFolder);
+  registerProcessorParameter("PlotFolder", "Folder Path to save Plot", m_plotFolder, m_plotFolder);
 }
 
 
@@ -223,52 +160,40 @@ TriventProc::~TriventProc()
 
 
 //=============================================================================
-void TriventProc::XMLReader(std::string xmlfile)
-{
+void TriventProc::XMLReader(std::string xmlfile) {
   TiXmlDocument xml(xmlfile.c_str());
   bool          load_key = xml.LoadFile();
 
-  if (load_key)
-  {
-    streamlog_out(MESSAGE) << green << "Found Geometry File : " << xmlfile.c_str() << normal << std::endl;
+  if (load_key) {
+    streamlog_out(MESSAGE) << yellow << "Found Geometry File : " << xmlfile.c_str() << normal << std::endl;
 
-    TiXmlHandle  xmlHandle(&xml);
-    TiXmlElement *pElem;
-    TiXmlHandle  rootHandle(0);
+    TiXmlHandle xmlHandle(&xml);
+    TiXmlElement *pElem = xmlHandle.FirstChildElement().Element();
 
-    pElem = xmlHandle.FirstChildElement().Element();
     // should always have a valid root but handle gracefully if it does not
-    if (!pElem)
-    {
+    if (!pElem) {
       streamlog_out(ERROR) << red << "error No root handle Found in xml file" << normal << std::endl;
     }
 
     // save this for later
+    TiXmlHandle rootHandle(0);
     rootHandle = TiXmlHandle(pElem);
 
     // parameters block
     pElem = rootHandle.FirstChild("parameter").Element();
-    streamlog_out(DEBUG0) << green << "Reading data for key: " << pElem->Attribute("name") << normal << std::endl;
-    streamlog_out(DEBUG0) << green
-                          << "parameter : "
-                          << pElem->Attribute("name")
-                          << normal
-                          << std::endl;
+    assert(pElem);
+    streamlog_out(DEBUG0) << "Reading data for key: " << pElem->Attribute("name") << std::endl;
+    streamlog_out(DEBUG0) << "parameter : " << pElem->Attribute("name") << std::endl;
 
     std::string value = pElem->GetText();
-    streamlog_out(DEBUG0) << green
-                          << "value : "
-                          << value
-                          << normal
-                          << std::endl;
+    streamlog_out(DEBUG0) << "value : " << value << std::endl;
 
     std::string              line;
     std::vector<std::string> lines;
     std::istringstream       iss(value);
 
     // value no longer has the formatted eol, all replaced by a space character...
-    while (std::getline(iss, line, ' '))
-    {
+    while (std::getline(iss, line, ' ')) {
       // streamlog_out( MESSAGE ) << blue << line << normal << std::endl;
       lines.push_back(line);
     }
@@ -281,19 +206,16 @@ void TriventProc::XMLReader(std::string xmlfile)
       std::stringstream        ss(lineIter->c_str());
       std::vector<std::string> result;
 
-      while (ss.good())
-      {
+      while (ss.good()) {
         std::string substr;
         getline(ss, substr, ',');
         // streamlog_out( MESSAGE ) << red << substr << normal << std::endl;
         result.push_back(substr);
       }
-      streamlog_out(DEBUG0) << blue << lineIter->c_str() << normal << std::endl;
 
       LayerID mapp{};
       int     Dif_id;
-      while (ss.good())
-      {
+      while (ss.good()) {
         string substr;
         getline(ss, substr, ',');
         result.push_back(substr);
@@ -312,14 +234,11 @@ void TriventProc::XMLReader(std::string xmlfile)
     std::ostringstream oss;
     oss << "Failed to load geometry file '" << xmlfile.c_str() << "'";
     streamlog_out(WARNING) << red << oss.str() << normal << std::endl;
-    throw (oss.str());
+    throw(oss.str());
   }
 }
 
-
 //=============================================================================
-void TriventProc::printDifGeom()
-{
   for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); ++itt)
   {
     streamlog_out(MESSAGE) << itt->first << "\t" << itt->second.K
@@ -331,39 +250,26 @@ void TriventProc::printDifGeom()
   }
 }
 
-
 // ============ decode the cell ids =============
 // bit shift & 0xFF = Apply mask 1111 1111 to binary value
 // eg: Dif 1 => cellID0 = 00983297 => DifID = 1 / AsicID = 1 / ChanID = 15
-int TriventProc::getCellDif_id(int cell_id)
-{
-  return cell_id & 0xFF;
-}
-
+int TriventProc::getCellDif_id(int cell_id) { return cell_id & 0xFF; }
 
 //=============================================================================
 //  bit shift & 0xFF00 Apply mask 1111 1111 0000 0000 then cut last 8 bits
-int TriventProc::getCellAsic_id(int cell_id)
-{
-  return (cell_id & 0xFF00) >> 8;
-}
-
+int TriventProc::getCellAsic_id(int cell_id) { return (cell_id & 0xFF00) >> 8; }
 
 //=============================================================================
 //  bit shift & 0x3F0000 Apply mask 1111 0000 0000 0000 0000 then cut last 16 bits
-int TriventProc::getCellChan_id(int cell_id)
-{
-  return (cell_id & 0x3F0000) >> 16;
-}
-
+int TriventProc::getCellChan_id(int cell_id) { return (cell_id & 0x3F0000) >> 16; }
 
 // ============ ============ ============ ============ ============ ============ ============
 // ============ ============ ============ ============ ============ ============ ============
 // Full example with Dif 1:
-// cellId0 = 00983297 -> Binaire =  1111 0000 0001 0000 0001
-// binaire & 0xFF = 0000 0001 => 2^0 = 1
-// binaire & 0xFF00 = 0000 0001 0000 0000 >>8 = 0000 0001 => 2^0 = 1
-// binaire & 0x3F0000 =  1111 0000 0000 0000 0000 >>16 = 1111 => (2^3)+(2^2)+(2^1)+(2^0) = 15
+// cellId0 = 00983297 -> Binary =  1111 0000 0001 0000 0001
+// binary & 0xFF = 0000 0001 => 2^0 = 1
+// binary & 0xFF00 = 0000 0001 0000 0000 >>8 = 0000 0001 => 2^0 = 1
+// binary & 0x3F0000 =  1111 0000 0000 0000 0000 >>16 = 1111 => (2^3)+(2^2)+(2^1)+(2^0) = 15
 // ============ ============ ============ ============ ============ ============ ============
 // ============ ============ ============ ============ ============ ============ ============
 
@@ -395,10 +301,8 @@ std::vector<int> TriventProc::getPadIndex(const int dif_id, const int asic_id, c
   return index;
 }
 
-
 //=============================================================================
-void TriventProc::getMaxTime()
-{
+void TriventProc::getMaxTime() {
   m_maxTime = 0;
   try {
     for (std::vector<EVENT::RawCalorimeterHit *>::const_iterator raw_hit = m_trigger_raw_hit.begin(); raw_hit != m_trigger_raw_hit.end(); ++raw_hit)
@@ -415,7 +319,6 @@ void TriventProc::getMaxTime()
     streamlog_out(WARNING) << "No hits " << std::endl;
   }
 }
-
 
 //=============================================================================
 std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))
@@ -439,22 +342,16 @@ std::vector<int> TriventProc::getTimeSpectrum() //__attribute__((optimize(0)))
   catch (std::exception &ec) {
     streamlog_out(WARNING) << "No hits " << std::endl;
   }
+
   return time_spectrum;
 }
 
+//=============================================================================
+int IJKToKey(const int i, const int j, const int k) { return 100 * 100 * k + 100 * j + i; }
 
 //=============================================================================
-int IJKToKey(const int i, const int j, const int k)
-{
-  return 100 * 100 * k + 100 * j + i;
-}
-
-
-//=============================================================================
-int findAsicKey(const int i, const int j, const int k)
-{
-  if ((i > 96) || (i < 0) || (j > 96) || (j < 0))
-  {
+int findAsicKey(const int i, const int j, const int k) {
+  if ((i > 96) || (i < 1) || (j > 96) || (j < 1)) {
     return -1;
   }
   const int jnum = (j - 1) / 8;
@@ -464,10 +361,10 @@ int findAsicKey(const int i, const int j, const int k)
 }
 
 
+
 //=============================================================================
-void TriventProc::eventBuilder(LCCollection *col_event, int time_peak, int prev_time_peak)
-{
-  // reset Number of layers touched
+void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event, int &time_peak, int &prev_time_peak) {
+
   m_firedLayersSet.clear();
 
   col_event->setFlag(col_event->getFlag() | (1 << LCIO::RCHBIT_LONG));
@@ -638,15 +535,14 @@ void TriventProc::eventBuilder(LCCollection *col_event, int time_peak, int prev_
 
 
 //=============================================================================
-void TriventProc::defineColors()
-{
-  char cnormal[8]  = { 0x1b, '[', '0', ';', '3', '9', 'm', 0 };
-  char cred[8]     = { 0x1b, '[', '1', ';', '3', '1', 'm', 0 };
-  char cgreen[8]   = { 0x1b, '[', '1', ';', '3', '2', 'm', 0 };
-  char cyellow[8]  = { 0x1b, '[', '1', ';', '3', '3', 'm', 0 };
-  char cblue[8]    = { 0x1b, '[', '1', ';', '3', '4', 'm', 0 };
-  char cmagenta[8] = { 0x1b, '[', '1', ';', '3', '5', 'm', 0 };
-  char cwhite[8]   = { 0x1b, '[', '1', ';', '3', '9', 'm', 0 };
+void TriventProc::defineColors() {
+  char cnormal[8]  = {0x1b, '[', '0', ';', '3', '9', 'm', 0};
+  char cred[8]     = {0x1b, '[', '1', ';', '3', '1', 'm', 0};
+  char cgreen[8]   = {0x1b, '[', '1', ';', '3', '2', 'm', 0};
+  char cyellow[8]  = {0x1b, '[', '1', ';', '3', '3', 'm', 0};
+  char cblue[8]    = {0x1b, '[', '1', ';', '3', '4', 'm', 0};
+  char cmagenta[8] = {0x1b, '[', '1', ';', '3', '5', 'm', 0};
+  char cwhite[8]   = {0x1b, '[', '1', ';', '3', '9', 'm', 0};
 
   normal  = cnormal;
   red     = cred;
@@ -657,72 +553,61 @@ void TriventProc::defineColors()
   white   = cwhite;
 }
 
-
 //=============================================================================
-TTree *TriventProc::getOrCreateTree(std::string treeName, std::string treeDescription)
-{
-  TTree *tree = (TTree *)m_rootFile->Get(treeName.c_str());
+TTree* TriventProc::getOrCreateTree(const std::string &treeName, const std::string &treeDescription) {
+  TTree* tree = static_cast<TTree *>(m_rootFile->Get(treeName.c_str()));
 
-  if (!tree)
-  {
-    std::cout << "Creating tree '" << treeName << "'" << std::endl;
+  if (!tree) {
+    streamlog_out(DEBUG0) << "Creating tree '" << treeName << "'" << std::endl;
     tree = new TTree(treeName.c_str(), treeDescription.c_str());
   }
 
   return tree;
 }
 
-
 //=============================================================================
-void TriventProc::init()
-{
+void TriventProc::init() {
   m_trigNbr   = 0;
   m_trigCount = 0;
-  m_evtNum    = 0;  // event number
+  m_evtNum    = 0; // event number
   // ========================
   printParameters();
 
   // Define colors for
   defineColors();
 
-
   // Create writer for lcio output file
   m_lcWriter = LCFactory::getInstance()->createLCWriter();
   m_lcWriter->setCompressionLevel(0);
   m_lcWriter->open(m_outFileName.c_str(), LCIO::WRITE_NEW);
 
-
   // Read and print geometry file
   try {
     XMLReader(m_geomXMLFile);
     // printDifGeom();
-  }
-  catch (std::string& e) {
-    std::cout << "\n------------------------------------------------------------------------------------------" << std::endl;
+  } catch (std::string &e) {
+    std::cout << "\n------------------------------------------------------------------------------------------"
+              << std::endl;
     std::cout << "\t ****** Caught Exception when parsing geometry file: " << e << std::endl;
-    std::cout << "------------------------------------------------------------------------------------------\n" << std::endl;
+    std::cout << "------------------------------------------------------------------------------------------\n"
+              << std::endl;
     throw;
-  }
-  catch (...) {
-    std::cout << "\n------------------------------------------------------------------------------------------" << std::endl;
+  } catch (...) {
+    std::cout << "\n------------------------------------------------------------------------------------------"
+              << std::endl;
     std::cout << "\t ****** Uncaught Exception when parsing geometry file! " << std::endl;
-    std::cout << "------------------------------------------------------------------------------------------\n" << std::endl;
+    std::cout << "------------------------------------------------------------------------------------------\n"
+              << std::endl;
     throw;
   }
   printDifGeom();
-
 
   /**
    * Book root histograms
    */
 
   m_rootFile = new TFile(m_rootFileName.c_str(), "RECREATE");
-
-  if (NULL == m_rootFile)
-  {
-    return;
-  }
-
+  assert(m_rootFile);
 
   // Create Trigger tree & Branches
   // m_triggerTree = getOrCreateTree("TriggerTree", "Trigger variables");
@@ -731,9 +616,9 @@ void TriventProc::init()
   // m_triggerTree->Branch("NumberOfEvents",                   &m_nEvt);
   // m_triggerTree->Branch("TimeSpectrum", "std::vector<int>", &m_vTimeSpectrum);
 
-
   // Create Event tree & Branches
   m_eventTree = getOrCreateTree(m_treeName, m_treeDescription);
+  assert(m_eventTree);
   m_eventTree->Branch("TriggerNumber", &m_evtTrigNbr);
   m_eventTree->Branch("EventNumber", &m_evtNbr);
   // m_eventTree->Branch("Hitbcid",                 &m_hitBCID);
@@ -757,8 +642,6 @@ void TriventProc::init()
   m_eventTree->Branch("EventHasNotEnoughLayers", &m_hasNotEnoughLayers);
   m_eventTree->Branch("EventIsHasFullAsic", &m_hasFullAsic);
 
-
-
   TDirectory *rootDir   = gDirectory;
   TDirectory *hitMapDir = rootDir->mkdir("HitMapPerLayer");
   hitMapDir->cd();
@@ -779,8 +662,7 @@ void TriventProc::init()
   // Prevent accessing non defined element in vectors...
   const auto firstLayer = std::min_element(layerSet.begin(), layerSet.end());
   bool       startAt0   = false;
-  if (0 == *firstLayer)
-  {
+  if (0 == *firstLayer) {
     startAt0 = true;
   }
 
@@ -803,18 +685,15 @@ void TriventProc::init()
   }
 
   int iLayer = 0;
-  for (const auto& histo : m_vHitMapPerLayer)
-  {
-    streamlog_out(MESSAGE) << yellow << "Booked hitMap histo for layer '" << iLayer << "' at --> '" << histo << "'" << normal << std::endl;
+  for (auto const &histo : m_vHitMapPerLayer) {
+    assert(histo);
+    streamlog_out(DEBUG0) << yellow << "Booked hitMap histo for layer '" << iLayer << "' at --> '" << histo << "'"
+                          << normal << std::endl;
     ++iLayer;
   }
 }
 
-
 //=============================================================================
-void TriventProc::processRunHeader(LCRunHeader * /*runHd*/)
-{
-}
 
 
 //=============================================================================
@@ -851,8 +730,7 @@ void TriventProc::findCerenkovHits(int timePeak)
       m_cerChan = Chan_id;
       m_cerThreshold = hitThreshold;
 
-      switch (hitThreshold)
-      {
+      switch (hitThreshold) {
       case 1:
         m_nCerenkov1 += 1;
         break;
@@ -866,24 +744,25 @@ void TriventProc::findCerenkovHits(int timePeak)
         break;
 
       default:
-        streamlog_out(ERROR) << red << "[findCerenkov] - Found Cerenkov hit with weird threshold : '" << hitThreshold << "'..." << normal << std::endl;
+        streamlog_out(ERROR) << red << "[findCerenkov] - Found Cerenkov hit with weird threshold : '" << hitThreshold
+                             << "'..." << normal << std::endl;
         break;
       }
     }
   }
   m_nCerenkovTrigger += (m_nCerenkov1 + m_nCerenkov2 + m_nCerenkov3);
-  if (m_nCerenkovTrigger > m_cerenkov_raw_hit.size())
-  {
-    streamlog_out(WARNING) << red << "[findCerenkov] - Cerenkov hit associated with multiple event in Trigger : Associated hit/total bif_hit in trigger : '" << m_nCerenkovTrigger << "'/" << m_cerenkov_raw_hit.size() << normal << std::endl;
+  if (m_nCerenkovTrigger > m_cerenkov_raw_hit.size()) {
+    streamlog_out(WARNING) << yellow << "[findCerenkov] - Cerenkov hit associated with multiple event in Trigger : "
+                                        "Associated hit/total bif_hit in trigger : '"
+                           << m_nCerenkovTrigger << "'/" << m_cerenkov_raw_hit.size() << normal << std::endl;
     m_hasTooManyCerenkov = true;
   }
 }
 
-
 //=============================================================================
-void TriventProc::processEvent(LCEvent *evtP)
-{
-  if (evtP != NULL)
+void TriventProc::processEvent(LCEvent *evtP) {
+  assert(evtP != NULL);
+
   {
     try {
       m_trigNbr = evtP->getEventNumber();
@@ -1175,27 +1054,28 @@ void TriventProc::processEvent(LCEvent *evtP)
   }
 }
 
-
 //=============================================================================
-void TriventProc::end()
-{
+void TriventProc::end() {
+
   streamlog_out(MESSAGE) << "Trivent rejected " << m_rejectedNum << " Condidate event" << std::endl;
   streamlog_out(MESSAGE) << "Trivent Selected " << m_selectedNum << " Condidate event" << std::endl;
   streamlog_out(MESSAGE) << "Cerenkov Event Selected " << m_cerenkovEvts << std::endl;
-  // TODO:   CerenkovTime>-40 needs to depend on the cerenkov  time window from the configFile!
+
   std::string cerCut = "CerenkovTime>-" + std::to_string(m_cerenkovTimeWindow);
   m_eventTree->Draw("CerenkovTime>>hcer", cerCut.c_str());
-  TH1I *hcer = (TH1I*)gDirectory->Get("hcer");
-  streamlog_out(MESSAGE) << "Cerenkov Probable time shift at " << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin()) << " with " << hcer->GetBinContent(hcer->GetMaximumBin()) << "/" << m_cerenkovEvts << " event tagged" << std::endl;
+  TH1* hcer = dynamic_cast<TH1 *>(gDirectory->Get("hcer"));
+  streamlog_out(MESSAGE) << "Cerenkov Probable time shift at " << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin())
+                         << " with " << hcer->GetBinContent(hcer->GetMaximumBin()) << "/" << m_cerenkovEvts
+                         << " event tagged" << std::endl;
   int cerTagInTime = 0;
-for (int i = -m_timeWin; i<m_timeWin+1; ++i)
-  {
-    streamlog_out(MESSAGE) << "Bin '" << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin()+i) << "' :  " << hcer->GetBinContent(hcer->GetMaximumBin()+i) << std::endl;
-    cerTagInTime+=hcer->GetBinContent(hcer->GetMaximumBin()+i);
+  for (int i = -m_timeWin; i < m_timeWin + 1; ++i) {
+    streamlog_out(MESSAGE) << "Bin '" << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin() + i)
+                           << "' :  " << hcer->GetBinContent(hcer->GetMaximumBin() + i) << std::endl;
+    cerTagInTime += hcer->GetBinContent(hcer->GetMaximumBin() + i);
   }
-  streamlog_out(ERROR) << "TotCerenkov in MPV+-timeWin : " << cerTagInTime << "/" << m_cerenkovEvts << " (" << (float)(cerTagInTime)/(float)(m_cerenkovEvts)*100 << "%)"<< std::endl;
+  streamlog_out(ERROR) << "TotCerenkov in MPV+-timeWin : " << cerTagInTime << "/" << m_cerenkovEvts << " ("
+                       << (float)(cerTagInTime) / (float)(m_cerenkovEvts)*100 << "%)" << std::endl;
 
-  streamlog_out(MESSAGE) << "Trivent end" << std::endl;
   m_lcWriter->close();
 
   // TCanvas *c1 = new TCanvas();
@@ -1204,6 +1084,7 @@ for (int i = -m_timeWin; i<m_timeWin+1; ++i)
   // c1->cd();
   // c1->Divide(2, 1);
   // c1->cd(1);
+
   // std::cout << "Drawing for layer 48" << std::endl;
   // m_vHitMapPerLayer.at(47)->Draw("colz");
   // c1->cd(2);
@@ -1215,7 +1096,8 @@ for (int i = -m_timeWin; i<m_timeWin+1; ++i)
   m_rootFile->cd();
   m_rootFile->Write();
   m_rootFile->Close();
-}
 
+  streamlog_out(MESSAGE) << "Trivent end" << std::endl;
+}
 
 //==============================================================
