@@ -37,6 +37,7 @@ public:
   ~TriventProc() { ; };
 
   void init();
+  void initRootTree();
   void processEvent(LCEvent *evtP);
   void processRunHeader(LCRunHeader * /*runH*/){};
   void XMLReader(const std::string &xmlfile);

@@ -543,43 +543,7 @@ TTree *TriventProc::getOrCreateTree(const std::string &treeName, const std::stri
 }
 
 //=============================================================================
-void TriventProc::init() {
-  m_trigNbr   = 0;
-  m_trigCount = 0;
-  m_evtNum    = 0; // event number
-  // ========================
-  printParameters();
-  defineColors();
-
-  // Create writer for lcio output file
-  m_lcWriter = std::unique_ptr<LCWriter>(LCFactory::getInstance()->createLCWriter());
-  m_lcWriter->setCompressionLevel(0);
-  m_lcWriter->open(m_outFileName.c_str(), LCIO::WRITE_NEW);
-
-  // Read and print geometry file
-  try {
-    XMLReader(m_geomXMLFile);
-  } catch (std::string &e) {
-    std::cout << "\n------------------------------------------------------------------------------------------"
-              << std::endl;
-    std::cout << "\t ****** Caught Exception when parsing geometry file: " << e << std::endl;
-    std::cout << "------------------------------------------------------------------------------------------\n"
-              << std::endl;
-    throw;
-  } catch (...) {
-    std::cout << "\n------------------------------------------------------------------------------------------"
-              << std::endl;
-    std::cout << "\t ****** Uncaught Exception when parsing geometry file! " << std::endl;
-    std::cout << "------------------------------------------------------------------------------------------\n"
-              << std::endl;
-    throw;
-  }
-  printDifGeom();
-
-  /**
-   * Book root histograms
-   */
-
+void TriventProc::initRootTree() {
   m_rootFile = new TFile(m_rootFileName.c_str(), "RECREATE");
   assert(m_rootFile);
 
@@ -658,7 +622,43 @@ void TriventProc::init() {
 }
 
 //=============================================================================
+void TriventProc::init() {
+  m_trigNbr   = 0;
+  m_trigCount = 0;
+  m_evtNum    = 0; // event number
+  // ========================
+  printParameters();
+  defineColors();
 
+  // Create writer for lcio output file
+  m_lcWriter = std::unique_ptr<LCWriter>(LCFactory::getInstance()->createLCWriter());
+  m_lcWriter->setCompressionLevel(0);
+  m_lcWriter->open(m_outFileName.c_str(), LCIO::WRITE_NEW);
+
+  // Read and print geometry file
+  try {
+    XMLReader(m_geomXMLFile);
+  } catch (std::string &e) {
+    std::cout << "\n------------------------------------------------------------------------------------------"
+              << std::endl;
+    std::cout << "\t ****** Caught Exception when parsing geometry file: " << e << std::endl;
+    std::cout << "------------------------------------------------------------------------------------------\n"
+              << std::endl;
+    throw;
+  } catch (...) {
+    std::cout << "\n------------------------------------------------------------------------------------------"
+              << std::endl;
+    std::cout << "\t ****** Uncaught Exception when parsing geometry file! " << std::endl;
+    std::cout << "------------------------------------------------------------------------------------------\n"
+              << std::endl;
+    throw;
+  }
+  printDifGeom();
+
+  initRootTree();
+}
+
+//=============================================================================
 TH2 *TriventProc::makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle) {
   TH2 *hMap = new TH2D(title.c_str(), title.c_str(), 96, 1, 97, 96, 1, 97);
   hMap->GetXaxis()->SetTitle(xTitle.c_str());
@@ -667,7 +667,6 @@ TH2 *TriventProc::makeTH2(const std::string &title, const std::string &xTitle, c
 }
 
 //=============================================================================
-
 void TriventProc::findCerenkovHits(const int &timePeak) {
   for (const auto &cerHit : m_cerenkov_raw_hit) {
     assert(cerHit);
@@ -723,7 +722,6 @@ void TriventProc::findCerenkovHits(const int &timePeak) {
 }
 
 //=============================================================================
-
 void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
   std::vector<int> vTrigger;
   m_trigger_raw_hit.clear();
@@ -767,7 +765,6 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
 }
 
 //=============================================================================
-
 void TriventProc::processEvent(LCEvent *evtP) {
   assert(evtP != NULL);
 
