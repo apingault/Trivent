@@ -219,10 +219,12 @@ void TriventProc::XMLReader(std::string xmlfile) {
       istringstream(result.at(4)) >> mapp.IncX;
       istringstream(result.at(5)) >> mapp.IncY;
       m_mDifMapping[Dif_id] = mapp;
+      m_layerSet.insert(mapp.K);
     }
-  }
-  else
-  {
+    // Cerenkov layer should not be counted it the total number of layer
+    if (m_hasCherenkov)
+      m_layerSet.erase(m_mDifMapping.find(m_cerenkovDifId)->second.K);
+  } else {
     std::ostringstream oss;
     oss << "Failed to load geometry file '" << xmlfile.c_str() << "'";
     streamlog_out(WARNING) << red << oss.str() << normal << std::endl;
@@ -632,41 +634,40 @@ void TriventProc::init() {
   hitMapDir->cd();
 
   // Create a list of unique Layers from geometry file
-  std::set<int> layerSet;
-  for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); ++itt)
-  {
-    layerSet.insert(itt->second.K);
-  }
+  // std::set<int> layerSet;
+  // for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); ++itt) {
+  // for (const auto &itt : m_mDifMapping) {
+  // layerSet.insert(itt.second.K);
+  // }
 
   // Find last layer and resize the vector of hitMap
-  const auto maxLayer = std::max_element(layerSet.begin(), layerSet.end());
-  streamlog_out(MESSAGE) << yellow << "Max LayerId in geometryFile: '" << *maxLayer << "'" << normal << std::endl;
-  m_vHitMapPerLayer.resize(*maxLayer);
+  // const auto maxLayer = std::max_element(layerSet.begin(), layerSet.end());
+  // streamlog_out(DEBUG0) << yellow << "Max LayerId in geometryFile: '" << *maxLayer << "'" << normal << std::endl;
+  // m_vHitMapPerLayer.resize(*maxLayer);
+  // m_vHitMapPerLayer.resize(m_layerSet.size());
 
   // Check if first layer is numbered 0 or 1
   // Prevent accessing non defined element in vectors...
-  const auto firstLayer = std::min_element(layerSet.begin(), layerSet.end());
+  const auto firstLayer = std::min_element(m_layerSet.begin(), m_layerSet.end());
   bool       startAt0   = false;
   if (0 == *firstLayer) {
     startAt0 = true;
   }
 
-  for (std::set<int>::const_iterator layerIter = layerSet.begin(); layerIter != layerSet.end(); ++layerIter)
-  {
-    int iLayer = *layerIter - 1;
-    if (startAt0)
-    {
-      iLayer = *layerIter;
+  for (const auto &layerIter : m_layerSet) {
+    int iLayer = layerIter - 1;
+    if (startAt0) {
+      iLayer = layerIter;
     }
 
     std::stringstream oss;
-    streamlog_out(MESSAGE) << yellow << "Booking hitMap for layer '" << iLayer << "'..." << normal << std::endl;
     oss << "hitMap_Layer" << iLayer;
     m_vHitMapPerLayer.at(iLayer) = (new TH2D(oss.str().c_str(), oss.str().c_str(), 96, 1, 97, 96, 1, 97));
     m_vHitMapPerLayer.at(iLayer)->GetXaxis()->SetTitle("I");
     m_vHitMapPerLayer.at(iLayer)->GetYaxis()->SetTitle("J (DIFSide)");
 
-    streamlog_out(MESSAGE) << blue << "Booking hitMap for layer '" << iLayer << "'...OK" << normal << std::endl;
+    streamlog_out(DEBUG0) << "Booking hitMap for layer '" << iLayer << "'..." << std::endl;
+    streamlog_out(DEBUG0) << "Booking hitMap for layer '" << iLayer << "'...OK" << std::endl;
   }
 
   int iLayer = 0;

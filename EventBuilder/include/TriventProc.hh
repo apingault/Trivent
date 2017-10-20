@@ -87,6 +87,7 @@ protected:
   float          m_cellSizeI;
   float          m_cellSizeJ;
   float          m_layerThickness;
+  std::set<uint> m_layerSet;
 
   // Cerenkov
   bool         m_hasCherenkov;
