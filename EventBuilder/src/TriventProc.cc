@@ -367,27 +367,22 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
 
   std::map<int, int> asicMap;
     std::map<int, int> hitKeys;
-    for (std::vector<EVENT::RawCalorimeterHit *>::const_iterator rawhit = m_trigger_raw_hit.begin(); rawhit != m_trigger_raw_hit.end(); ++rawhit)
-    {
-      const int rawHitTime = static_cast<int>((*rawhit)->getTimeStamp());
+  for (const auto &rawhit : m_trigger_raw_hit) {
+    assert(rawhit);
+    const int rawHitTime = static_cast<int>(rawhit->getTimeStamp());
 
-      // TODO: Make it nicer. Here it just ensure cerenkov hit within m_cerenkovTimeWindow are not discarded from the Calorimeter hit
+    // TODO: Make it nicer. Here it just ensure cerenkov hit within m_cerenkovTimeWindow are not discarded from the
+    // Calorimeter hit
       unsigned int timeWindow = m_timeWin;
-      if (getCellDif_id ((*rawhit)->getCellID0()) == m_cerenkovDifId )
+    if (getCellDif_id(rawhit->getCellID0()) == m_cerenkovDifId)
         timeWindow = m_cerenkovTimeWindow;
 
-      // if ((
-      //       (std::fabs(rawHitTime - time_peak) <= m_timeWin) &&
-      //       (rawHitTime > prev_time_peak + m_timeWin)
-      //       ) ||
-      //     (getCellDif_id((*rawhit)->getCellID0()) == m_cerenkovDifId)
-      //     )
-      if ( (std::fabs(rawHitTime - time_peak) <= timeWindow ) && (rawHitTime > prev_time_peak + m_timeWin) )
-      {
-        const int Dif_id  = getCellDif_id((*rawhit)->getCellID0());
-        const int Asic_id = getCellAsic_id((*rawhit)->getCellID0());
-        const int Chan_id = getCellChan_id((*rawhit)->getCellID0());
-        const int thresh  = (*rawhit)->getAmplitude();
+    if ((std::fabs(rawHitTime - time_peak) <= timeWindow) && (rawHitTime > prev_time_peak + m_timeWin)) {
+      const int Dif_id  = getCellDif_id(rawhit->getCellID0());
+      int       Asic_id = getCellAsic_id(
+          rawhit->getCellID0()); // Can't be const to correct for cerenkovAsicId bug (in data from 2014>2016)
+      const int Chan_id = getCellChan_id(rawhit->getCellID0());
+      const int thresh  = rawhit->getAmplitude();
 
         if ((Asic_id < 1) || (Asic_id > 48))
           streamlog_out(WARNING) << yellow << "[eventBuilder] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... " << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << normal << std::endl;
@@ -411,6 +406,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
           streamlog_out(WARNING) << yellow << "[eventBuilder] - Found hit in Layer '" << K << "' for DifId/AsicId/ChanId/Thr: " << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << "...skipping hit " << normal << std::endl;
           continue;
         }
+      }
 
         //find and remove square events
         const int asickey = findAsicKey(I, J, K);

@@ -38,7 +38,7 @@ public:
 
   void init();
   void processEvent(LCEvent *evtP);
-  void processRunHeader(LCRunHeader *runH);
+  void processRunHeader(LCRunHeader * /*runH*/){};
   void XMLReader(std::string xmlfile);
   void readDifGeomFile(std::string geomfile);
   void printDifGeom();
@@ -143,6 +143,7 @@ protected:
 
   // ROOT histograms
   TFile *m_rootFile;
+  std::vector<TH2 *> m_vHitMapPerLayer; // HitMap of selected evt for each Layer
   unsigned int       m_runNumber;
   std::string        m_plotFolder;
 
