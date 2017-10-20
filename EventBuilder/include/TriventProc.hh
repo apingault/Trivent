@@ -54,6 +54,7 @@ public:
 
   std::vector<int> getPadIndex(const int dif_id, const int asic_id, const int chan_id);
   void eventBuilder(LCCollection *col_event, int time_peak, int prev_time_peak);
+  bool checkPadLimits(std::vector<int> &padIndex, std::vector<int> &padLimits);
   void end();
 
   TTree *getOrCreateTree(std::string treeName, std::string treeDescription);

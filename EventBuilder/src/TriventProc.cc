@@ -266,6 +266,16 @@ int TriventProc::getCellChan_id(int cell_id) { return (cell_id & 0x3F0000) >> 16
 // ============ ============ ============ ============ ============ ============ ============
 
 //=============================================================================
+
+bool TriventProc::checkPadLimits(std::vector<int> &padIndex, std::vector<int> &padLimits) {
+  assert(padLimits.size() == padIndex.size() * 2);
+  for (int i = 0; i < static_cast<int>(padIndex.size()); ++i) {
+    if (padIndex[i] < padLimits[i * 2] || padIndex[i] > padLimits[i * 2 + 1])
+      return false;
+  }
+  return true;
+}
+
 //=============================================================================
 std::vector<int> TriventProc::getPadIndex(const int &dif_id, const int &asic_id, const int &chan_id) {
   std::vector<int> index(3, 0);
@@ -280,16 +290,20 @@ std::vector<int> TriventProc::getPadIndex(const int &dif_id, const int &asic_id,
   index[1] = (32 - (MapJLargeHR2[chan_id] + AsicShiftJ[asic_id])) + findIter->second.DifY;
   index[2] = findIter->second.K;
 
-  if (dif_id == m_cerenkovDifId)
-  {
-    streamlog_out(DEBUG0) << " Dif_id == " << dif_id
-                          << " Asic_id ==" << asic_id
-                          << " Chan_id ==" << chan_id
-                          << " I == " << index[0]
-                          << " J == " << index[1]
-                          << " K == " << index[2]
-                          << std::endl;
+  std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
+  // Cerenkov layer is not in the layerSet as it's not a physical layer, needs to account for that when checking the pad
+  // limits
+  //
+  if (dif_id == m_cerenkovDifId) {
+    padLims.pop_back();
+    padLims.push_back(m_mDifMapping.find(m_cerenkovDifId)->second.K);
   }
+  assert(checkPadLimits(index, padLims));
+
+  // if (dif_id == m_cerenkovDifId) {
+  // streamlog_out(DEBUG0) << " Dif_id == " << dif_id << " Asic_id ==" << asic_id << " Chan_id ==" << chan_id
+  // << " I == " << index[0] << " J == " << index[1] << " K == " << index[2] << std::endl;
+  // }
   return index;
 }
 
