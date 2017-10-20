@@ -353,8 +353,6 @@ int findAsicKey(const int i, const int j, const int k) {
   return k * 1000 + num;
 }
 
-
-
 //=============================================================================
 void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event, int &time_peak, int &prev_time_peak) {
 
@@ -366,16 +364,16 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
   CellIDEncoder<CalorimeterHitImpl> cellIdEncoder("M:3,S-1:3,I:9,J:9,K-1:6", col_event.get());
 
   std::map<int, int> asicMap;
-    std::map<int, int> hitKeys;
+  std::map<int, int> hitKeys;
   for (const auto &rawhit : m_trigger_raw_hit) {
     assert(rawhit);
     const int rawHitTime = static_cast<int>(rawhit->getTimeStamp());
 
     // TODO: Make it nicer. Here it just ensure cerenkov hit within m_cerenkovTimeWindow are not discarded from the
     // Calorimeter hit
-      unsigned int timeWindow = m_timeWin;
+    unsigned int timeWindow = m_timeWin;
     if (getCellDif_id(rawhit->getCellID0()) == m_cerenkovDifId)
-        timeWindow = m_cerenkovTimeWindow;
+      timeWindow = m_cerenkovTimeWindow;
 
     if ((std::fabs(rawHitTime - time_peak) <= timeWindow) && (rawHitTime > prev_time_peak + m_timeWin)) {
       const int Dif_id  = getCellDif_id(rawhit->getCellID0());
@@ -384,138 +382,142 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
       const int Chan_id = getCellChan_id(rawhit->getCellID0());
       const int thresh  = rawhit->getAmplitude();
 
-        if ((Asic_id < 1) || (Asic_id > 48))
-          streamlog_out(WARNING) << yellow << "[eventBuilder] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... " << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << normal << std::endl;
-
-        if (Chan_id > 63)
-          streamlog_out(WARNING) << yellow << "[eventBuilder] - Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... " << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << normal << std::endl;
-
-        std::vector<int> padIndex = getPadIndex(Dif_id, Asic_id, Chan_id); // return (0,0,0) if dif_id not found
-        if (padIndex[0] == 0 || padIndex[1] == 0 || padIndex[2] == 0 )
-        {
-          streamlog_out(WARNING) << yellow << "[eventBuilder] - Dif '" << Dif_id << "' not found in geometry file...skipping hit" << normal << std::endl;
+      if ((Asic_id < 1) || (Asic_id > 48)) {
+        if (m_hasCherenkov && Dif_id == m_cerenkovDifId) {
+          streamlog_out(WARNING) << yellow << "Cerenkov has a weird asicId : '" << Asic_id
+                                 << " correcting it... to asicId = 1" << normal << std::endl;
+          Asic_id = 1;
+        } else {
+          streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... "
+                               << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << normal << std::endl;
           continue;
         }
+      }
+      if (Chan_id > 63) {
+        streamlog_out(ERROR) << yellow << "[eventBuilder] - Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... "
+                             << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << normal << std::endl;
+        continue;
+      }
+      std::vector<int> padIndex = getPadIndex(Dif_id, Asic_id, Chan_id); // return (0,0,0) if dif_id not found
+      if (padIndex[0] == 0 || padIndex[1] == 0 || padIndex[2] == 0) {
+        streamlog_out(WARNING) << yellow << "[eventBuilder] - Dif '" << Dif_id
+                               << "' not found in geometry file...skipping hit" << normal << std::endl;
+        continue;
+      }
 
-        const int I = padIndex[0];
-        const int J = padIndex[1];
-        const int K = padIndex[2];
+      const int I = padIndex[0];
+      const int J = padIndex[1];
+      const int K = padIndex[2];
 
-        if ((K <= 0) || (K > 64))
-        {
-          streamlog_out(WARNING) << yellow << "[eventBuilder] - Found hit in Layer '" << K << "' for DifId/AsicId/ChanId/Thr: " << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << "...skipping hit " << normal << std::endl;
+      if (K <= 0 || K > static_cast<int>(m_layerSet.size())) {
+        if (Dif_id != m_cerenkovDifId) {
+          streamlog_out(WARNING) << yellow << "[eventBuilder] - Found hit in Layer '" << K
+                                 << "' for DifId/AsicId/ChanId/Thr: " << Dif_id << "/" << Asic_id << "/" << Chan_id
+                                 << "/" << thresh << "...skipping hit " << normal << std::endl;
           continue;
         }
       }
 
-        //find and remove square events
-        const int asickey = findAsicKey(I, J, K);
-        if (asicMap[asickey])
-        {
-          ++asicMap[asickey];
-        }
-        else
-        {
-          asicMap[asickey] = 1;
-        }
+      // find and remove square events
+      const int asicKey = findAsicKey(I, J, K);
+      assert(asicKey > 0);
+      if (asicMap[asicKey]) {
+        ++asicMap[asicKey];
+      } else {
+        asicMap[asicKey] = 1;
+      }
 
-        if ((asicMap[asickey] == 64) && (getCellDif_id((*rawhit)->getCellID0()) != m_cerenkovDifId))
-        {
-          streamlog_out(MESSAGE) << "[eventBuilder] - Rejecting event with full asic. Dif '" << Dif_id << "' asic '" << Asic_id << "' ... " << std::endl;
+      if (asicMap[asicKey] == 64 && Dif_id != m_cerenkovDifId) {
+        streamlog_out(MESSAGE) << "[eventBuilder] - Rejecting event with full asic. Dif '" << Dif_id << "' asic '"
+                               << Asic_id << "' at time '" << time_peak << "'" << std::endl;
 
-          m_firedLayersSet.clear();
-          hitKeys.clear();
-          asicMap.clear();
-          m_isSelected  = false;
-          m_hasFullAsic = true;
-        }
+        m_firedLayersSet.clear();
+        hitKeys.clear();
+        asicMap.clear();
+        m_isSelected  = false;
+        m_hasFullAsic = true;
+      }
 
+      // Creating Calorimeter Hit
+      float pos[3];
+      pos[0] = I * m_cellSizeI;
+      pos[1] = J * m_cellSizeJ;
+      pos[2] = K * m_layerThickness;
 
-        // Creating Calorimeter Hit
-        float pos[3];
-        pos[0] = I * m_cellSizeI;
-        pos[1] = J * m_cellSizeJ;
-        pos[2] = K * m_layerThickness;
+      CalorimeterHitImpl *caloHit = new CalorimeterHitImpl();
+      caloHit->setTime(static_cast<float>(rawhit->getTimeStamp()));
 
-        CalorimeterHitImpl *caloHit = new CalorimeterHitImpl();
-        caloHit->setTime(static_cast<float>((*rawhit)->getTimeStamp()));
+      const float hitShiftedAmplitude = static_cast<float>(rawhit->getAmplitude() & 3);
+      if (hitShiftedAmplitude > 2.5)
+        caloHit->setEnergy(hitShiftedAmplitude); // 3rd threshold
+      else if (hitShiftedAmplitude > 1.5)
+        caloHit->setEnergy(hitShiftedAmplitude - 1); // 2nd threshold ?
+      else
+        caloHit->setEnergy(hitShiftedAmplitude + 1); // 1st threshold ?
 
-        const float hitShiftedAmplitude = static_cast<float>((*rawhit)->getAmplitude() & 3);
-        if (hitShiftedAmplitude > 2.5)
-          caloHit->setEnergy(hitShiftedAmplitude);        // 3rd treshold
-        else if (hitShiftedAmplitude > 1.5)
-          caloHit->setEnergy(hitShiftedAmplitude - 1);    // 2nd treshold ?
-        else
-          caloHit->setEnergy(hitShiftedAmplitude + 1);    // 1st treshold ?
+      // Create hit Key
+      const int aHitKey = IJKToKey(I, J, K);
 
-        // Create hit Key
-        const int aHitKey = IJKToKey(I, J, K);
+      // Avoid two hit in the same cell
+      // std::vector<int>::const_iterator findIter = std::find(hitKeys.begin(), hitKeys.end(), aHitKey);
+      std::map<int, int>::const_iterator findIter = hitKeys.find(aHitKey);
 
-        // Avoid two hit in the same cell
-        // std::vector<int>::const_iterator findIter = std::find(hitKeys.begin(), hitKeys.end(), aHitKey);
-        std::map<int, int>::const_iterator findIter = hitKeys.find(aHitKey);
-
-        if ((findIter != hitKeys.end()) && (Dif_id != m_cerenkovDifId)) // Don't remove anything from the Cerenkov
-        {
+      if (findIter != hitKeys.end()) {
+        if (Dif_id != m_cerenkovDifId) {
           delete caloHit;
           continue;
+        } else {
+          streamlog_out(ERROR) << yellow << " So much Hit in my cherenkov " << normal << std::endl;
+          abort();
         }
+      }
 
+      // set the cell id
+      cellIdEncoder["I"]   = I;
+      cellIdEncoder["J"]   = J;
+      cellIdEncoder["K-1"] = K - 1;
+      cellIdEncoder["M"]   = 0;
+      cellIdEncoder["S-1"] = 3;
 
-        // set the cell id
-        cellIdEncoder["I"]   = I;
-        cellIdEncoder["J"]   = J;
-        cellIdEncoder["K-1"] = K - 1;
-        cellIdEncoder["M"]   = 0;
-        cellIdEncoder["S-1"] = 3;
-
-
-        if (Dif_id == m_cerenkovDifId)
-        {
-          m_totCerenkovHits++;
-          streamlog_out( DEBUG ) << " m_totCerenkovHits == " << m_totCerenkovHits
-                                 << " I == " << I
-                                 << " J == " << J
-                                 << " K == " << K
-                                 << " dif == " << Dif_id
-                                 << " asic == " << Asic_id
-                                 << " chan == " << Chan_id
-                                 // << " pos[0] == " << pos[0]
-                                 // << " pos[1] == " << pos[1]
-                                 // << " pos[2] == " << pos[2]
-                                 << " ahitKey == " << aHitKey
-                                 << " time == " << (*rawhit)->getTimeStamp()
-                                 << " time_peak == " << time_peak
-                                 << " prev_time_peak == " << prev_time_peak
-                                 << " time - time_peak == " << (*rawhit)->getTimeStamp() - time_peak
-                                 << std::endl;
-        }
-
+      if (Dif_id == m_cerenkovDifId) {
+        m_totCerenkovHits++;
+        streamlog_out(DEBUG0) << " m_totCerenkovHits == " << m_totCerenkovHits << " I == " << I << " J == " << J
+                              << " K == " << K << " dif == " << Dif_id << " asic == " << Asic_id
+                              << " chan == " << Chan_id
+                              // << " pos[0] == " << pos[0]
+                              // << " pos[1] == " << pos[1]
+                              // << " pos[2] == " << pos[2]
+                              << " ahitKey == " << aHitKey << " time == " << rawhit->getTimeStamp()
+                              << " time_peak == " << time_peak << " prev_time_peak == " << prev_time_peak
+                              << " time - time_peak == " << rawhit->getTimeStamp() - time_peak << std::endl;
+        m_vHitMapPerLayer.back()->Fill(I, J);
+      } else {
         // Fill hitsMap for each Layer, starting at K-1 = 0
-        streamlog_out(DEBUG) << yellow << "Filling hitMap for Layer '" << K << "'..." << normal << std::endl;
+        // streamlog_out(DEBUG) << yellow << "Filling hitMap for Layer '" << K << "'..." << normal << std::endl;
+        assert(m_vHitMapPerLayer.at(K - 1));
         m_vHitMapPerLayer.at(K - 1)->Fill(I, J);
-        streamlog_out(DEBUG) << blue << "Filling hitMap for Layer '" << K << "'...OK" << normal << std::endl;
-
-
-        cellIdEncoder.setCellID(caloHit);
-        // add layer to list of unique touched layers
-        m_firedLayersSet.insert(K);
-        caloHit->setPosition(pos);
-        col_event->addElement(caloHit);
-        hitKeys.insert(std::pair<int, int>(aHitKey, rawHitTime));
-        m_hitI.push_back(I);
-        m_hitJ.push_back(J);
-        m_hitK.push_back(K);
-        // m_hitBCID.push_back((*rawhit)->getTimeStamp());
-	m_hitThreshold.push_back(thresh);
+        // streamlog_out(DEBUG) << blue << "Filling hitMap for Layer '" << K << "'...OK" << normal << std::endl;
       }
-      else
-      {
-        streamlog_out(DEBUG0) << " time peak = " << time_peak << " pointer --> : " << *rawhit << std::endl;
-      }
-    }//loop over the hit
-    hitKeys.clear();
 
+      cellIdEncoder.setCellID(caloHit);
+      // add layer to list of unique touched layers
+      m_firedLayersSet.insert(K);
+      caloHit->setPosition(pos);
+      col_event->addElement(caloHit);
+      hitKeys.insert(std::pair<int, int>(aHitKey, rawHitTime));
+      m_hitI.push_back(I);
+      m_hitJ.push_back(J);
+      m_hitK.push_back(K);
+      // m_hitBCID.push_back((*rawhit)->getTimeStamp());
+      m_hitThreshold.push_back(thresh);
+    } else {
+      // streamlog_out(DEBUG0) << " time peak = " << time_peak << " pointer --> : " << *rawhit << std::endl;
+    }
+  } // loop over the hit
+
+  streamlog_out(DEBUG) << " eventbuilder trigger raw hit OK" << std::endl;
+  hitKeys.clear();
+}
 
 //=============================================================================
 void TriventProc::defineColors() {
@@ -537,8 +539,8 @@ void TriventProc::defineColors() {
 }
 
 //=============================================================================
-TTree* TriventProc::getOrCreateTree(const std::string &treeName, const std::string &treeDescription) {
-  TTree* tree = static_cast<TTree *>(m_rootFile->Get(treeName.c_str()));
+TTree *TriventProc::getOrCreateTree(const std::string &treeName, const std::string &treeDescription) {
+  TTree *tree = static_cast<TTree *>(m_rootFile->Get(treeName.c_str()));
 
   if (!tree) {
     streamlog_out(DEBUG0) << "Creating tree '" << treeName << "'" << std::endl;
@@ -692,37 +694,33 @@ TH2 *TriventProc::makeTH2(const std::string &title, const std::string &xTitle, c
 }
 
 //=============================================================================
-void TriventProc::findCerenkovHits(int timePeak)
-{
-  std::vector<EVENT::RawCalorimeterHit *>::const_iterator cerHit;
-  for (cerHit = m_cerenkov_raw_hit.begin(); cerHit != m_cerenkov_raw_hit.end(); ++cerHit)
-  {
-    const int bifTime = static_cast<int>((*cerHit)->getTimeStamp());
-    // const int bifBCID = static_cast<int>((*cerHit)->getCellID1());
-    // streamlog_out ( MESSAGE ) << "BifHitTime : " << bifTime << " timPeak : " << timePeak
-    // << " BifHitTime - timePeak : " << std::fabs(bifTime - timePeak)
-    // << std::endl;
-    if (std::fabs(bifTime - timePeak) <= m_cerenkovTimeWindow)
-    {
-      m_timeCerenkov = bifTime - timePeak;
-      const int Dif_id       = getCellDif_id((*cerHit)->getCellID0());
-      const int Asic_id      = getCellAsic_id((*cerHit)->getCellID0());
-      const int Chan_id      = getCellChan_id((*cerHit)->getCellID0());
-      const int hitThreshold = (*cerHit)->getAmplitude();
 
-      if (Dif_id != m_cerenkovDifId)
-      {
-        streamlog_out(WARNING) << yellow << "[findCerenkov] - Found Cerenkov hit in wrong dif '" << Dif_id << "'... should be in dif '" << m_cerenkovDifId << "'...skipping" << normal << std::endl;
+void TriventProc::findCerenkovHits(int timePeak) {
+  for (const auto &cerHit : m_cerenkov_raw_hit) {
+    assert(cerHit);
+    const int bifTime = static_cast<int>(cerHit->getTimeStamp());
+
+    if (std::fabs(bifTime - timePeak) <= m_cerenkovTimeWindow) {
+      m_timeCerenkov         = bifTime - timePeak;
+      const int Dif_id       = getCellDif_id(cerHit->getCellID0());
+      const int Asic_id      = getCellAsic_id(cerHit->getCellID0());
+      const int Chan_id      = getCellChan_id(cerHit->getCellID0());
+      const int hitThreshold = cerHit->getAmplitude();
+
+      if (Dif_id != m_cerenkovDifId) {
+        streamlog_out(WARNING) << yellow << "[findCerenkov] - Found Cerenkov hit in wrong dif '" << Dif_id
+                               << "'... should be in dif '" << m_cerenkovDifId << "'...skipping" << normal << std::endl;
         continue;
       }
 
-      streamlog_out(DEBUG) << "[findCerenkov] - Found Cerenkov hit at time '" << m_timeCerenkov
-                             << "'\t Asic " << Asic_id
-                             << "'\t Chan " << Chan_id
-                             << "'\t Threshold " << hitThreshold
-                             << std::endl;
-      m_cerAsic = Asic_id;
-      m_cerChan = Chan_id;
+      streamlog_out(DEBUG) << "[findCerenkov] - Found Cerenkov hit at time '" << m_timeCerenkov << "'\t Asic '"
+                           << Asic_id << "'\t Chan '" << Chan_id << "'\t Threshold " << hitThreshold << std::endl;
+      // streamlog_out(DEBUG) << "[findCerenkov] - address --> '" << cerHit.get() << "' use_count: " <<
+      // cerHit.use_count() << std::endl;
+      streamlog_out(DEBUG) << "[findCerenkov] - address --> '" << cerHit << std::endl;
+
+      m_cerAsic      = Asic_id;
+      m_cerChan      = Chan_id;
       m_cerThreshold = hitThreshold;
 
       switch (hitThreshold) {
@@ -778,225 +776,234 @@ void TriventProc::processEvent(LCEvent *evtP) {
       continue;
     }
 
-          const int numElements = col->getNumberOfElements();// hit number in trigger
+    const int numElements = inputLCCol->getNumberOfElements(); // hit number in trigger
 
-          ++m_trigCount;
-          if (0 == m_trigCount % 100)
-          {
-            streamlog_out(MESSAGE) << yellow << "Trigger number == " << m_trigCount << normal << std::endl;
+    ++m_trigCount;
+    if (0 == m_trigCount % 100) {
+      streamlog_out(MESSAGE) << yellow << "Trigger number == " << m_trigCount << normal << std::endl;
+    }
+
+    if (numElements > m_elecNoiseCut) {
+      streamlog_out(MESSAGE) << yellow << "TRIGGER number " << m_trigCount
+                             << " SKIPPED ... hitNumber > m_elecNoiseCut : " << numElements << " > " << m_elecNoiseCut
+                             << normal << std::endl;
+      continue;
+    }
+
+    // set raw hits
+    m_trigger_raw_hit.clear();
+    m_cerenkov_raw_hit.clear();
+    // std::cout << "m_trigger_raw_hit.size() " << m_trigger_raw_hit.size() << std::endl;
+
+    std::vector<int> vTrigger;
+
+    for (int ihit(0); ihit < numElements; ++ihit) // loop over the hits
+    {
+      RawCalorimeterHit *raw_hit = dynamic_cast<RawCalorimeterHit *>(inputLCCol->getElementAt(ihit));
+      if (raw_hit) {
+        // extract abolute bcid information:
+        const int difId = raw_hit->getCellID0() & 0xFF;
+        assert(difId > 0);
+        if (ihit == 0) {
+          std::stringstream pname("");
+          pname << "DIF" << difId << "_Triggers";
+          inputLCCol->getParameters().getIntVals(pname.str(), vTrigger);
+          if (vTrigger.size() != 0) {
+            m_bcid1                     = vTrigger[4];
+            m_bcid2                     = vTrigger[3];
+            unsigned long long Shift    = 16777216ULL; // to shift the value from the 24 first bits
+            unsigned long long theBCID_ = m_bcid1 * Shift + m_bcid2;
+            streamlog_out(DEBUG0) << "trigger time : " << theBCID_ << std::endl;
           }
+        }
 
+        if (difId == m_cerenkovDifId) {
+          m_cerenkov_raw_hit.push_back(raw_hit);
+          // std::cout << "raw_hit address Cerenkov --> " << raw_hit << " use_count: " << raw_hit.use_count() <<
+          // std::endl;
+          // std::cout << "raw_hit address Cerenkov --> " << raw_hit << std::endl;
+        }
+        m_trigger_raw_hit.push_back(raw_hit);
+        // m_trigger_raw_hit.push_back(std::move(raw_hit));
+        // std::cout << "raw_hit address Raw --> " << raw_hit << " use_count: " << raw_hit.use_count() << std::endl;
+        // std::cout << "raw_hit address Assert --> " << raw_hit << " use_count: " << raw_hit.use_count() << std::endl;
+        // assert(raw_hit);
+      }
+    }
 
-          if (numElements > m_elecNoiseCut)
-          {
-            streamlog_out(MESSAGE) << red << "TRIGGER number " << m_trigCount << " SKIPPED ... hitNumber > m_elecNoiseCut : " << numElements << " > " << m_elecNoiseCut << normal << std::endl;
-            break;
-          }
+    streamlog_out(MESSAGE) << blue << " Trigger '" << m_trigCount << "' Found " << m_cerenkov_raw_hit.size()
+                           << " raw hits in BIF!" << normal << std::endl;
+    streamlog_out(DEBUG1) << "at time : " << normal << std::endl;
+    for (const auto &cerHit : m_cerenkov_raw_hit) {
+      assert(cerHit);
+      streamlog_out(DEBUG1) << blue << " \t '" << static_cast<int>(cerHit->getTimeStamp()) << " Cerenkov --> '"
+                            << cerHit << normal << std::endl;
+    }
+    getMaxTime();
+    std::vector<int> time_spectrum = getTimeSpectrum();
 
-          // set raw hits
-          m_trigger_raw_hit.clear();
-          m_cerenkov_raw_hit.clear();
-          std::vector<int> vTrigger;
-          for (int ihit(0); ihit < numElements; ++ihit)  // loop over the hits
-          {
-            RawCalorimeterHit *raw_hit = dynamic_cast<RawCalorimeterHit *>(col->getElementAt(ihit));
+    //---------------------------------------------------------------
+    //! Find the condidate event
+    int prevTimePeak     = 0; //  the previous bin center
+    m_nCerenkovTrigger   = 0;
+    m_hasTooManyCerenkov = false;
 
-            if (NULL != raw_hit)
-            {
-              m_trigger_raw_hit.push_back(raw_hit);
-              const int difId = raw_hit->getCellID0() & 0xFF;
-              if (difId == m_cerenkovDifId)
-              {
-                m_cerenkov_raw_hit.push_back(raw_hit);
-              }
+    // Event is built at peakTime+-TimeWindow
+    // Loop on time_spectrum vector without going out of range
+    auto        beginTime   = time_spectrum.begin();
+    const auto &endTime     = time_spectrum.end();
+    auto        timeIter    = beginTime;
+    auto        prevMaxIter = beginTime;
 
-              //extract abolute bcid information:
-              if (ihit == 0)
-              {
-                unsigned int difid = 0;
-                difid = raw_hit->getCellID0() & 0xFF;
-                if (difid == 0)
-                {
-                  streamlog_out(ERROR) << red << " Hit with difId == 0 " << normal << std::endl;
-                  return;
-                }
-                std::stringstream pname("");
-                pname << "DIF" << difid << "_Triggers";
-                col->getParameters().getIntVals(pname.str(), vTrigger);
-                if (vTrigger.size() != 0)
-                {
-                  m_bcid1 = vTrigger[4];
-                  m_bcid2 = vTrigger[3];
-                  unsigned long long Shift    = 16777216ULL; //to shift the value from the 24 first bits
-                  unsigned long long theBCID_ = m_bcid1 * Shift + m_bcid2;
-                  streamlog_out(DEBUG1) << "trigger time : " << theBCID_ << std::endl;
-                }
-              }
-            }
-          }
-          streamlog_out(MESSAGE) << blue << " Trigger '" << m_trigCount << "' Found  " << m_cerenkov_raw_hit.size() << " raw hits in BIF! at time : " << normal << std::endl;
+    streamlog_out(DEBUG0) << yellow << "[processEvent] - Trigger '" << m_trigCount << "' - beginTime : " << *beginTime
+                          << " endTime : " << distance(beginTime, endTime) << " ts.size: " << time_spectrum.size()
+                          << normal << std::endl;
 
-          std::vector<EVENT::RawCalorimeterHit *>::const_iterator cerHit;
-          for (cerHit = m_cerenkov_raw_hit.begin(); cerHit != m_cerenkov_raw_hit.end(); ++cerHit)
-          {
-            streamlog_out(DEBUG) << blue << " \t '" << static_cast<int>((*cerHit)->getTimeStamp()) << normal << std::endl;
-          }
+    /**
+     * Old Method used before to find peak ( does not take into account the time window)
+     */
+    // while (ibin < (m_maxTime + 1)) {
+    //   if (time_spectrum[ibin] >= m_noiseCut &&
+    //       time_spectrum[ibin] >= time_spectrum[ibin + 1] &&
+    //       time_spectrum[ibin] >= time_spectrum[ibin - 1] &&
+    //       time_spectrum[ibin] >= time_spectrum[ibin - 2] &&
+    //       time_spectrum[ibin] >= time_spectrum[ibin + 2] ) {
+    while (distance(timeIter, endTime) > 0) // Ensure that timeIter < endTime
+    {
+      if (*(timeIter) >= m_noiseCut) {
+        auto lowerBound = timeIter;
+        auto upperBound = timeIter;
+        // Ensure we are not lookinf before/after begin/end of time_spectrum
+        if (distance(beginTime, timeIter) > m_timeWin)
+          lowerBound = std::prev(timeIter, m_timeWin);
+        else if (distance(beginTime, timeIter) > 1) {
+          streamlog_out(DEBUG0) << green << "[processEvent] - small lowerBound! m_timeWin : " << m_timeWin
+                                << " distance(beginTime, timeIter) = " << distance(beginTime, timeIter) << normal
+                                << std::endl;
+          lowerBound = std::prev(timeIter, distance(beginTime, timeIter));
+        } else
+          streamlog_out(DEBUG0) << red << "[processEvent] - shit lowerBound! m_timeWin : " << m_timeWin
+                                << " distance(beginTime, timeIter) = " << distance(beginTime, timeIter) << normal
+                                << std::endl;
 
-          getMaxTime();
-          std::vector<int> time_spectrum = getTimeSpectrum();
+        if (distance(timeIter, endTime) > m_timeWin)
+          upperBound = std::next(timeIter, m_timeWin);
+        else {
+          upperBound = std::next(timeIter, distance(timeIter, endTime)); // distance > 0 already met in while loop
+          streamlog_out(DEBUG0) << green << "[processEvent] - small upperBound! m_timeWin : " << m_timeWin
+                                << " distance(timeIter, endTime) = " << distance(timeIter, endTime) << normal
+                                << std::endl;
+        }
+        // find the bin in +- timeWin with max hits
 
-          //---------------------------------------------------------------
-          //! Find the condidate event
-          int prevTimePeak = 0; //  the previous bin center
-          m_nCerenkovTrigger = 0;
-          m_hasTooManyCerenkov = false;
+        const auto &maxIter = std::max_element(lowerBound, upperBound); // max in [lower,upper)
+        streamlog_out(DEBUG0) << yellow << "[processEvent] - upperBound '" << distance(beginTime, upperBound)
+                              << "' lowerBound '" << distance(beginTime, lowerBound) << " max '"
+                              << distance(beginTime, maxIter) << "' : " << *maxIter << normal << std::endl;
 
-          // Event is built at peakTime+-TimeWindow
-          // Loop on time_spectrum vector without going out of range
-          auto        beginTime = time_spectrum.begin();
-          const auto& endTime   = time_spectrum.end();
-          auto        timeIter  = beginTime;
-          auto        prevMaxIter = beginTime;
+        if (maxIter <= prevMaxIter && distance(beginTime, timeIter) > 0) {
+          streamlog_out(DEBUG0) << yellow << "[processEvent] - Found duplicate peak, at time '"
+                                << distance(time_spectrum.begin(), maxIter) << "' previous peak : '"
+                                << distance(time_spectrum.begin(), prevMaxIter) << "'..." << normal << std::endl;
+          ++timeIter;
+        }
 
-          streamlog_out(DEBUG) << blue << "[processEvent] - Trigger '" << m_trigCount << "' - beginTime : " << *beginTime << " endTime : " << distance(beginTime, endTime) << " ts.size: " << time_spectrum.size() << normal << std::endl;
+        // streamlog_out(WARNING) << yellow << "*maxIter: " << *maxIter
+        //  << "' *timeIter: " << *timeIter
+        //  << "' m_timeWin: " << m_timeWin
+        //  << normal << std::endl;
 
-          /**
-           * Old Method used before to find peak ( does not take into account the time window)
-           */
-          // while (ibin < (m_maxTime + 1)) {
-          //   if (time_spectrum[ibin] >= m_noiseCut &&
-          //       time_spectrum[ibin] >= time_spectrum[ibin + 1] &&
-          //       time_spectrum[ibin] >= time_spectrum[ibin - 1] &&
-          //       time_spectrum[ibin] >= time_spectrum[ibin - 2] &&
-          //       time_spectrum[ibin] >= time_spectrum[ibin + 2] ) {
-          while (distance(timeIter, endTime) > 0)  // Insure that timeIter < endTime
-          {
-            if (*(timeIter) >= m_noiseCut)
-            {
-              auto lowerBound = timeIter;
-              auto upperBound = timeIter;
-              // Ensure we are not lookinf before/after begin/end of time_spectrum
-              if (distance(beginTime, timeIter) > m_timeWin)
-                lowerBound = std::prev(timeIter, m_timeWin);
-              else if (distance(beginTime, timeIter) > 1 )
-              {
-                streamlog_out(DEBUG0) << green << "[processEvent] - small lowerBound! m_timeWin : " << m_timeWin << " distance(beginTime, timeIter) = " << distance(beginTime, timeIter) << normal << std::endl;
-                lowerBound = std::prev(timeIter, distance(beginTime, timeIter));
-              }
-              else
-                streamlog_out(DEBUG0) << red << "[processEvent] - shit lowerBound! m_timeWin : " << m_timeWin << " distance(beginTime, timeIter) = " << distance(beginTime, timeIter) << normal << std::endl;
-
-              if (distance(timeIter, endTime) > m_timeWin)
-                upperBound = std::next(timeIter, m_timeWin);
-              else
-              {
-                upperBound = std::next(timeIter, distance(timeIter, endTime)); // distance > 0 already met in while loop
-                streamlog_out(DEBUG0) << green << "[processEvent] - small upperBound! m_timeWin : " << m_timeWin << " distance(timeIter, endTime) = " << distance(timeIter, endTime) << normal << std::endl;
-              }
-              // find the bin in +- timeWin with max hits
-
-              const auto& maxIter = std::max_element(lowerBound, upperBound); //max in [lower,upper)
-              streamlog_out(DEBUG0) << yellow << "[processEvent] - upperBound '" << distance(beginTime, upperBound) << "' lowerBound '" << distance(beginTime, lowerBound) << " max '" << distance(beginTime, maxIter) << "' : " << *maxIter << normal << std::endl;
-
-              if ( maxIter <= prevMaxIter && distance(beginTime, timeIter) > 0 )
-              {
-                streamlog_out(DEBUG0) << yellow << "[processEvent] - Found duplicate peak, at time '" << distance(time_spectrum.begin(), maxIter) << "' previous peak : '" << distance(time_spectrum.begin(), prevMaxIter) << "'..." << normal << std::endl;
-                ++timeIter;
-              }
-
-              // streamlog_out(WARNING) << yellow << "*maxIter: " << *maxIter
-                                    //  << "' *timeIter: " << *timeIter
-                                    //  << "' m_timeWin: " << m_timeWin
-                                    //  << normal << std::endl;
-
-              //find if the current bin has the max or equal hits
-              if ((maxIter == timeIter) || (*(maxIter) == *(timeIter))) // if bin > other bins or bin is equal to biggest bin
-              {
-                streamlog_out( DEBUG ) << blue << "[processEvent] - Found Peak, at time '" << distance(time_spectrum.begin(), maxIter) << "' - hits : " << *maxIter << normal << std::endl;
-                prevMaxIter = maxIter;
-                // Found a peak at time *(timeIter)
-                // std::cout << yellow
-                //           << "\tmaxIter: " << std::distance(maxIter, timeIter)
-                //           << "\tm_timeWin: " << m_timeWin
-                //           << "\t m_noiseCut: " << m_noiseCut
-                //           << "\t time: " << *(timeIter)
-                //           << "\t nextTime: " << *(std::next(timeIter))
-                //           << "\t prevTime: " << *(std::prev(timeIter))
-                //           << "\t 2nextTime: " << *(std::next(timeIter, 2))
-                //           << "\t 2prevTime: " << *(std::prev(timeIter, 2))
-                //           << normal << std::endl;
+        // find if the current bin has the max or equal hits
+        if ((maxIter == timeIter) || (*(maxIter) == *(timeIter))) // if bin > other bins or bin is equal to biggest bin
+        {
+          streamlog_out(DEBUG) << blue << "[processEvent] - Found Peak, at time '"
+                               << distance(time_spectrum.begin(), maxIter) << "' - hits : " << *maxIter << normal
+                               << std::endl;
+          prevMaxIter = maxIter;
+          // Found a peak at time *(timeIter)
+          // std::cout << yellow
+          //           << "\tmaxIter: " << std::distance(maxIter, timeIter)
+          //           << "\tm_timeWin: " << m_timeWin
+          //           << "\t m_noiseCut: " << m_noiseCut
+          //           << "\t time: " << *(timeIter)
+          //           << "\t nextTime: " << *(std::next(timeIter))
+          //           << "\t prevTime: " << *(std::prev(timeIter))
+          //           << "\t 2nextTime: " << *(std::next(timeIter, 2))
+          //           << "\t 2prevTime: " << *(std::prev(timeIter, 2))
+          //           << normal << std::endl;
           std::unique_ptr<LCEventImpl> lcEvt = make_unique<LCEventImpl>(); // create the event
 
-                //---------- set event paramters ------
-                const std::string parname_trigger = "trigger";
-                const std::string parname_energy  = "beamEnergy";
-                const std::string parname_bcid1   = "bcid1";
-                const std::string parname_bcid2   = "bcid2";
+          //---------- set event paramters ------
+          const std::string parname_trigger = "trigger";
+          const std::string parname_energy  = "beamEnergy";
+          const std::string parname_bcid1   = "bcid1";
+          const std::string parname_bcid2   = "bcid2";
           lcEvt->parameters().setValue(parname_trigger, evtP->getEventNumber());
           lcEvt->parameters().setValue(parname_energy, m_beamEnergy);
           lcEvt->parameters().setValue(parname_bcid1, m_bcid1);
           lcEvt->parameters().setValue(parname_bcid2, m_bcid2);
           lcEvt->setRunNumber(evtP->getRunNumber());
-                m_runNumber = evtP->getRunNumber();
-                //-------------------------------------
+          m_runNumber = evtP->getRunNumber();
+          //-------------------------------------
 
           std::unique_ptr<LCCollectionVec> outCol = make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
 
-                // reset Flags
-                m_isSelected         = false;
-                m_isNoise            = false;
-                m_hasNotEnoughLayers = false;
-                m_hasFullAsic        = false;
-                m_isTooCloseInTime   = false;
-                m_hitI.clear();
-                m_hitJ.clear();
-                m_hitK.clear();
-                m_hitThreshold.clear();
+          // reset Flags
+          m_isSelected         = false;
+          m_isNoise            = false;
+          m_hasNotEnoughLayers = false;
+          m_hasFullAsic        = false;
+          m_isTooCloseInTime   = false;
+          m_hitI.clear();
+          m_hitJ.clear();
+          m_hitK.clear();
+          m_hitThreshold.clear();
 
-                // Event Building
-                int timePeak = distance(time_spectrum.begin(), timeIter);
+          // Event Building
+          int timePeak = distance(time_spectrum.begin(), timeIter);
           streamlog_out(DEBUG0) << blue << " EventBuilding with timePeak '" << timePeak
                                 << "' prevTimePeak: " << prevTimePeak << normal << std::endl;
           TriventProc::eventBuilder(outCol, timePeak, prevTimePeak);
-                streamlog_out(DEBUG0) << blue << " EventBuilding...OK" << normal << std::endl;
+          streamlog_out(DEBUG0) << blue << " EventBuilding...OK" << normal << std::endl;
 
-                m_evtTrigNbr   = m_trigNbr;
+          m_evtTrigNbr   = m_trigNbr;
           m_evtNbr       = m_evtNum; // rejected event will have same number as last accepted !
           m_nHit         = outCol->getNumberOfElements();
           m_nFiredLayers = static_cast<int>(m_firedLayersSet.size());
-                m_nCerenkov1   = 0;
-                m_nCerenkov2   = 0;
-                m_nCerenkov3   = 0;
-                m_timeCerenkov = -2 * m_cerenkovTimeWindow;
+          m_nCerenkov1   = 0;
+          m_nCerenkov2   = 0;
+          m_nCerenkov3   = 0;
+          m_timeCerenkov = -2 * m_cerenkovTimeWindow;
 
-                if (m_hasCherenkov)
-                {
-                  // streamlog_out( MESSAGE ) << green << "hit in bif: " << m_cerenkov_raw_hit.size() << normal << std::endl;
-                  findCerenkovHits(timePeak);
+          if (m_hasCherenkov) {
+            // streamlog_out( MESSAGE ) << green << "hit in bif: " << m_cerenkov_raw_hit.size() << normal <<
+            // std::endl;
 
-                  if (m_timeCerenkov != -2 * m_cerenkovTimeWindow)  // InitialValue
-                  {
-                    streamlog_out( DEBUG ) << "[processEvent] - " << green << "Trig# " << m_evtTrigNbr << " TrigCount " << m_trigCount << " Evt# " << m_evtNum
-                                           << "\tFound Cerenkov!"
-                                           << "\t cer1 = " << m_nCerenkov1
-                                           << "\t cer2 = " << m_nCerenkov2
-                                           << "\t cer3 = " << m_nCerenkov3
-                                           << normal << std::endl;
-                  }
-                }
+            streamlog_out(DEBUG0) << " Find Cer " << m_cerenkov_raw_hit.size() << std::endl;
+            findCerenkovHits(timePeak);
+            streamlog_out(DEBUG0) << " Find Cer OK" << normal << std::endl;
 
-                streamlog_out(DEBUG0) << "_firedLayersSet.size() = " << m_nFiredLayers << "\t _LayerCut = " << m_layerCut << std::endl;
+            if (m_timeCerenkov != -2 * m_cerenkovTimeWindow) // InitialValue
+            {
+              streamlog_out(DEBUG) << "[processEvent] - " << green << "Trig# " << m_evtTrigNbr << " TrigCount "
+                                   << m_trigCount << " Evt# " << m_evtNum << "\tFound Cerenkov!"
+                                   << "\t cer1 = " << m_nCerenkov1 << "\t cer2 = " << m_nCerenkov2
+                                   << "\t cer3 = " << m_nCerenkov3 << normal << std::endl;
+            }
+          }
 
-                // Apply cut on min number of firedLayer +
+          streamlog_out(DEBUG0) << "_firedLayersSet.size() = " << m_nFiredLayers << "\t _LayerCut = " << m_layerCut
+                                << std::endl;
+
+          // Apply cut on min number of firedLayer +
           if (static_cast<int>(m_nFiredLayers) < m_layerCut) {
             streamlog_out(DEBUG0) << green << " Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
                                   << " m_layerCut: " << m_layerCut << normal << std::endl;
-                  m_rejectedNum++;
-                  m_isSelected         = false;
-                  m_hasNotEnoughLayers = true;
-                  delete outcol;
-                }
-                //  Apply cut on time between two events
+            m_rejectedNum++;
+            m_isSelected         = false;
+            m_hasNotEnoughLayers = true;
+          }
+          //  Apply cut on time between two events
           else if (abs(timePeak - prevTimePeak) > m_time2prevEventCut) {
             streamlog_out(DEBUG0) << green << " Trivent find event at :==> " << red << timePeak << green
                                   << "\t :Nhit: ==> " << magenta << outCol->getNumberOfElements() << normal
@@ -1007,46 +1014,39 @@ void TriventProc::processEvent(LCEvent *evtP) {
             m_lcWriter->writeEvent(lcEvt.get());
             assert(lcEvt);
 
-                  ++m_selectedNum;
-                  m_isSelected = true;
-                }
-                else
-                {
-                  streamlog_out(MESSAGE) << blue << " Event rejected, Events too close. eventTime: " << timePeak << " prevEventTime: " << prevTimePeak << normal << std::endl;
-                  ++m_rejectedNum;
-                  m_isSelected       = false;
-                  m_isTooCloseInTime = true;
-                  delete outcol;
-                }
-
-                if (m_nCerenkov1>0 || m_nCerenkov2>0 || m_nCerenkov3>0) {
-                  ++m_cerenkovEvts;
-                }
-                m_eventTree->Fill();
-
-                delete evt;
-                evt = NULL;
-
-                prevTimePeak = timePeak;
-                timeIter     = std::next(timeIter, m_timeWin+1);
-              }
-              else     // is not a peak, look in next frame
-              {
-                ++timeIter;
-              }
-            }
-            else     // Not enough hit in frame, look in next one ( previous bin has already been looked into )
-            {
-              // if (*timeIter >5)
-              // streamlog_out(WARNING) <<yellow<< "[NoiseCut] - Event rejected : " << *(timeIter) << normal << std::endl;
-              ++timeIter;
-            }
+            ++m_selectedNum;
+            m_isSelected = true;
+          } else {
+            streamlog_out(MESSAGE) << blue << " Event rejected, Events too close. eventTime: " << timePeak
+                                   << " prevEventTime: " << prevTimePeak << normal << std::endl;
+            ++m_rejectedNum;
+            m_isSelected       = false;
+            m_isTooCloseInTime = true;
           }
-          // m_vTimeSpectrum = time_spectrum;
-          // m_triggerTree->Fill();
+
+          if (m_nCerenkov1 > 0 || m_nCerenkov2 > 0 || m_nCerenkov3 > 0) {
+            ++m_cerenkovEvts;
+          }
+
+          m_eventTree->Fill();
+
+          prevTimePeak = timePeak;
+          timeIter     = std::next(timeIter, m_timeWin + 1);
+        } else // is not a peak, look in next frame
+        {
+          ++timeIter;
         }
+      } else // Not enough hit in frame, look in next one ( previous bin has already been looked into )
+      {
+        // if (*timeIter >5)
+        // streamlog_out(WARNING) <<yellow<< "[NoiseCut] - Event rejected : " << *(timeIter) << normal <<
+        // std::endl;
+        ++timeIter;
       }
     }
+
+    // m_vTimeSpectrum = time_spectrum;
+    // m_triggerTree->Fill();
   }
 }
 
@@ -1059,7 +1059,7 @@ void TriventProc::end() {
 
   std::string cerCut = "CerenkovTime>-" + std::to_string(m_cerenkovTimeWindow);
   m_eventTree->Draw("CerenkovTime>>hcer", cerCut.c_str());
-  TH1* hcer = dynamic_cast<TH1 *>(gDirectory->Get("hcer"));
+  TH1 *hcer = dynamic_cast<TH1 *>(gDirectory->Get("hcer"));
   streamlog_out(MESSAGE) << "Cerenkov Probable time shift at " << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin())
                          << " with " << hcer->GetBinContent(hcer->GetMaximumBin()) << "/" << m_cerenkovEvts
                          << " event tagged" << std::endl;
