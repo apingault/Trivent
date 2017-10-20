@@ -39,14 +39,13 @@ public:
   void init();
   void processEvent(LCEvent *evtP);
   void processRunHeader(LCRunHeader * /*runH*/){};
-  void XMLReader(std::string xmlfile);
-  void readDifGeomFile(std::string geomfile);
+  void XMLReader(const std::string &xmlfile);
   void printDifGeom();
   void defineColors();
 
-  int getCellDif_id(int cell_id);
-  int getCellAsic_id(int cell_id);
-  int getCellChan_id(int cell_id);
+  int getCellDif_id(const int &cell_id);
+  int getCellAsic_id(const int &cell_id);
+  int getCellChan_id(const int &cell_id);
 
   int getMaxTime();
 
@@ -71,18 +70,19 @@ public:
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
   }
 
-  bool checkPadLimits(std::vector<int> &padIndex, std::vector<int> &padLimits);
+  bool checkPadLimits(const std::vector<int> &padIndex, const std::vector<int> &padLimits);
 
   std::vector<int> getPadIndex(const int &dif_id, const int &asic_id, const int &chan_id);
-  void eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event, int &time_peak, int &prev_time_peak);
+  void eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event, const int &time_peak, const int &prev_time_peak);
   void end();
 
   TH2 *makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle);
 
   // std::unique_ptr<TTree> getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
   TTree *getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
-  void findCerenkovHits(const int timePeak);
+  void findCerenkovHits(const int &timePeak);
   int getAsicKey(const std::vector<int> &padIndex);
+  int IJKToKey(const std::vector<int> &padIndex);
 
 protected:
   std::unique_ptr<LCWriter>               m_lcWriter;

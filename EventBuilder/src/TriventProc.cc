@@ -152,7 +152,7 @@ TriventProc::TriventProc()
 }
 
 //=============================================================================
-void TriventProc::XMLReader(std::string xmlfile) {
+void TriventProc::XMLReader(const std::string &xmlfile) {
   TiXmlDocument xml(xmlfile.c_str());
   bool          load_key = xml.LoadFile();
 
@@ -246,15 +246,15 @@ void TriventProc::printDifGeom() {
 // ============ decode the cell ids =============
 // bit shift & 0xFF = Apply mask 1111 1111 to binary value
 // eg: Dif 1 => cellID0 = 00983297 => DifID = 1 / AsicID = 1 / ChanID = 15
-int TriventProc::getCellDif_id(int cell_id) { return cell_id & 0xFF; }
+int TriventProc::getCellDif_id(const int &cell_id) { return cell_id & 0xFF; }
 
 //=============================================================================
 //  bit shift & 0xFF00 Apply mask 1111 1111 0000 0000 then cut last 8 bits
-int TriventProc::getCellAsic_id(int cell_id) { return (cell_id & 0xFF00) >> 8; }
+int TriventProc::getCellAsic_id(const int &cell_id) { return (cell_id & 0xFF00) >> 8; }
 
 //=============================================================================
 //  bit shift & 0x3F0000 Apply mask 1111 0000 0000 0000 0000 then cut last 16 bits
-int TriventProc::getCellChan_id(int cell_id) { return (cell_id & 0x3F0000) >> 16; }
+int TriventProc::getCellChan_id(const int &cell_id) { return (cell_id & 0x3F0000) >> 16; }
 
 // ============ ============ ============ ============ ============ ============ ============
 // ============ ============ ============ ============ ============ ============ ============
@@ -268,7 +268,7 @@ int TriventProc::getCellChan_id(int cell_id) { return (cell_id & 0x3F0000) >> 16
 
 //=============================================================================
 
-bool TriventProc::checkPadLimits(std::vector<int> &padIndex, std::vector<int> &padLimits) {
+bool TriventProc::checkPadLimits(const std::vector<int> &padIndex, const std::vector<int> &padLimits) {
   assert(padLimits.size() == padIndex.size() * 2);
   for (int i = 0; i < static_cast<int>(padIndex.size()); ++i) {
     if (padIndex[i] < padLimits[i * 2] || padIndex[i] > padLimits[i * 2 + 1])
@@ -279,18 +279,16 @@ bool TriventProc::checkPadLimits(std::vector<int> &padIndex, std::vector<int> &p
 
 //=============================================================================
 std::vector<int> TriventProc::getPadIndex(const int &dif_id, const int &asic_id, const int &chan_id) {
-  std::vector<int> index(3, 0);
   std::map<int, LayerID>::const_iterator findIter = m_mDifMapping.find(dif_id);
 
   if (findIter == m_mDifMapping.end()) {
     streamlog_out(ERROR) << " [getPadIndex] difId '" << dif_id << "' not found in geometry file" << std::endl;
-    return index; // empty
+    return std::vector<int>(3, 0); // empty
   }
 
-  index[0] = (1 + MapILargeHR2[chan_id] + AsicShiftI[asic_id]);
-  index[1] = (32 - (MapJLargeHR2[chan_id] + AsicShiftJ[asic_id])) + findIter->second.DifY;
-  index[2] = findIter->second.K;
-
+  std::vector<int> index{1 + MapILargeHR2[chan_id] + AsicShiftI[asic_id],
+                         32 - (MapJLargeHR2[chan_id] + AsicShiftJ[asic_id]),
+                         static_cast<int>(findIter->second.K)};
   std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
   // Cerenkov layer is not in the layerSet as it's not a physical layer, needs to account for that when checking the pad
   // limits
@@ -341,7 +339,9 @@ std::vector<int> TriventProc::getTimeSpectrum(const int &maxTime) //__attribute_
 }
 
 //=============================================================================
-int IJKToKey(const int i, const int j, const int k) { return 100 * 100 * k + 100 * j + i; }
+int TriventProc::IJKToKey(const std::vector<int> &padIndex) {
+  return 100 * 100 * padIndex[2] + 100 * padIndex[1] + padIndex[0];
+}
 
 //=============================================================================
 int TriventProc::getAsicKey(const std::vector<int> &padIndex) {
@@ -360,7 +360,7 @@ int TriventProc::getAsicKey(const std::vector<int> &padIndex) {
 }
 
 //=============================================================================
-void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event, int &time_peak, int &prev_time_peak) {
+void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event, const int &time_peak, const int &prev_time_peak) {
 
   m_firedLayersSet.clear();
 
@@ -404,28 +404,15 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
                              << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << normal << std::endl;
         continue;
       }
-      std::vector<int> padIndex = getPadIndex(Dif_id, Asic_id, Chan_id); // return (0,0,0) if dif_id not found
+      const std::vector<int> padIndex = getPadIndex(Dif_id, Asic_id, Chan_id); // return (0,0,0) if dif_id not found
       if (padIndex[0] == 0 || padIndex[1] == 0 || padIndex[2] == 0) {
         streamlog_out(WARNING) << yellow << "[eventBuilder] - Dif '" << Dif_id
                                << "' not found in geometry file...skipping hit" << normal << std::endl;
         continue;
       }
 
-      const int I = padIndex[0];
-      const int J = padIndex[1];
-      const int K = padIndex[2];
-
-      if (K <= 0 || K > static_cast<int>(m_layerSet.size())) {
-        if (Dif_id != m_cerenkovDifId) {
-          streamlog_out(WARNING) << yellow << "[eventBuilder] - Found hit in Layer '" << K
-                                 << "' for DifId/AsicId/ChanId/Thr: " << Dif_id << "/" << Asic_id << "/" << Chan_id
-                                 << "/" << thresh << "...skipping hit " << normal << std::endl;
-          continue;
-        }
-      }
-
       // find and remove square events
-      const int asicKey = findAsicKey(I, J, K);
+      const int asicKey = getAsicKey(padIndex);
       assert(asicKey > 0);
       if (asicMap[asicKey]) {
         ++asicMap[asicKey];
@@ -434,8 +421,8 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
       }
 
       if (asicMap[asicKey] == 64 && Dif_id != m_cerenkovDifId) {
-        streamlog_out(MESSAGE) << "[eventBuilder] - Rejecting event with full asic. Dif '" << Dif_id << "' asic '"
-                               << Asic_id << "' at time '" << time_peak << "'" << std::endl;
+        streamlog_out(WARNING) << yellow << "[eventBuilder] - Rejecting event with full asic. Dif '" << Dif_id
+                               << "' asic '" << Asic_id << "' at time '" << time_peak << "'" << normal << std::endl;
 
         m_firedLayersSet.clear();
         hitKeys.clear();
@@ -446,9 +433,9 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
 
       // Creating Calorimeter Hit
       float pos[3];
-      pos[0] = I * m_cellSizeI;
-      pos[1] = J * m_cellSizeJ;
-      pos[2] = K * m_layerThickness;
+      pos[0] = padIndex[0] * m_cellSizeI;
+      pos[1] = padIndex[1] * m_cellSizeJ;
+      pos[2] = padIndex[2] * m_layerThickness;
 
       CalorimeterHitImpl *caloHit = new CalorimeterHitImpl();
       caloHit->setTime(static_cast<float>(rawhit->getTimeStamp()));
@@ -462,10 +449,9 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
         caloHit->setEnergy(hitShiftedAmplitude + 1); // 1st threshold ?
 
       // Create hit Key
-      const int aHitKey = IJKToKey(I, J, K);
+      const int aHitKey = IJKToKey(padIndex);
 
       // Avoid two hit in the same cell
-      // std::vector<int>::const_iterator findIter = std::find(hitKeys.begin(), hitKeys.end(), aHitKey);
       std::map<int, int>::const_iterator findIter = hitKeys.find(aHitKey);
 
       if (findIter != hitKeys.end()) {
@@ -477,6 +463,10 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
           abort();
         }
       }
+
+      const int I = padIndex[0];
+      const int J = padIndex[1];
+      const int K = padIndex[2];
 
       // set the cell id
       cellIdEncoder["I"]   = I;
@@ -516,12 +506,8 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
       m_hitK.push_back(K);
       // m_hitBCID.push_back((*rawhit)->getTimeStamp());
       m_hitThreshold.push_back(thresh);
-    } else {
-      // streamlog_out(DEBUG0) << " time peak = " << time_peak << " pointer --> : " << *rawhit << std::endl;
     }
   } // loop over the hit
-
-  streamlog_out(DEBUG) << " eventbuilder trigger raw hit OK" << std::endl;
   hitKeys.clear();
 }
 
@@ -682,7 +668,7 @@ TH2 *TriventProc::makeTH2(const std::string &title, const std::string &xTitle, c
 
 //=============================================================================
 
-void TriventProc::findCerenkovHits(int timePeak) {
+void TriventProc::findCerenkovHits(const int &timePeak) {
   for (const auto &cerHit : m_cerenkov_raw_hit) {
     assert(cerHit);
     const int bifTime = static_cast<int>(cerHit->getTimeStamp());
@@ -845,12 +831,12 @@ void TriventProc::processEvent(LCEvent *evtP) {
     {
       if (*(timeIter) < m_noiseCut) { // Not enough hit in frame, look in next one
         // if (*timeIter >5)
-        // streamlog_out(WARNING) <<yellow<< "[NoiseCut] - Event rejected : " << *(timeIter) << normal <<
-        // std::endl;
+        // streamlog_out(WARNING) << yellow << "[NoiseCut] - Event rejected : " << *(timeIter) << normal << std::endl;
         ++timeIter;
         continue;
       }
 
+      // find timeBound to build the event
       auto lowerBound = timeIter;
       auto upperBound = timeIter;
       // Ensure we are not looking before/after begin/end of time_spectrum
