@@ -730,6 +730,51 @@ void TriventProc::findCerenkovHits(int timePeak) {
 }
 
 //=============================================================================
+
+void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
+  std::vector<int> vTrigger;
+  m_trigger_raw_hit.clear();
+  m_cerenkov_raw_hit.clear();
+
+  for (int ihit(0); ihit < inputLCCol.getNumberOfElements(); ++ihit) // loop over the hits
+  {
+    RawCalorimeterHit *raw_hit = dynamic_cast<RawCalorimeterHit *>(inputLCCol.getElementAt(ihit));
+    if (raw_hit) {
+      // extract abolute bcid information:
+      const int difId = raw_hit->getCellID0() & 0xFF;
+      assert(difId > 0);
+      if (ihit == 0) {
+        std::stringstream pname("");
+        pname << "DIF" << difId << "_Triggers";
+        inputLCCol.getParameters().getIntVals(pname.str(), vTrigger);
+        if (vTrigger.size() != 0) {
+          m_bcid1                     = vTrigger[4];
+          m_bcid2                     = vTrigger[3];
+          unsigned long long Shift    = 16777216ULL; // to shift the value from the 24 first bits
+          unsigned long long theBCID_ = m_bcid1 * Shift + m_bcid2;
+          streamlog_out(DEBUG0) << "trigger time : " << theBCID_ << std::endl;
+        }
+      }
+
+      if (difId == m_cerenkovDifId) {
+        m_cerenkov_raw_hit.push_back(raw_hit);
+      }
+      m_trigger_raw_hit.push_back(raw_hit);
+    }
+  }
+
+  streamlog_out(MESSAGE) << blue << " Trigger '" << m_trigCount << "' Found " << m_cerenkov_raw_hit.size()
+                         << " raw hits in BIF!" << normal << std::endl;
+  streamlog_out(DEBUG1) << "at time : " << normal << std::endl;
+  for (const auto &cerHit : m_cerenkov_raw_hit) {
+    assert(cerHit);
+    streamlog_out(DEBUG1) << blue << " \t '" << static_cast<int>(cerHit->getTimeStamp()) << " Cerenkov --> '" << cerHit
+                          << normal << std::endl;
+  }
+}
+
+//=============================================================================
+
 void TriventProc::processEvent(LCEvent *evtP) {
   assert(evtP != NULL);
 
@@ -767,57 +812,8 @@ void TriventProc::processEvent(LCEvent *evtP) {
     }
 
     // set raw hits
-    m_trigger_raw_hit.clear();
-    m_cerenkov_raw_hit.clear();
-    // std::cout << "m_trigger_raw_hit.size() " << m_trigger_raw_hit.size() << std::endl;
+    fillRawHitTrigger(*inputLCCol);
 
-    std::vector<int> vTrigger;
-
-    for (int ihit(0); ihit < numElements; ++ihit) // loop over the hits
-    {
-      // std::unique_ptr<RawCalorimeterHit> raw_hit(dynamic_cast<RawCalorimeterHit *>(inputLCCol->getElementAt(ihit)));
-      // Need a shared_ptr as we push it to a vector
-      // std::shared_ptr<RawCalorimeterHit> raw_hit(dynamic_cast<RawCalorimeterHit *>(inputLCCol->getElementAt(ihit)));
-      RawCalorimeterHit *raw_hit = dynamic_cast<RawCalorimeterHit *>(inputLCCol->getElementAt(ihit));
-      if (raw_hit) {
-        // extract abolute bcid information:
-        const int difId = raw_hit->getCellID0() & 0xFF;
-        assert(difId > 0);
-        if (ihit == 0) {
-          std::stringstream pname("");
-          pname << "DIF" << difId << "_Triggers";
-          inputLCCol->getParameters().getIntVals(pname.str(), vTrigger);
-          if (vTrigger.size() != 0) {
-            m_bcid1                     = vTrigger[4];
-            m_bcid2                     = vTrigger[3];
-            unsigned long long Shift    = 16777216ULL; // to shift the value from the 24 first bits
-            unsigned long long theBCID_ = m_bcid1 * Shift + m_bcid2;
-            streamlog_out(DEBUG0) << "trigger time : " << theBCID_ << std::endl;
-          }
-        }
-
-        if (difId == m_cerenkovDifId) {
-          m_cerenkov_raw_hit.push_back(raw_hit);
-          // std::cout << "raw_hit address Cerenkov --> " << raw_hit << " use_count: " << raw_hit.use_count() <<
-          // std::endl;
-          // std::cout << "raw_hit address Cerenkov --> " << raw_hit << std::endl;
-        }
-        m_trigger_raw_hit.push_back(raw_hit);
-        // m_trigger_raw_hit.push_back(std::move(raw_hit));
-        // std::cout << "raw_hit address Raw --> " << raw_hit << " use_count: " << raw_hit.use_count() << std::endl;
-        // std::cout << "raw_hit address Assert --> " << raw_hit << " use_count: " << raw_hit.use_count() << std::endl;
-        // assert(raw_hit);
-      }
-    }
-
-    streamlog_out(MESSAGE) << blue << " Trigger '" << m_trigCount << "' Found " << m_cerenkov_raw_hit.size()
-                           << " raw hits in BIF!" << normal << std::endl;
-    streamlog_out(DEBUG1) << "at time : " << normal << std::endl;
-    for (const auto &cerHit : m_cerenkov_raw_hit) {
-      assert(cerHit);
-      streamlog_out(DEBUG1) << blue << " \t '" << static_cast<int>(cerHit->getTimeStamp()) << " Cerenkov --> '"
-                            << cerHit << normal << std::endl;
-    }
     const int        maxTime       = getMaxTime();
     std::vector<int> time_spectrum = getTimeSpectrum(maxTime);
 

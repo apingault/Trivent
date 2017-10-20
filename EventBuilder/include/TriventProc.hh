@@ -53,6 +53,13 @@ public:
   std::vector<int> getTimeSpectrum(const int &maxTime);
 
   /**
+   * @brief
+   *
+   * @param inputLCCol
+   */
+  void fillRawHitTrigger(const LCCollection &inputLCCol);
+
+  /**
    * @brief Implementation of std::make_unique from c++14
    *
    * @tparam T
