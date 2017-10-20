@@ -363,7 +363,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
   col_event->setFlag(col_event->getFlag() | (1 << LCIO::RCHBIT_LONG));
   col_event->setFlag(col_event->getFlag() | (1 << LCIO::RCHBIT_TIME));
 
-  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder("M:3,S-1:3,I:9,J:9,K-1:6", col_event);
+  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder("M:3,S-1:3,I:9,J:9,K-1:6", col_event.get());
 
   std::map<int, int> asicMap;
     std::map<int, int> hitKeys;
@@ -564,7 +564,7 @@ void TriventProc::init() {
   defineColors();
 
   // Create writer for lcio output file
-  m_lcWriter = LCFactory::getInstance()->createLCWriter();
+  m_lcWriter = std::unique_ptr<LCWriter>(LCFactory::getInstance()->createLCWriter());
   m_lcWriter->setCompressionLevel(0);
   m_lcWriter->open(m_outFileName.c_str(), LCIO::WRITE_NEW);
 
@@ -929,23 +929,22 @@ void TriventProc::processEvent(LCEvent *evtP) {
                 //           << "\t 2nextTime: " << *(std::next(timeIter, 2))
                 //           << "\t 2prevTime: " << *(std::prev(timeIter, 2))
                 //           << normal << std::endl;
-                LCEventImpl *evt = new LCEventImpl();       // create the event
+          std::unique_ptr<LCEventImpl> lcEvt = make_unique<LCEventImpl>(); // create the event
 
                 //---------- set event paramters ------
                 const std::string parname_trigger = "trigger";
                 const std::string parname_energy  = "beamEnergy";
                 const std::string parname_bcid1   = "bcid1";
                 const std::string parname_bcid2   = "bcid2";
-                evt->parameters().setValue(parname_trigger, evtP->getEventNumber());
-                evt->parameters().setValue(parname_energy, m_beamEnergy);
-                evt->parameters().setValue(parname_bcid1, m_bcid1);
-                evt->parameters().setValue(parname_bcid2, m_bcid2);
-                evt->setRunNumber(evtP->getRunNumber());
+          lcEvt->parameters().setValue(parname_trigger, evtP->getEventNumber());
+          lcEvt->parameters().setValue(parname_energy, m_beamEnergy);
+          lcEvt->parameters().setValue(parname_bcid1, m_bcid1);
+          lcEvt->parameters().setValue(parname_bcid2, m_bcid2);
+          lcEvt->setRunNumber(evtP->getRunNumber());
                 m_runNumber = evtP->getRunNumber();
                 //-------------------------------------
 
-                LCCollectionVec *outcol = new LCCollectionVec(LCIO::CALORIMETERHIT);
-
+          std::unique_ptr<LCCollectionVec> outCol = make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
 
                 // reset Flags
                 m_isSelected         = false;
@@ -960,14 +959,15 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
                 // Event Building
                 int timePeak = distance(time_spectrum.begin(), timeIter);
-                streamlog_out(DEBUG0) << yellow << " EventBuilding with timePeak '" << timePeak << "' prevTimePeak: " << prevTimePeak << normal << std::endl;
-                TriventProc::eventBuilder(outcol, timePeak, prevTimePeak);
+          streamlog_out(DEBUG0) << blue << " EventBuilding with timePeak '" << timePeak
+                                << "' prevTimePeak: " << prevTimePeak << normal << std::endl;
+          TriventProc::eventBuilder(outCol, timePeak, prevTimePeak);
                 streamlog_out(DEBUG0) << blue << " EventBuilding...OK" << normal << std::endl;
 
                 m_evtTrigNbr   = m_trigNbr;
-                m_evtNbr       = m_evtNum;       // rejected event will have same number as last accepted !
-                m_nHit         = outcol->getNumberOfElements();
-                m_nFiredLayers = (int)m_firedLayersSet.size();
+          m_evtNbr       = m_evtNum; // rejected event will have same number as last accepted !
+          m_nHit         = outCol->getNumberOfElements();
+          m_nFiredLayers = static_cast<int>(m_firedLayersSet.size());
                 m_nCerenkov1   = 0;
                 m_nCerenkov2   = 0;
                 m_nCerenkov3   = 0;
@@ -992,23 +992,25 @@ void TriventProc::processEvent(LCEvent *evtP) {
                 streamlog_out(DEBUG0) << "_firedLayersSet.size() = " << m_nFiredLayers << "\t _LayerCut = " << m_layerCut << std::endl;
 
                 // Apply cut on min number of firedLayer +
-                if ((int)m_nFiredLayers < m_layerCut)
-                {
-                  streamlog_out(DEBUG0) << green << " Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers << " m_layerCut: " << m_layerCut << normal << std::endl;
+          if (static_cast<int>(m_nFiredLayers) < m_layerCut) {
+            streamlog_out(DEBUG0) << green << " Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
+                                  << " m_layerCut: " << m_layerCut << normal << std::endl;
                   m_rejectedNum++;
                   m_isSelected         = false;
                   m_hasNotEnoughLayers = true;
                   delete outcol;
                 }
                 //  Apply cut on time between two events
-                else if (abs(timePeak - prevTimePeak) > m_time2prevEventCut)
-                {
-                  streamlog_out( DEBUG0 ) << green << " Trivent find event at :==> " << red << timePeak
-                                          << green << "\t :Nhit: ==> " << magenta
-                                          << outcol->getNumberOfElements() << normal << std::endl;
-                  evt->setEventNumber(++m_evtNum);
-                  evt->addCollection(outcol, m_outputCollectionName);
-                  m_lcWriter->writeEvent(evt);
+          else if (abs(timePeak - prevTimePeak) > m_time2prevEventCut) {
+            streamlog_out(DEBUG0) << green << " Trivent find event at :==> " << red << timePeak << green
+                                  << "\t :Nhit: ==> " << magenta << outCol->getNumberOfElements() << normal
+                                  << std::endl;
+            lcEvt->setEventNumber(++m_evtNum);
+
+            lcEvt->addCollection(outCol.release(), m_outputCollectionName);
+            m_lcWriter->writeEvent(lcEvt.get());
+            assert(lcEvt);
+
                   ++m_selectedNum;
                   m_isSelected = true;
                 }

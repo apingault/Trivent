@@ -52,17 +52,31 @@ public:
 
   std::vector<int> getTimeSpectrum();
 
-  std::vector<int> getPadIndex(const int dif_id, const int asic_id, const int chan_id);
-  void eventBuilder(LCCollection *col_event, int time_peak, int prev_time_peak);
+  /**
+   * @brief Implementation of std::make_unique from c++14
+   *
+   * @tparam T
+   * @tparam Args
+   * @param args
+   * @return std::unique_ptr<T>
+   */
+  template <typename T, typename... Args> std::unique_ptr<T> make_unique(Args &&... args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+  }
+
   bool checkPadLimits(std::vector<int> &padIndex, std::vector<int> &padLimits);
+
+  std::vector<int> getPadIndex(const int &dif_id, const int &asic_id, const int &chan_id);
+  void eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event, int &time_peak, int &prev_time_peak);
   void end();
 
-  TTree *getOrCreateTree(std::string treeName, std::string treeDescription);
   TH2 *makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle);
+
+  TTree *getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
   void findCerenkovHits(const int timePeak);
 
 protected:
-  LCWriter *m_lcWriter;
+  std::unique_ptr<LCWriter>               m_lcWriter;
   std::vector<EVENT::RawCalorimeterHit *> m_trigger_raw_hit;
   std::vector<EVENT::RawCalorimeterHit *> m_cerenkov_raw_hit;
 
