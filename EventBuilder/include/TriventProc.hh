@@ -82,6 +82,7 @@ public:
   // std::unique_ptr<TTree> getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
   TTree *getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
   void findCerenkovHits(const int timePeak);
+  int getAsicKey(const std::vector<int> &padIndex);
 
 protected:
   std::unique_ptr<LCWriter>               m_lcWriter;
@@ -118,6 +119,7 @@ protected:
   // Cerenkov
   bool         m_hasCherenkov;
   int          m_cerenkovDifId;
+  int          m_cerenkovLayerId;
   int          m_cerenkovTimeWindow;
   unsigned int m_cerAsic;
   unsigned int m_cerChan;

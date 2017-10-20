@@ -221,8 +221,10 @@ void TriventProc::XMLReader(std::string xmlfile) {
       m_layerSet.insert(mapp.K);
     }
     // Cerenkov layer should not be counted it the total number of layer
-    if (m_hasCherenkov)
-      m_layerSet.erase(m_mDifMapping.find(m_cerenkovDifId)->second.K);
+    if (m_hasCherenkov) {
+      m_cerenkovLayerId = m_mDifMapping.find(m_cerenkovDifId)->second.K;
+      m_layerSet.erase(m_cerenkovLayerId);
+    }
   } else {
     std::ostringstream oss;
     oss << "Failed to load geometry file '" << xmlfile.c_str() << "'";
@@ -295,7 +297,7 @@ std::vector<int> TriventProc::getPadIndex(const int &dif_id, const int &asic_id,
   //
   if (dif_id == m_cerenkovDifId) {
     padLims.pop_back();
-    padLims.push_back(m_mDifMapping.find(m_cerenkovDifId)->second.K);
+    padLims.push_back(m_cerenkovLayerId);
   }
   assert(checkPadLimits(index, padLims));
 
@@ -342,14 +344,19 @@ std::vector<int> TriventProc::getTimeSpectrum(const int &maxTime) //__attribute_
 int IJKToKey(const int i, const int j, const int k) { return 100 * 100 * k + 100 * j + i; }
 
 //=============================================================================
-int findAsicKey(const int i, const int j, const int k) {
-  if ((i > 96) || (i < 1) || (j > 96) || (j < 1)) {
-    return -1;
+int TriventProc::getAsicKey(const std::vector<int> &padIndex) {
+  // Not necessary to check for boundary here as already tested in getPadIndex
+  std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
+  if (padIndex[2] == m_cerenkovLayerId) {
+    padLims.pop_back();
+    padLims.push_back(m_cerenkovLayerId);
   }
-  const int jnum = (j - 1) / 8;
-  const int inum = (i - 1) / 8;
+  assert(checkPadLimits(padIndex, padLims));
+
+  const int jnum = (padIndex[1] - 1) / 8;
+  const int inum = (padIndex[0] - 1) / 8;
   const int num  = jnum * 12 + inum;
-  return k * 1000 + num;
+  return padIndex[2] * 1000 + num;
 }
 
 //=============================================================================
