@@ -204,19 +204,19 @@ void TriventProc::XMLReader(const std::string &xmlfile) {
       }
 
       LayerID mapp{};
-      int     Dif_id;
+      int     difId;
       while (ss.good()) {
         std::string substr;
         getline(ss, substr, ',');
         result.push_back(substr);
       }
-      std::istringstream(result.at(0)) >> Dif_id;
+      std::istringstream(result.at(0)) >> difId;
       std::istringstream(result.at(1)) >> mapp.K;
       std::istringstream(result.at(2)) >> mapp.DifX;
       std::istringstream(result.at(3)) >> mapp.DifY;
       std::istringstream(result.at(4)) >> mapp.IncX;
       std::istringstream(result.at(5)) >> mapp.IncY;
-      m_mDifMapping[Dif_id] = mapp;
+      m_mDifMapping[difId] = mapp;
       m_layerSet.insert(mapp.K);
     }
     // Cerenkov layer should not be counted it the total number of layer
@@ -245,15 +245,15 @@ void TriventProc::printDifGeom() {
 // ============ decode the cell ids =============
 // bit shift & 0xFF = Apply mask 1111 1111 to binary value
 // eg: Dif 1 => cellID0 = 00983297 => DifID = 1 / AsicID = 1 / ChanID = 15
-int TriventProc::getCellDif_id(const int &cell_id) { return cell_id & 0xFF; }
+int TriventProc::getCellDif_id(const int &cellId) { return cellId & 0xFF; }
 
 //=============================================================================
 //  bit shift & 0xFF00 Apply mask 1111 1111 0000 0000 then cut last 8 bits
-int TriventProc::getCellAsic_id(const int &cell_id) { return (cell_id & 0xFF00) >> 8; }
+int TriventProc::getCellAsic_id(const int &cellId) { return (cellId & 0xFF00) >> 8; }
 
 //=============================================================================
 //  bit shift & 0x3F0000 Apply mask 1111 0000 0000 0000 0000 then cut last 16 bits
-int TriventProc::getCellChan_id(const int &cell_id) { return (cell_id & 0x3F0000) >> 16; }
+int TriventProc::getCellChan_id(const int &cellId) { return (cellId & 0x3F0000) >> 16; }
 
 // ============ ============ ============ ============ ============ ============ ============
 // ============ ============ ============ ============ ============ ============ ============
@@ -277,28 +277,28 @@ bool TriventProc::checkPadLimits(const std::vector<int> &padIndex, const std::ve
 }
 
 //=============================================================================
-std::vector<int> TriventProc::getPadIndex(const int &dif_id, const int &asic_id, const int &chan_id) {
-  std::map<int, LayerID>::const_iterator findIter = m_mDifMapping.find(dif_id);
+std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, const int &chanId) {
+  std::map<int, LayerID>::const_iterator findIter = m_mDifMapping.find(difId);
 
   if (findIter == m_mDifMapping.end()) {
-    streamlog_out(ERROR) << " [getPadIndex] difId '" << dif_id << "' not found in geometry file" << std::endl;
     return std::vector<int>(3, 0); // empty
+    streamlog_out(ERROR) << " [getPadIndex] difId '" << difId << "' not found in geometry file" << std::endl;
   }
 
-  std::vector<int> index{1 + MapILargeHR2[chan_id] + AsicShiftI[asic_id],
-                         32 - (MapJLargeHR2[chan_id] + AsicShiftJ[asic_id]), static_cast<int>(findIter->second.K)};
+  std::vector<int> index{1 + MapILargeHR2[chanId] + AsicShiftI[asicId],
+                         32 - (MapJLargeHR2[chanId] + AsicShiftJ[asicId]), static_cast<int>(findIter->second.K)};
   std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
   // Cerenkov layer is not in the layerSet as it's not a physical layer, needs to account for that when checking the pad
   // limits
   //
-  if (dif_id == m_cerenkovDifId) {
+  if (difId == m_cerenkovDifId) {
     padLims.pop_back();
     padLims.push_back(m_cerenkovLayerId);
   }
   assert(checkPadLimits(index, padLims));
 
-  // if (dif_id == m_cerenkovDifId) {
-  // streamlog_out(DEBUG0) << " Dif_id == " << dif_id << " Asic_id ==" << asic_id << " Chan_id ==" << chan_id
+  // if (difId == m_cerenkovDifId) {
+  // streamlog_out(DEBUG0) << " difId== " << difId<< " asicId ==" << asicId << " chanId ==" << chanId
   // << " I == " << index[0] << " J == " << index[1] << " K == " << index[2] << std::endl;
   // }
   return index;
@@ -391,10 +391,10 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
 
   resetEventParameters();
 
-  col_event->setFlag(col_event->getFlag() | (1 << LCIO::RCHBIT_LONG));
-  col_event->setFlag(col_event->getFlag() | (1 << LCIO::RCHBIT_TIME));
+  evtCol->setFlag(evtCol->getFlag() | (1 << LCIO::RCHBIT_LONG));
+  evtCol->setFlag(evtCol->getFlag() | (1 << LCIO::RCHBIT_TIME));
 
-  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder("M:3,S-1:3,I:9,J:9,K-1:6", col_event.get());
+  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder("M:3,S-1:3,I:9,J:9,K-1:6", evtCol.get());
 
   std::map<int, int> asicMap;
   std::map<int, int> hitKeys;
@@ -704,22 +704,22 @@ void TriventProc::findCerenkovHits(const int &timePeak) {
 
     if (std::fabs(bifTime - timePeak) <= m_cerenkovTimeWindow) {
       m_timeCerenkov         = bifTime - timePeak;
-      const int Dif_id       = getCellDif_id(cerHit->getCellID0());
-      const int Asic_id      = getCellAsic_id(cerHit->getCellID0());
-      const int Chan_id      = getCellChan_id(cerHit->getCellID0());
+      const int difId        = getCellDif_id(cerHit->getCellID0());
+      const int asicId       = getCellAsic_id(cerHit->getCellID0());
+      const int chanId       = getCellChan_id(cerHit->getCellID0());
       const int hitThreshold = cerHit->getAmplitude();
 
-      if (Dif_id != m_cerenkovDifId) {
-        streamlog_out(WARNING) << yellow << "[findCerenkov] - Found Cerenkov hit in wrong dif '" << Dif_id
+      if (difId != m_cerenkovDifId) {
+        streamlog_out(WARNING) << yellow << "[findCerenkov] - Found Cerenkov hit in wrong dif '" << difId
                                << "'... should be in dif '" << m_cerenkovDifId << "'...skipping" << normal << std::endl;
         continue;
       }
 
       streamlog_out(DEBUG) << "[findCerenkov] - Found Cerenkov hit at time '" << m_timeCerenkov << "'\t Asic '"
-                           << Asic_id << "'\t Chan '" << Chan_id << "'\t Threshold " << hitThreshold << std::endl;
+                           << asicId << "'\t Chan '" << chanId << "'\t Threshold " << hitThreshold << std::endl;
 
-      m_cerAsic      = Asic_id;
-      m_cerChan      = Chan_id;
+      m_cerAsic      = asicId;
+      m_cerChan      = chanId;
       m_cerThreshold = hitThreshold;
 
       switch (hitThreshold) {
@@ -800,11 +800,11 @@ TriventProc::getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime, s
                                         std::vector<int>::iterator &candidateTime) {
   assert(beginTime < endTime);
   assert(candidateTime >= beginTime);
-  assert(candidateTime < endTime); // Can't be equal otherwise we'll access outofbound value on next ++timeIter call
+  assert(candidateTime < endTime); // Can't be equal otherwise we'll access out of bound value on next ++timeIter call
   std::vector<int>::iterator lowerBound = endTime;
   std::vector<int>::iterator upperBound = beginTime;
 
-  // Ensure there is sufficient time between two candidate + we are not looking before begining of time_spectrum
+  // Ensure there is sufficient time between two candidate + we are not looking before begining of timeSpectrumVec
   auto timeDistance = std::distance(beginTime, candidateTime);
   if (timeDistance > m_timeWin)
     lowerBound = std::prev(candidateTime, m_timeWin);
@@ -815,7 +815,7 @@ TriventProc::getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime, s
     lowerBound = std::prev(candidateTime, timeDistance);
   }
 
-  // Check we are sufficiently far from end of time_spectrum
+  // Check we are sufficiently far from end of timeSpectrumVec
   timeDistance = std::distance(candidateTime, endTime);
   if (timeDistance > m_timeWin)
     upperBound = std::next(candidateTime, m_timeWin);
@@ -871,16 +871,16 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
     // set raw hits
     fillRawHitTrigger(*inputLCCol);
-    std::vector<int> time_spectrum = getTimeSpectrum(getMaxTime());
+    std::vector<int> timeSpectrumVec = getTimeSpectrum(getMaxTime());
 
     //---------------------------------------------------------------
     //! Find the candidate event
     resetTriggerParameters();
 
     // Event is built at peakTime+-TimeWindow
-    // Loop on time_spectrum vector without going out of range
-    std::vector<int>::iterator beginTimeIter = time_spectrum.begin();
-    std::vector<int>::iterator endTimeIter   = time_spectrum.end();
+    // Loop on timeSpectrumVec vector without going out of range
+    std::vector<int>::iterator beginTimeIter = timeSpectrumVec.begin();
+    std::vector<int>::iterator endTimeIter   = timeSpectrumVec.end();
     std::vector<int>::iterator timeIter      = beginTimeIter;
     std::vector<int>::iterator prevMaxIter   = beginTimeIter;
 
@@ -1000,7 +1000,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
       m_eventTree->Fill();
       timeIter = std::next(timeIter, m_timeWin + 1);
     }
-    // m_vTimeSpectrum = time_spectrum;
+    // m_vTimeSpectrum = timeSpectrumVec;
     // m_triggerTree->Fill();
   }
 }

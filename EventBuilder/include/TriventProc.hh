@@ -44,9 +44,9 @@ public:
   void printDifGeom();
   void defineColors();
 
-  int getCellDif_id(const int &cell_id);
-  int getCellAsic_id(const int &cell_id);
-  int getCellChan_id(const int &cell_id);
+  int getCellDif_id(const int &cellId);
+  int getCellAsic_id(const int &cellId);
+  int getCellChan_id(const int &cellId);
 
   int getMaxTime();
 
@@ -85,7 +85,7 @@ public:
 
   bool checkPadLimits(const std::vector<int> &padIndex, const std::vector<int> &padLimits);
 
-  std::vector<int> getPadIndex(const int &dif_id, const int &asic_id, const int &chan_id);
+  std::vector<int> getPadIndex(const int &difId, const int &asicId, const int &chanId);
 
   /**
    * @brief
@@ -99,7 +99,7 @@ public:
    */
   void resetTriggerParameters();
 
-  void eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event, const int &time_peak, const int &prev_time_peak);
+  void eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int &timePeak, const int &prevTimePeak);
   void end();
 
   TH2 *makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle);
