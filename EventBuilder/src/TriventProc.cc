@@ -361,6 +361,8 @@ int TriventProc::getAsicKey(const std::vector<int> &padIndex) {
 void TriventProc::resetTriggerParameters() {
   m_nCerenkovTrigger   = 0;
   m_hasTooManyCerenkov = false;
+  m_trigger_raw_hit.clear();
+  m_cerenkov_raw_hit.clear();
 }
 
 //=============================================================================
@@ -754,8 +756,6 @@ void TriventProc::findCerenkovHits(const int &timePeak) {
 //=============================================================================
 void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
   std::vector<int> vTrigger;
-  m_trigger_raw_hit.clear();
-  m_cerenkov_raw_hit.clear();
 
   for (int ihit(0); ihit < inputLCCol.getNumberOfElements(); ++ihit) // loop over the hits
   {
@@ -870,13 +870,12 @@ void TriventProc::processEvent(LCEvent *evtP) {
     }
 
     // set raw hits
+    resetTriggerParameters();
     fillRawHitTrigger(*inputLCCol);
     std::vector<int> timeSpectrumVec = getTimeSpectrum(getMaxTime());
 
     //---------------------------------------------------------------
     //! Find the candidate event
-    resetTriggerParameters();
-
     // Event is built at peakTime+-TimeWindow
     // Loop on timeSpectrumVec vector without going out of range
     std::vector<int>::iterator beginTimeIter = timeSpectrumVec.begin();
