@@ -92,6 +92,7 @@ TriventProc::TriventProc()
       m_isTooCloseInTime(false),
       m_hasNotEnoughLayers(false),
       m_hasFullAsic(false),
+      m_hasRamFull(false),
       m_keepRejected(true) {
 
   // collection
@@ -393,6 +394,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
   CellIDEncoder<CalorimeterHitImpl> cellIdEncoder("M:3,S-1:3,I:9,J:9,K-1:6", evtCol.get());
 
   std::map<int, int> asicMap;
+  std::map<int, int> ramFullMap;
   std::map<int, int> hitKeys;
 
   for (unsigned int hitTime = lowTimeBoundary; hitTime <= highTimeBoundary; ++hitTime) {
@@ -432,6 +434,25 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
         continue;
       }
 
+      // find and remove ramFull events
+      if (chanId == 29 || chanId == 31)
+        ramFullMap[difId]++;
+
+      if (ramFullMap[difId] == 48) {
+        streamlog_out(WARNING) << yellow << "[eventBuilder] - Rejecting event with ram full. Dif : " << difId << normal
+                               << std::endl;
+
+        m_isSelected = false;
+        m_hasRamFull = true;
+        if (!m_keepRejected) {
+          m_firedLayersSet.clear();
+          hitKeys.clear();
+          asicMap.clear();
+          ramFullMap.clear();
+          return;
+        }
+      }
+
       // find and remove square events
       const int asicKey = getAsicKey(padIndex);
       assert(asicKey > 0);
@@ -447,6 +468,13 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
 
         m_isSelected  = false;
         m_hasFullAsic = true;
+        if (!m_keepRejected) {
+          m_firedLayersSet.clear();
+          hitKeys.clear();
+          asicMap.clear();
+          ramFullMap.clear();
+          return;
+        }
       }
 
       // Creating Calorimeter Hit
@@ -594,6 +622,7 @@ void TriventProc::initRootTree() {
   m_eventTree->Branch("EventIsNoise", &m_isNoise);
   m_eventTree->Branch("EventHasNotEnoughLayers", &m_hasNotEnoughLayers);
   m_eventTree->Branch("EventHasFullAsic", &m_hasFullAsic);
+  m_eventTree->Branch("EventHasRamFull", &m_hasRamFull);
 
   TDirectory *rootDir   = gDirectory;
   TDirectory *hitMapDir = rootDir->mkdir("HitMapPerLayer");

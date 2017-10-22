@@ -225,6 +225,7 @@ protected:
   bool                   m_isTooCloseInTime;   // If rejected, is it too close from previous evt
   bool                   m_hasNotEnoughLayers; // If rejected, has not touched sufficient layers
   bool                   m_hasFullAsic;        // If rejected, has full asics
+  bool                   m_hasRamFull;         // If rejected, has ram full
   bool                   m_keepRejected;       // Wether or not to keep rejected data in the output
 };
 
