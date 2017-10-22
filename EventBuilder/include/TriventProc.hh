@@ -85,6 +85,15 @@ public:
 
   bool checkPadLimits(const std::vector<int> &padIndex, const std::vector<int> &padLimits);
 
+  /**
+   * @brief return I, J, K for hit in given difId, asicId, chanId
+   * return empty vector if dif not found in geometry
+   *
+   * @param difId
+   * @param asicId
+   * @param chanId
+   * @return std::vector<int>
+   */
   std::vector<int> getPadIndex(const int &difId, const int &asicId, const int &chanId);
 
   /**

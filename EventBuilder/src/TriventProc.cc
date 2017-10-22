@@ -281,8 +281,8 @@ std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, c
   std::map<int, LayerID>::const_iterator findIter = m_mDifMapping.find(difId);
 
   if (findIter == m_mDifMapping.end()) {
-    return std::vector<int>(3, 0); // empty
     streamlog_out(ERROR) << " [getPadIndex] difId '" << difId << "' not found in geometry file" << std::endl;
+    return {}; // empty
   }
 
   std::vector<int> index{1 + MapILargeHR2[chanId] + AsicShiftI[asicId],
@@ -438,9 +438,9 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &col_event
                            << Dif_id << "/" << Asic_id << "/" << Chan_id << "/" << thresh << normal << std::endl;
       continue;
     }
-    const std::vector<int> padIndex = getPadIndex(Dif_id, Asic_id, Chan_id); // return (0,0,0) if dif_id not found
-    if (padIndex[0] == 0 || padIndex[1] == 0 || padIndex[2] == 0) {
-      streamlog_out(WARNING) << yellow << "[eventBuilder] - Dif '" << Dif_id
+      const std::vector<int> padIndex = getPadIndex(difId, asicId, chanId);
+      if (padIndex.empty()) {
+        streamlog_out(ERROR) << red << "[eventBuilder] - Dif '" << difId
                              << "' not found in geometry file...skipping hit" << normal << std::endl;
       continue;
     }
