@@ -286,7 +286,8 @@ std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, c
   }
 
   std::vector<int> index{1 + MapILargeHR2[chanId] + AsicShiftI[asicId],
-                         32 - (MapJLargeHR2[chanId] + AsicShiftJ[asicId]), static_cast<int>(findIter->second.K)};
+                         32 - (MapJLargeHR2[chanId] + AsicShiftJ[asicId] ) + findIter->second.DifY,
+                         static_cast<int>(findIter->second.K)};
   std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
   // Cerenkov layer is not in the layerSet as it's not a physical layer, needs to account for that when checking the pad
   // limits
