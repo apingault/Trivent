@@ -860,7 +860,6 @@ TriventProc::getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime, s
                         << std::endl;
   assert(lowerBound < upperBound);
   assert(std::distance(upperBound, lowerBound) <= 2 * m_timeWin);
-  assert(std::distance(lowerBound, upperBound) > m_timeWin);
   return {lowerBound, upperBound};
 }
 
@@ -925,7 +924,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
       const auto  boundaries = getCandidateTimeBoundaries(prevMaxIter, endTimeIter, timeIter);
       const auto &maxIter    = std::max_element(boundaries[0], boundaries[1]); // max in [lower,upper))
 
-      if (maxIter > timeIter) {
+      if (maxIter > timeIter || maxIter == beginTimeIter) {
         // timeIter is not a real peak yet, look in next frame
         ++timeIter;
         continue;
@@ -938,7 +937,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
       // Check we didn't already process the peak
       // if (std::distance(maxIter, prevMaxIter) < m_timeWin && std::distance(beginTimeIter, timeIter) > 0) {
       if (maxIter < prevMaxIter && std::distance(beginTimeIter, timeIter) > 0) {
-        if (std::distance(maxIter, prevMaxIter) < m_timeWin) {
+        if (std::distance(prevMaxIter, maxIter) < m_timeWin) {
           streamlog_out(DEBUG0) << yellow << "[processEvent] - Found duplicate peak, at time '"
                                 << std::distance(beginTimeIter, maxIter) << "' previous peak : '"
                                 << std::distance(beginTimeIter, prevMaxIter) << "'..." << normal << std::endl;
