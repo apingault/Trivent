@@ -796,6 +796,15 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
         }
       }
 
+      if (rawHit->getTimeStamp() < 0) {
+        streamlog_out(ERROR) << red << "[fillRawHitTrigger] - Trig '" << m_trigNbr
+                             << "'Found a raw hit with negative timeStamp! : "
+                             << "time: " << rawHit->getTimeStamp() << " difId: " << getCellDif_id(rawHit->getCellID0())
+                             << " asicId: " << getCellAsic_id(rawHit->getCellID0())
+                             << " chanId: " << getCellChan_id(rawHit->getCellID0())
+                             << " thresh: " << rawHit->getAmplitude() << " removing it !" << normal << std::endl;
+        continue;
+      }
       if (difId == m_cerenkovDifId) {
         m_cerenkovRawHitMap[raw_hit->getTimeStamp()].push_back(raw_hit);
       }
