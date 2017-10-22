@@ -117,7 +117,7 @@ public:
 
   // std::unique_ptr<TTree> getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
   TTree *getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
-  void findCerenkovHits(const int &timePeak);
+  void findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCol, const int &timePeak);
   int getAsicKey(const std::vector<int> &padIndex);
   int IJKToKey(const std::vector<int> &padIndex);
 
@@ -125,7 +125,7 @@ protected:
   std::unique_ptr<LCWriter> m_lcWriter;
   // map of <hitTimeStamp, rawHit>
   std::map<int, std::vector<EVENT::RawCalorimeterHit *>> m_triggerRawHitMap;
-  std::vector<EVENT::RawCalorimeterHit *> m_cerenkov_raw_hit;
+  std::map<int, std::vector<EVENT::RawCalorimeterHit *>> m_cerenkovRawHitMap;
   // std::vector<std::shared_ptr<EVENT::RawCalorimeterHit>> m_trigger_raw_hit;
   // std::vector<std::shared_ptr<EVENT::RawCalorimeterHit>> m_cerenkov_raw_hit;
 
@@ -155,21 +155,21 @@ protected:
   std::set<uint> m_layerSet;
 
   // Cerenkov
-  bool         m_hasCherenkov;
-  int          m_cerenkovDifId;
-  int          m_cerenkovLayerId;
-  int          m_cerenkovTimeWindow;
-  unsigned int m_cerAsic;
-  unsigned int m_cerChan;
-  unsigned int m_cerThreshold;
-  unsigned int m_nCerenkov1;         // Number of hit in first Cerenkov
-  unsigned int m_nCerenkov2;         // Number of hit in second Cerenkov
-  unsigned int m_nCerenkov3;         // Number of hit in first + second Cerenkov
-  unsigned int m_nCerenkovTrigger;   // Tot number of hit in cerenkov for current trigger
-  bool         m_hasTooManyCerenkov; // if m_nCerenkovTrigger > bifHit in trigger
-  int          m_timeCerenkov;       // Timing between peak and Cerenkov signal
-  unsigned int m_totCerenkovHits;
-  unsigned int m_cerenkovEvts; // Number of events tagged with the cerenkov
+  std::string      m_cerenkovCollectionName;
+  bool             m_hasCherenkov;
+  int              m_cerenkovDifId;
+  int              m_cerenkovLayerId;
+  int              m_cerenkovTimeWindow;
+  std::vector<int> m_cerAsic;
+  std::vector<int> m_cerChan;
+  std::vector<int> m_cerThreshold;
+  unsigned int     m_nCerenkov1;         // Number of hit in first Cerenkov
+  unsigned int     m_nCerenkov2;         // Number of hit in second Cerenkov
+  unsigned int     m_nCerenkov3;         // Number of hit in first + second Cerenkov
+  unsigned int     m_nCerenkovTrigger;   // Tot number of hit in cerenkov for current trigger
+  bool             m_hasTooManyCerenkov; // if m_nCerenkovTrigger > bifHit in trigger
+  std::vector<int> m_timeCerenkov;       // Timing between peak and Cerenkov signal
+  unsigned int     m_nCerenkovEvts;      // Number of events tagged with the cerenkov
 
   unsigned int m_trigNbr;
   unsigned int m_trigCount;
