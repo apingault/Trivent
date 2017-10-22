@@ -47,7 +47,6 @@ TriventProc::TriventProc()
       m_treeDescription("Event variables"),
       m_geomXMLFile("setup_geometry"),
       m_beamEnergy(0),
-      m_useGainCorrection(false),
       m_elecNoiseCut(5000),
       m_noiseCut(10),
       m_layerCut(10),
@@ -75,7 +74,6 @@ TriventProc::TriventProc()
       m_evtNum(0),
       m_selectedNum(0),
       m_rejectedNum(0),
-      m_firedLayersSet{},
       m_bcid1(0),
       m_bcid2(0),
       m_runNumber(0),
@@ -87,8 +85,9 @@ TriventProc::TriventProc()
       m_hitJ{},
       m_hitK{},
       m_hitThreshold(0),
+      m_firedLayersSet{},
       m_nFiredLayers(0),
-      m_isSelected(false),
+      m_isSelected(true),
       m_isNoise(false),
       m_isTooCloseInTime(false),
       m_hasNotEnoughLayers(false),
@@ -360,10 +359,11 @@ void TriventProc::resetTriggerParameters() {
 //=============================================================================
 void TriventProc::resetEventParameters() {
   // reset Flags
-  m_isSelected         = false;
+  m_isSelected         = true;
   m_isNoise            = false;
   m_hasNotEnoughLayers = false;
   m_hasFullAsic        = false;
+  m_hasRamFull         = false;
   m_isTooCloseInTime   = false;
   m_nHit               = 0;
   m_hitI.clear();
@@ -448,9 +448,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
         streamlog_out(WARNING) << yellow << "[eventBuilder] - Rejecting event with full asic. Dif '" << difId
                                << "' asic '" << asicId << "' at time '" << timePeak << "'" << normal << std::endl;
 
-        m_firedLayersSet.clear();
-        hitKeys.clear();
-        asicMap.clear();
         m_isSelected  = false;
         m_hasFullAsic = true;
       }
@@ -481,6 +478,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       if (findIter != hitKeys.end()) {
         if (difId != m_cerenkovDifId) {
           delete caloHit;
+          caloHit = nullptr;
           continue;
         } else {
           streamlog_out(ERROR) << yellow << " So much Hit in my cherenkov " << normal << std::endl;
@@ -597,9 +595,8 @@ void TriventProc::initRootTree() {
   m_eventTree->Branch("CerenkovTime", &m_timeCerenkov);
   m_eventTree->Branch("EventIsSelected", &m_isSelected);
   m_eventTree->Branch("EventIsNoise", &m_isNoise);
-  m_eventTree->Branch("EventIsToCloseFromLast", &m_isTooCloseInTime);
   m_eventTree->Branch("EventHasNotEnoughLayers", &m_hasNotEnoughLayers);
-  m_eventTree->Branch("EventIsHasFullAsic", &m_hasFullAsic);
+  m_eventTree->Branch("EventHasFullAsic", &m_hasFullAsic);
 
   TDirectory *rootDir   = gDirectory;
   TDirectory *hitMapDir = rootDir->mkdir("HitMapPerLayer");
@@ -977,15 +974,8 @@ void TriventProc::processEvent(LCEvent *evtP) {
       m_lcWriter->writeEvent(lcEvt.get());
       assert(lcEvt);
 
-      ++m_selectedNum;
-      m_isSelected = true;
-      // } else {
-      //   streamlog_out(MESSAGE) << blue << " Event rejected, Events too close. eventTime: " << timePeak
-      //                          << " prevEventTime: " << prevTimePeak << normal << std::endl;
-      //   ++m_rejectedNum;
-      //   m_isSelected       = false;
-      //   m_isTooCloseInTime = true;
-      // }
+      if (m_isSelected)
+        ++m_selectedNum;
 
       if (m_nCerenkov1 > 0 || m_nCerenkov2 > 0 || m_nCerenkov3 > 0) {
         ++m_cerenkovEvts;
