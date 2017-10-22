@@ -994,6 +994,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
         m_hasNotEnoughLayers = true;
         if (!m_keepRejected) {
           m_firedLayersSet.clear();
+          ++timeIter;
           continue;
         }
       }
