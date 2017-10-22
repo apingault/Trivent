@@ -32,9 +32,9 @@ FIND_PACKAGE( ILCUTIL REQUIRED COMPONENTS ILCSOFT_CMAKE_MODULES )
 INCLUDE( ilcsoft_default_settings )
 
 
-FIND_PACKAGE( Marlin 1.0 REQUIRED ) # minimum required Marlin version
+FIND_PACKAGE( Marlin 1.10 REQUIRED ) # minimum required Marlin version
 FIND_PACKAGE( CLHEP REQUIRED ) # Required for Marlin >v1.10
-FIND_PACKAGE( ROOT 5.34 REQUIRED )
+FIND_PACKAGE( ROOT 6.08 REQUIRED )
 
 FOREACH( pkg ROOT Marlin CLHEP)
   IF( ${pkg}_FOUND )
