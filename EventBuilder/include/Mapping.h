@@ -12,8 +12,8 @@ typedef std::vector<uint> uintVec;
 
 struct LayerID{
   uint K;
-  double DifX;
-  double DifY;
+  int DifX;
+  int DifY;
   double IncX;
   double IncY;
 };
