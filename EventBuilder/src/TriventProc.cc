@@ -411,15 +411,15 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       assert(rawHit);
       assert(rawHit->getTimeStamp() == hitTime);
 
-      const int difId  = getCellDif_id(rawHit->getCellID0());
+      const int difId = getCellDif_id(rawHit->getCellID0());
       const int asicId = getCellAsic_id(
           rawHit->getCellID0()); // Can't be const to correct for cerenkovAsicId bug (in data from 2014>2016)
       const int chanId = getCellChan_id(rawHit->getCellID0());
       const int thresh = rawHit->getAmplitude();
       if (asicId < 1 || asicId > 48) {
-          streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... "
-                               << difId << "/" << asicId << "/" << chanId << "/" << thresh << normal << std::endl;
-          abort();
+        streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... " << difId
+                             << "/" << asicId << "/" << chanId << "/" << thresh << " Exiting" << normal << std::endl;
+        abort();
       }
       if (chanId < 0 || chanId > 63) {
         streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... "
@@ -438,8 +438,8 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
         ramFullMap[difId]++;
 
       if (ramFullMap[difId] > 48 && !m_hasRamFull) {
-        streamlog_out(WARNING) << yellow << "[eventBuilder] - Rejecting event with ram full. Dif : " << difId << normal
-                               << std::endl;
+        streamlog_out(DEBUG1) << yellow << "[eventBuilder] - Rejecting event with ram full. Dif : " << difId << normal
+                              << std::endl;
 
         m_isSelected = false;
         m_hasRamFull = true;
@@ -462,8 +462,8 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       }
 
       if (asicMap[asicKey] == 64 && difId != m_cerenkovDifId) {
-        streamlog_out(WARNING) << yellow << "[eventBuilder] - Rejecting event with full asic. Dif '" << difId
-                               << "' asic '" << asicId << "' at time '" << timePeak << "'" << normal << std::endl;
+        streamlog_out(DEBUG1) << yellow << "[eventBuilder] - Rejecting event with full asic. Dif '" << difId
+                              << "' asic '" << asicId << "' at time '" << timePeak << "'" << normal << std::endl;
 
         m_isSelected  = false;
         m_hasFullAsic = true;
@@ -750,7 +750,6 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
       cellIdEncoder["K-1"]     = padIndex[2];
 
       caloHit->setEnergy(hitThreshold); // 3rd threshold
-      std::cout << "cerThresh : " << hitThreshold << std::endl;
       if (hitThreshold == 3) {
         m_nCerenkov3 += 1;
       } else if (hitThreshold == 2) {
@@ -765,7 +764,7 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
     }
   }
   m_nCerenkovTrigger += (m_nCerenkov1 + m_nCerenkov2 + m_nCerenkov3);
-  if (m_nCerenkovTrigger > m_cerenkovRawHitMap.size()) {
+  if (m_nCerenkovTrigger > m_cerenkovRawHitMap.size() && !m_hasTooManyCerenkov) {
     streamlog_out(WARNING) << yellow << "[findCerenkov] - Cerenkov hit associated with multiple event in Trigger : "
                                         "Associated hit/total bif_hit in trigger : '"
                            << m_nCerenkovTrigger << "'/" << m_cerenkovRawHitMap.size() << normal << std::endl;
@@ -779,10 +778,10 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
 
   for (int ihit(0); ihit < inputLCCol.getNumberOfElements(); ++ihit) // loop over the hits
   {
-    RawCalorimeterHit *raw_hit = dynamic_cast<RawCalorimeterHit *>(inputLCCol.getElementAt(ihit));
-    if (raw_hit) {
+    RawCalorimeterHit *rawHit = dynamic_cast<RawCalorimeterHit *>(inputLCCol.getElementAt(ihit));
+    if (rawHit) {
       // extract abolute bcid information:
-      const int difId = raw_hit->getCellID0() & 0xFF;
+      const int difId = rawHit->getCellID0() & 0xFF;
       assert(difId > 0);
       if (ihit == 0) {
         std::stringstream pname("");
@@ -804,12 +803,14 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
     }
   }
 
-  streamlog_out(MESSAGE) << blue << " Trigger '" << m_trigCount << "' Found " << m_cerenkovRawHitMap.size()
-                         << " raw hits in BIF!" << normal << std::endl;
-  streamlog_out(DEBUG1) << "at time : " << normal << std::endl;
-  for (const auto &mapIt : m_cerenkovRawHitMap) {
-    streamlog_out(DEBUG1) << blue << " \t '" << mapIt.first << " Cerenkov --> '" << mapIt.second[0] << normal
-                          << std::endl;
+  streamlog_out(DEBUG2) << blue << " Trigger '" << m_trigNbr << "' Found " << m_cerenkovRawHitMap.size()
+                        << " raw hits in BIF!" << normal << std::endl;
+  if (!m_cerenkovRawHitMap.size()) {
+    streamlog_out(DEBUG1) << blue << "\t at time : " << normal << std::endl;
+    for (const auto &mapIt : m_cerenkovRawHitMap) {
+      streamlog_out(DEBUG1) << blue << " \t '" << mapIt.first << " Cerenkov --> '" << mapIt.second[0] << normal
+                            << std::endl;
+    }
   }
 }
 
@@ -1025,26 +1026,27 @@ void TriventProc::processEvent(LCEvent *evtP) {
 //=============================================================================
 void TriventProc::end() {
 
-  streamlog_out(MESSAGE) << "Trivent rejected " << m_rejectedNum << " Condidate event" << std::endl;
-  streamlog_out(MESSAGE) << "Trivent Selected " << m_selectedNum << " Condidate event" << std::endl;
+  streamlog_out(MESSAGE) << "Trivent rejected " << m_rejectedNum << " Candidate event" << std::endl;
+  streamlog_out(MESSAGE) << "Trivent Selected " << m_selectedNum << " Candidate event" << std::endl;
   streamlog_out(MESSAGE) << "Cerenkov Event Selected " << m_nCerenkovEvts << std::endl;
-
-  std::string cerCut = "CerenkovTime>-" + std::to_string(m_cerenkovTimeWindow);
-  m_eventTree->Draw("CerenkovTime>>hcer", cerCut.c_str());
-  // std::unique_ptr<TH1> hcer(dynamic_cast<TH1 *>(gDirectory->Get("hcer")));
-  TH1 *hcer = dynamic_cast<TH1 *>(gDirectory->Get("hcer"));
-  streamlog_out(MESSAGE) << "Cerenkov Probable time shift at " << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin())
-                         << " with " << hcer->GetBinContent(hcer->GetMaximumBin()) << "/" << m_nCerenkovEvts
-                         << " event tagged" << std::endl;
-  int cerTagInTime = 0;
-  for (int i = -m_timeWin; i < m_timeWin + 1; ++i) {
-    streamlog_out(MESSAGE) << "Bin '" << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin() + i)
-                           << "' :  " << hcer->GetBinContent(hcer->GetMaximumBin() + i) << std::endl;
-    cerTagInTime += hcer->GetBinContent(hcer->GetMaximumBin() + i);
+  if (m_nCerenkovEvts > 0) {
+    std::string cerCut = "CerenkovTime>-" + std::to_string(m_cerenkovTimeWindow);
+    m_eventTree->Draw("CerenkovTime>>hcer", cerCut.c_str());
+    // std::unique_ptr<TH1> hcer(dynamic_cast<TH1 *>(gDirectory->Get("hcer")));
+    TH1 *hcer = dynamic_cast<TH1 *>(gDirectory->Get("hcer"));
+    streamlog_out(MESSAGE) << "Cerenkov Probable time shift at "
+                           << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin()) << " with "
+                           << hcer->GetBinContent(hcer->GetMaximumBin()) << "/" << m_nCerenkovEvts << " event tagged"
+                           << std::endl;
+    int cerTagInTime = 0;
+    for (int i = -m_timeWin; i < m_timeWin + 1; ++i) {
+      streamlog_out(MESSAGE) << "Bin '" << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin() + i)
+                             << "' :  " << hcer->GetBinContent(hcer->GetMaximumBin() + i) << std::endl;
+      cerTagInTime += hcer->GetBinContent(hcer->GetMaximumBin() + i);
+    }
+    streamlog_out(ERROR) << "TotCerenkov in MPV+-timeWin : " << cerTagInTime << "/" << m_nCerenkovEvts << " ("
+                         << (float)(cerTagInTime) / (float)(m_nCerenkovEvts)*100 << "%)" << std::endl;
   }
-  streamlog_out(ERROR) << "TotCerenkov in MPV+-timeWin : " << cerTagInTime << "/" << m_nCerenkovEvts << " ("
-                       << (float)(cerTagInTime) / (float)(m_nCerenkovEvts)*100 << "%)" << std::endl;
-
   m_lcWriter->close();
 
   // TCanvas *c1 = new TCanvas();
