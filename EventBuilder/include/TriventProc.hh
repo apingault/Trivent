@@ -60,7 +60,7 @@ public:
   void fillRawHitTrigger(const LCCollection &inputLCCol);
 
   /**
-   * @brief
+   * @brief Return **inclusive** time boundaries for eventBuilding
    *
    * @param beginTime
    * @param endTime
@@ -108,7 +108,9 @@ public:
    */
   void resetTriggerParameters();
 
-  void eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int &timePeak, const int &prevTimePeak);
+  void eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int &timePeak,
+                    const unsigned int &lowTimeBoundary, const unsigned int &highTimeBoundary);
+
   void end();
 
   TH2 *makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle);
@@ -120,8 +122,9 @@ public:
   int IJKToKey(const std::vector<int> &padIndex);
 
 protected:
-  std::unique_ptr<LCWriter>               m_lcWriter;
-  std::vector<EVENT::RawCalorimeterHit *> m_trigger_raw_hit;
+  std::unique_ptr<LCWriter> m_lcWriter;
+  // map of <hitTimeStamp, rawHit>
+  std::map<int, std::vector<EVENT::RawCalorimeterHit *>> m_triggerRawHitMap;
   std::vector<EVENT::RawCalorimeterHit *> m_cerenkov_raw_hit;
   // std::vector<std::shared_ptr<EVENT::RawCalorimeterHit>> m_trigger_raw_hit;
   // std::vector<std::shared_ptr<EVENT::RawCalorimeterHit>> m_cerenkov_raw_hit;
