@@ -108,8 +108,8 @@ public:
    */
   void resetTriggerParameters();
 
-  void eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int &timePeak,
-                    const unsigned int &lowTimeBoundary, const unsigned int &highTimeBoundary);
+  void eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int &timePeak, const int &lowTimeBoundary,
+                    const int &highTimeBoundary);
 
   void end();
 
@@ -141,12 +141,11 @@ protected:
   std::map<int, LayerID> m_mDifMapping;
 
   // Cut parameters
-  bool m_useGainCorrection;
-  int  m_elecNoiseCut;
-  int  m_noiseCut;
-  int  m_layerCut;
-  int  m_timeWin;
-  int  m_time2prevEventCut;
+  int m_elecNoiseCut;
+  int m_noiseCut;
+  int m_layerCut;
+  int m_timeWin;
+  int m_time2prevEventCut;
 
   // Geometry paramaters
   float          m_cellSizeI;
@@ -222,7 +221,6 @@ protected:
   unsigned int           m_nFiredLayers;       // Number of Layers touched in evt = m_firedLayersSet.size()
   bool                   m_isSelected;         // Event is selected/rejected
   bool                   m_isNoise;            // If rejected, is it noise
-  bool                   m_isTooCloseInTime;   // If rejected, is it too close from previous evt
   bool                   m_hasNotEnoughLayers; // If rejected, has not touched sufficient layers
   bool                   m_hasFullAsic;        // If rejected, has full asics
   bool                   m_hasRamFull;         // If rejected, has ram full

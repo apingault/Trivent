@@ -84,12 +84,11 @@ TriventProc::TriventProc()
       m_hitI{},
       m_hitJ{},
       m_hitK{},
-      m_hitThreshold(0),
+      m_hitThreshold{},
       m_firedLayersSet{},
       m_nFiredLayers(0),
       m_isSelected(true),
       m_isNoise(false),
-      m_isTooCloseInTime(false),
       m_hasNotEnoughLayers(false),
       m_hasFullAsic(false),
       m_hasRamFull(false),
@@ -101,8 +100,8 @@ TriventProc::TriventProc()
   registerInputCollections(LCIO::RAWCALORIMETERHIT, "InputCollectionNames", "HCAL Collection Names", m_hcalCollections,
                            hcalCollections);
 
-  registerOutputCollection(LCIO::CALORIMETERHIT, "OutputCollectionName", "HCAL Collection Names",
-                           m_outputCollectionName, m_outputCollectionName);
+  registerOutputCollection(LCIO::CALORIMETERHIT, "OutputCollectionName", "HCAL Collection Name", m_outputCollectionName,
+                           m_outputCollectionName);
 
   registerOutputCollection(LCIO::CALORIMETERHIT, "CerenkovCollectionName", "Cerenkov Collection Name",
                            m_cerenkovCollectionName, m_cerenkovCollectionName);
@@ -291,7 +290,7 @@ std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, c
   }
 
   std::vector<int> index{1 + MapILargeHR2[chanId] + AsicShiftI[asicId],
-                         32 - (MapJLargeHR2[chanId] + AsicShiftJ[asicId] ) + findIter->second.DifY,
+                         32 - (MapJLargeHR2[chanId] + AsicShiftJ[asicId]) + findIter->second.DifY,
                          static_cast<int>(findIter->second.K)};
   std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
   // Cerenkov layer is not in the layerSet as it's not a physical layer, needs to account for that when checking the pad
@@ -370,7 +369,6 @@ void TriventProc::resetEventParameters() {
   m_hasNotEnoughLayers = false;
   m_hasFullAsic        = false;
   m_hasRamFull         = false;
-  m_isTooCloseInTime   = false;
   m_nHit               = 0;
   m_hitI.clear();
   m_hitJ.clear();
@@ -390,7 +388,7 @@ void TriventProc::resetEventParameters() {
 
 //=============================================================================
 void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int &timePeak,
-                               const unsigned int &lowTimeBoundary, const unsigned int &highTimeBoundary) {
+                               const int &lowTimeBoundary, const int &highTimeBoundary) {
 
   resetEventParameters();
 
@@ -403,7 +401,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
   std::map<int, int> ramFullMap;
   std::map<int, int> hitKeys;
 
-  for (unsigned int hitTime = lowTimeBoundary; hitTime <= highTimeBoundary; ++hitTime) {
+  for (int hitTime = lowTimeBoundary; hitTime <= highTimeBoundary; ++hitTime) {
 
     // No hit recorded at hitTime
     if (m_triggerRawHitMap.find(hitTime) == m_triggerRawHitMap.end())
@@ -411,35 +409,36 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
 
     for (const auto &rawHit : m_triggerRawHitMap.at(hitTime)) {
       assert(rawHit);
+      assert(rawHit->getTimeStamp() == hitTime);
 
       const int difId  = getCellDif_id(rawHit->getCellID0());
-      int       asicId = getCellAsic_id(
+      const int asicId = getCellAsic_id(
           rawHit->getCellID0()); // Can't be const to correct for cerenkovAsicId bug (in data from 2014>2016)
       const int chanId = getCellChan_id(rawHit->getCellID0());
       const int thresh = rawHit->getAmplitude();
-      if ((asicId < 1) || (asicId > 48)) {
+      if (asicId < 1 || asicId > 48) {
           streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... "
                                << difId << "/" << asicId << "/" << chanId << "/" << thresh << normal << std::endl;
-          continue;
+          abort();
         }
       }
-      if (chanId > 63) {
-        streamlog_out(ERROR) << yellow << "[eventBuilder] - Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... "
+      if (chanId < 0 || chanId > 63) {
+        streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... "
                              << difId << "/" << asicId << "/" << chanId << "/" << thresh << normal << std::endl;
-        continue;
+        abort();
       }
       const std::vector<int> padIndex = getPadIndex(difId, asicId, chanId);
       if (padIndex.empty()) {
         streamlog_out(ERROR) << red << "[eventBuilder] - Dif '" << difId
                              << "' not found in geometry file...skipping hit" << normal << std::endl;
-        continue;
+        abort();
       }
 
       // find and remove ramFull events
       if (chanId == 29 || chanId == 31)
         ramFullMap[difId]++;
 
-      if (ramFullMap[difId] == 48) {
+      if (ramFullMap[difId] > 48 && !m_hasRamFull) {
         streamlog_out(WARNING) << yellow << "[eventBuilder] - Rejecting event with ram full. Dif : " << difId << normal
                                << std::endl;
 
@@ -526,7 +525,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       if (difId != m_cerenkovDifId) { //
         // Fill hitsMap for each Layer, cerenkov not included in m_vHitMapPerLayer
         // streamlog_out(DEBUG) << yellow << "Filling hitMap for Layer '" << K << "'..." << normal << std::endl;
-        assert(m_vHitMapPerLayer.at(K - 1));
         m_vHitMapPerLayer.at(K - 1)->Fill(I, J);
         // streamlog_out(DEBUG) << blue << "Filling hitMap for Layer '" << K << "'...OK" << normal << std::endl;
       }
@@ -1003,11 +1001,10 @@ void TriventProc::processEvent(LCEvent *evtP) {
       //  Apply cut on time between two events
       assert(timePeak - prevTimePeak > m_time2prevEventCut);
 
-      // else if (abs(timePeak - prevTimePeak) > m_time2prevEventCut) {
       streamlog_out(DEBUG0) << green << " Trivent find event at :==> " << red << timePeak << green << "\t :Nhit: ==> "
                             << magenta << outCol->getNumberOfElements() << normal << std::endl;
-      lcEvt->setEventNumber(++m_evtNum);
 
+      lcEvt->setEventNumber(++m_evtNum);
       lcEvt->addCollection(outCol.release(), m_outputCollectionName);
       lcEvt->addCollection(cerCol.release(), m_cerenkovCollectionName);
       lcEvt->parameters().setValue("CerenkovTag", !m_timeCerenkov.empty());
