@@ -412,6 +412,8 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       assert(rawHit->getTimeStamp() == hitTime);
 
       const int difId = getCellDif_id(rawHit->getCellID0());
+      assert(difId != m_cerenkovDifId);
+
       const int asicId = getCellAsic_id(
           rawHit->getCellID0()); // Can't be const to correct for cerenkovAsicId bug (in data from 2014>2016)
       const int chanId = getCellChan_id(rawHit->getCellID0());
@@ -806,9 +808,10 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
         continue;
       }
       if (difId == m_cerenkovDifId) {
-        m_cerenkovRawHitMap[raw_hit->getTimeStamp()].push_back(raw_hit);
+        m_cerenkovRawHitMap[rawHit->getTimeStamp()].push_back(rawHit);
+      } else {
+        m_triggerRawHitMap[rawHit->getTimeStamp()].push_back(rawHit);
       }
-      m_triggerRawHitMap[raw_hit->getTimeStamp()].push_back(raw_hit);
     }
   }
 
