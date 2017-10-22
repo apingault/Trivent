@@ -420,7 +420,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
           streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... "
                                << difId << "/" << asicId << "/" << chanId << "/" << thresh << normal << std::endl;
           abort();
-        }
       }
       if (chanId < 0 || chanId > 63) {
         streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... "
