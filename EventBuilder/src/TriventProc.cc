@@ -91,7 +91,8 @@ TriventProc::TriventProc()
       m_isNoise(false),
       m_isTooCloseInTime(false),
       m_hasNotEnoughLayers(false),
-      m_hasFullAsic(false) {
+      m_hasFullAsic(false),
+      m_keepRejected(true) {
 
   // collection
   std::vector<std::string> hcalCollections;
@@ -136,8 +137,6 @@ TriventProc::TriventProc()
   // histogram control tree
   registerProcessorParameter("ROOTOutputFile", "Logroot name", m_rootFileName, m_rootFileName);
 
-  registerProcessorParameter("GainCorrectionMode", "m_useGainCorrection", m_useGainCorrection, m_useGainCorrection);
-
   registerProcessorParameter("HasCerenkovDIF", "If Cerenkov dif was connected during data taking", m_hasCherenkov,
                              m_hasCherenkov);
 
@@ -145,6 +144,9 @@ TriventProc::TriventProc()
 
   registerProcessorParameter("CerenkovTimeWindow", "TimeWindow around timePeak in which to look for cerenkov data",
                              m_cerenkovTimeWindow, m_cerenkovTimeWindow);
+
+  registerProcessorParameter("KeepRejectedEvent", "Keep event that didn't pass cut selection", m_keepRejected,
+                             m_keepRejected);
 
   registerProcessorParameter("PlotFolder", "Folder Path to save Plot", m_plotFolder, m_plotFolder);
 }
@@ -392,11 +394,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
 
   std::map<int, int> asicMap;
   std::map<int, int> hitKeys;
-  // TODO: Make it nicer. Here it just ensure cerenkov hit within m_cerenkovTimeWindow are not discarded from the
-  // Calorimeter hit
-  // unsigned int timeWindow = m_timeWin;
-  // if (getCellDif_id(rawhit->getCellID0()) == m_cerenkovDifId)
-  //   timeWindow = m_cerenkovTimeWindow;
 
   for (unsigned int hitTime = lowTimeBoundary; hitTime <= highTimeBoundary; ++hitTime) {
 
@@ -960,6 +957,10 @@ void TriventProc::processEvent(LCEvent *evtP) {
         ++m_rejectedNum;
         m_isSelected         = false;
         m_hasNotEnoughLayers = true;
+        if (!m_keepRejected) {
+          m_firedLayersSet.clear();
+          continue;
+        }
       }
 
       //  Apply cut on time between two events
