@@ -897,6 +897,12 @@ void TriventProc::processEvent(LCEvent *evtP)
       {
         try {
           LCCollection *col = evtP->getCollection(m_hcalCollections[i].c_str());
+          if (col == NULL)
+          {
+            streamlog_out(WARNING) << red << "TRIGGER SKIPED ... col == NULL" << normal << std::endl;
+            break;
+          }
+
           const int numElements = col->getNumberOfElements();// hit number in trigger
 
           ++m_trigCount;
@@ -905,11 +911,6 @@ void TriventProc::processEvent(LCEvent *evtP)
             streamlog_out(MESSAGE) << yellow << "Trigger number == " << m_trigCount << normal << std::endl;
           }
 
-          if (col == NULL)
-          {
-            streamlog_out(WARNING) << red << "TRIGGER SKIPED ... col == NULL" << normal << std::endl;
-            break;
-          }
 
           if (numElements > m_elecNoiseCut)
           {
