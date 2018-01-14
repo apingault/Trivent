@@ -99,11 +99,11 @@ protected:
   unsigned int m_cerThreshold;
   unsigned int m_nCerenkov1;       // Number of hit in first Cerenkov
   unsigned int m_nCerenkov2;       // Number of hit in second Cerenkov
-  unsigned int m_nCerenkov3;       // Number of hit in frist + second Cerenkov
+  unsigned int m_nCerenkov3;       // Number of hit in first + second Cerenkov
   unsigned int m_nCerenkovTrigger; // Tot number of hit in cerenkov for current trigger
   bool m_hasTooManyCerenkov;       // if m_nCerenkovTrigger > bifHit in trigger
   int m_timeCerenkov;              // Timing between peak and Cerenkov signal
-  unsigned int m_totCerenkovHits;  
+  unsigned int m_totCerenkovHits;
   unsigned int m_cerenkovEvts;     // Number of events tagged with the cerenkov
   int m_maxCerenkovTime;           // CerenkovTime with most occurence ->MPV for cerenkov timeShift
 
@@ -118,7 +118,7 @@ protected:
   int m_bcid2;
 
 
-  // Color for streamlog ouptut
+  // Color for streamlog output
   std::string normal;
   std::string red;
   std::string green;
@@ -151,7 +151,7 @@ protected:
   std::vector<int> m_hitJ;         // Hit position
   std::vector<int> m_hitK;         // Hit position
   std::vector<int> m_hitThreshold;
-  
+
   unsigned int m_nFiredLayers;     // Number of Layers touched in evt
   bool m_isSelected;               // Event is selected/rejected
   bool m_isNoise;                  // If rejected, is it noise

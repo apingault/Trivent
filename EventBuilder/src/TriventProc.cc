@@ -219,11 +219,6 @@ TriventProc::TriventProc()
 TriventProc::~TriventProc()
 {
   delete m_rootFile;
-  for (const auto& hitMap:m_vHitMapPerLayer)
-  {
-    delete hitMap;
-  }
-  delete m_eventTree;
 }
 
 
@@ -1186,7 +1181,7 @@ void TriventProc::end()
   streamlog_out(MESSAGE) << "Trivent rejected " << m_rejectedNum << " Condidate event" << std::endl;
   streamlog_out(MESSAGE) << "Trivent Selected " << m_selectedNum << " Condidate event" << std::endl;
   streamlog_out(MESSAGE) << "Cerenkov Event Selected " << m_cerenkovEvts << std::endl;
-
+  // TODO:   CerenkovTime>-40 needs to depend on the cerenkov  time window from the configFile!
   m_eventTree->Draw("CerenkovTime>>hcer","CerenkovTime>-40");
   TH1I *hcer = (TH1I*)gDirectory->Get("hcer");
   streamlog_out(MESSAGE) << "Cerenkov Probable time shift at " << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin()) << " with " << hcer->GetBinContent(hcer->GetMaximumBin()) << "/" << m_cerenkovEvts << " event tagged" << std::endl;
