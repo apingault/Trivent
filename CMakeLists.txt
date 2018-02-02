@@ -24,6 +24,8 @@ ENDIF()
 # Add Rpath for osx
 SET( CMAKE_MACOSX_RPATH ON )
 
+SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 ### DEPENDENCIES ############################################################
 
 FIND_PACKAGE( ILCUTIL REQUIRED COMPONENTS ILCSOFT_CMAKE_MODULES )
