@@ -92,7 +92,7 @@ TriventProc::TriventProc()
       m_hasNotEnoughLayers(false),
       m_hasFullAsic(false),
       m_hasRamFull(false),
-      m_keepRejected(true) {
+      m_keepRejected(false) {
 
   // collection
   std::vector<std::string> hcalCollections;
@@ -160,14 +160,16 @@ void TriventProc::XMLReader(const std::string &xmlfile) {
   bool          load_key = xml.LoadFile();
 
   if (load_key) {
-    streamlog_out(MESSAGE) << yellow << "Found Geometry File : " << xmlfile.c_str() << normal << std::endl;
+    streamlog_out(MESSAGE) << yellow << "[" << __func__ << "] - Found Geometry File : " << xmlfile.c_str() << normal
+                           << std::endl;
 
     TiXmlHandle   xmlHandle(&xml);
     TiXmlElement *pElem = xmlHandle.FirstChildElement().Element();
 
     // should always have a valid root but handle gracefully if it does not
     if (!pElem) {
-      streamlog_out(ERROR) << red << "error No root handle Found in xml file" << normal << std::endl;
+      streamlog_out(ERROR) << red << "[" << __func__ << "] - Error No root handle Found in xml file" << normal
+                           << std::endl;
     }
 
     // save this for later
@@ -177,11 +179,11 @@ void TriventProc::XMLReader(const std::string &xmlfile) {
     // parameters block
     pElem = rootHandle.FirstChild("parameter").Element();
     assert(pElem);
-    streamlog_out(DEBUG0) << "Reading data for key: " << pElem->Attribute("name") << std::endl;
-    streamlog_out(DEBUG0) << "parameter : " << pElem->Attribute("name") << std::endl;
+    streamlog_out(DEBUG0) << "[" << __func__ << "] - Reading data for key: " << pElem->Attribute("name") << std::endl;
+    streamlog_out(DEBUG0) << "[" << __func__ << "] - parameter : " << pElem->Attribute("name") << std::endl;
 
     std::string value = pElem->GetText();
-    streamlog_out(DEBUG0) << "value : " << value << std::endl;
+    streamlog_out(DEBUG0) << "[" << __func__ << "] - value : " << value << std::endl;
 
     std::string              line;
     std::vector<std::string> lines;
@@ -192,7 +194,7 @@ void TriventProc::XMLReader(const std::string &xmlfile) {
       // streamlog_out( MESSAGE ) << blue << line << normal << std::endl;
       lines.push_back(line);
     }
-    streamlog_out(MESSAGE) << yellow << "Found " << lines.size()
+    streamlog_out(MESSAGE) << yellow << "[" << __func__ << "] - Found " << lines.size()
                            << " difs in geometry file corresponding to : " << (unsigned int)lines.size() / 3
                            << " layers + " << lines.size() % 3 << " difs" << normal << std::endl;
     // for (std::vector<std::string>::const_iterator lineIter = lines.begin(); lineIter != lines.end(); ++lineIter) {
@@ -230,7 +232,7 @@ void TriventProc::XMLReader(const std::string &xmlfile) {
     }
   } else {
     std::ostringstream oss;
-    oss << "Failed to load geometry file '" << xmlfile.c_str() << "'";
+    oss << "[" << __func__ << "] - Failed to load geometry file '" << xmlfile.c_str() << "'";
     streamlog_out(WARNING) << red << oss.str() << normal << std::endl;
     throw(oss.str());
   }
@@ -238,7 +240,7 @@ void TriventProc::XMLReader(const std::string &xmlfile) {
 
 //=============================================================================
 void TriventProc::printDifGeom() {
-  streamlog_out(DEBUG1) << "--- Dumping geomtry File: " << std::endl;
+  streamlog_out(DEBUG1) << "[" << __func__ << "] --- Dumping geomtry File: " << std::endl;
   // for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); ++itt) {
   for (const auto &itt : m_mDifMapping) {
     streamlog_out(DEBUG1) << itt.first << "\t" << itt.second.K << "\t" << itt.second.DifX << "\t" << itt.second.DifY
@@ -273,6 +275,13 @@ int TriventProc::getCellChan_id(const int &cellId) { return (cellId & 0x3F0000) 
 
 bool TriventProc::checkPadLimits(const std::vector<int> &padIndex, const std::vector<int> &padLimits) {
   assert(padLimits.size() == padIndex.size() * 2);
+  // std::cout << "pads: ";
+  // for (const auto &pad : padIndex)
+  //   std::cout << " " << pad;
+  // std::cout << "\nlims: ";
+  // for (const auto &pad : padLimits)
+  //   std::cout << " " << pad;
+  // std::cout << std::endl;
   for (int i = 0; i < static_cast<int>(padIndex.size()); ++i) {
     if (padIndex[i] < padLimits[i * 2] || padIndex[i] > padLimits[i * 2 + 1])
       return false;
@@ -285,7 +294,7 @@ std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, c
   std::map<int, LayerID>::const_iterator findIter = m_mDifMapping.find(difId);
 
   if (findIter == m_mDifMapping.end()) {
-    streamlog_out(ERROR) << " [getPadIndex] difId '" << difId << "' not found in geometry file" << std::endl;
+    streamlog_out(ERROR) << "[" << __func__ << "] - difId '" << difId << "' not found in geometry file" << std::endl;
     return {}; // empty
   }
 
@@ -303,8 +312,8 @@ std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, c
   assert(checkPadLimits(index, padLims));
 
   // if (difId == m_cerenkovDifId) {
-  // streamlog_out(DEBUG0) << " difId== " << difId<< " asicId ==" << asicId << " chanId ==" << chanId
-  // << " I == " << index[0] << " J == " << index[1] << " K == " << index[2] << std::endl;
+  // streamlog_out(DEBUG0) << "[" << __func__ << "] - difId== " << difId<< " asicId ==" << asicId << " chanId ==" <<
+  // chanId << " I == " << index[0] << " J == " << index[1] << " K == " << index[2] << std::endl;
   // }
   return index;
 }
@@ -419,18 +428,19 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       const int chanId = getCellChan_id(rawHit->getCellID0());
       const int thresh = rawHit->getAmplitude();
       if (asicId < 1 || asicId > 48) {
-        streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... " << difId
-                             << "/" << asicId << "/" << chanId << "/" << thresh << " Exiting" << normal << std::endl;
+        streamlog_out(ERROR) << red << "[" << __func__ << "] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... "
+                             << difId << "/" << asicId << "/" << chanId << "/" << thresh << " Exiting" << normal
+                             << std::endl;
         abort();
       }
       if (chanId < 0 || chanId > 63) {
-        streamlog_out(ERROR) << red << "[eventBuilder] - Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... "
+        streamlog_out(ERROR) << red << "[" << __func__ << "] - Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... "
                              << difId << "/" << asicId << "/" << chanId << "/" << thresh << normal << std::endl;
         abort();
       }
       const std::vector<int> padIndex = getPadIndex(difId, asicId, chanId);
       if (padIndex.empty()) {
-        streamlog_out(ERROR) << red << "[eventBuilder] - Dif '" << difId
+        streamlog_out(ERROR) << red << "[" << __func__ << "] - Dif '" << difId
                              << "' not found in geometry file...skipping hit" << normal << std::endl;
         abort();
       }
@@ -440,8 +450,8 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
         ramFullMap[difId]++;
 
       if (ramFullMap[difId] > 48 && !m_hasRamFull) {
-        streamlog_out(DEBUG1) << yellow << "[eventBuilder] - Rejecting event with ram full. Dif : " << difId << normal
-                              << std::endl;
+        streamlog_out(DEBUG1) << yellow << "[" << __func__ << "] - Rejecting event with ram full. Dif : " << difId
+                              << normal << std::endl;
 
         m_isSelected = false;
         m_hasRamFull = true;
@@ -464,7 +474,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       }
 
       if (asicMap[asicKey] == 64 && difId != m_cerenkovDifId) {
-        streamlog_out(DEBUG1) << yellow << "[eventBuilder] - Rejecting event with full asic. Dif '" << difId
+        streamlog_out(DEBUG1) << yellow << "[" << __func__ << "] - Rejecting event with full asic. Dif '" << difId
                               << "' asic '" << asicId << "' at time '" << timePeak << "'" << normal << std::endl;
 
         m_isSelected  = false;
@@ -507,7 +517,8 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
           caloHit = nullptr;
           continue;
         } else {
-          streamlog_out(ERROR) << yellow << " So much Hit in my cherenkov " << normal << std::endl;
+          streamlog_out(ERROR) << yellow << "[" << __func__ << "] - So much Hit in my cherenkov " << normal
+                               << std::endl;
           abort();
         }
       }
@@ -525,9 +536,11 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
 
       if (difId != m_cerenkovDifId) { //
         // Fill hitsMap for each Layer, cerenkov not included in m_vHitMapPerLayer
-        // streamlog_out(DEBUG) << yellow << "Filling hitMap for Layer '" << K << "'..." << normal << std::endl;
+        // streamlog_out(DEBUG) << yellow << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'..." <<
+        // normal << std::endl;
         m_vHitMapPerLayer.at(K - 1)->Fill(I, J);
-        // streamlog_out(DEBUG) << blue << "Filling hitMap for Layer '" << K << "'...OK" << normal << std::endl;
+        // streamlog_out(DEBUG) << blue << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'...OK" <<
+        // normal << std::endl;
       }
 
       cellIdEncoder.setCellID(caloHit);
@@ -570,7 +583,7 @@ TTree *TriventProc::getOrCreateTree(const std::string &treeName, const std::stri
   TTree *tree = static_cast<TTree *>(m_rootFile->Get(treeName.c_str()));
 
   if (!tree) {
-    streamlog_out(DEBUG0) << "Creating tree '" << treeName << "'" << std::endl;
+    streamlog_out(DEBUG0) << "[" << __func__ << "] - Creating tree '" << treeName << "'" << std::endl;
     tree = new TTree(treeName.c_str(), treeDescription.c_str());
   }
   assert(tree);
@@ -634,17 +647,17 @@ void TriventProc::initRootTree() {
 
     std::stringstream oss;
     oss << "hitMap_Layer" << iLayer;
-    streamlog_out(DEBUG0) << "Booking hitMap for layer '" << iLayer << "'..." << std::endl;
+    streamlog_out(DEBUG0) << "[" << __func__ << "] - Booking hitMap for layer '" << iLayer << "'..." << std::endl;
     m_vHitMapPerLayer.push_back(makeTH2(oss.str(), "I", "J (DIFSide)"));
     assert(m_vHitMapPerLayer.back());
-    streamlog_out(DEBUG0) << "Booking hitMap for layer '" << iLayer << "'...OK" << std::endl;
+    streamlog_out(DEBUG0) << "[" << __func__ << "] - Booking hitMap for layer '" << iLayer << "'...OK" << std::endl;
   }
 
   int iLayer = 0;
   for (auto const &histo : m_vHitMapPerLayer) {
     assert(histo);
-    streamlog_out(DEBUG0) << yellow << "Booked hitMap histo for layer '" << iLayer << "' at --> '" << histo << "'"
-                          << normal << std::endl;
+    streamlog_out(DEBUG0) << yellow << "[" << __func__ << "] - Booked hitMap histo for layer '" << iLayer
+                          << "' at --> '" << histo << "'" << normal << std::endl;
     ++iLayer;
   }
 }
@@ -714,7 +727,7 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
 
       const int difId = getCellDif_id(cerHit->getCellID0());
       if (difId != m_cerenkovDifId) {
-        streamlog_out(ERROR) << red << "[findCerenkov] - Found Cerenkov hit in wrong dif '" << difId
+        streamlog_out(ERROR) << red << "[" << __func__ << "] - Found Cerenkov hit in wrong dif '" << difId
                              << "'... should be in dif '" << m_cerenkovDifId << "'...skipping" << normal << std::endl;
         continue;
       }
@@ -722,7 +735,7 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
       m_timeCerenkov.push_back(bifTime - timePeak);
       int asicId = getCellAsic_id(cerHit->getCellID0());
       if (asicId == 129) {
-        streamlog_out(DEBUG0) << yellow << "Cerenkov asic has not been corrected : '" << asicId
+        streamlog_out(DEBUG0) << yellow << "[" << __func__ << "] - Cerenkov asic has not been corrected : '" << asicId
                               << " correcting it... to asicId = 1" << normal << std::endl;
         asicId = 1;
       }
@@ -731,18 +744,18 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
       assert(chanId >= 0 && asicId < 64);
       const int hitThreshold = cerHit->getAmplitude();
 
-      streamlog_out(DEBUG) << "[findCerenkov] - Found Cerenkov hit at time '" << bifTime - timePeak
+      streamlog_out(DEBUG) << "[" << __func__ << "] - Found Cerenkov hit at time '" << bifTime - timePeak
                            << "' bifTime: " << bifTime << " timePeak: " << timePeak << "\t Asic '" << asicId
                            << "'\t Chan '" << chanId << "'\t Threshold " << hitThreshold << std::endl;
 
       const std::vector<int> padIndex = getPadIndex(difId, asicId, chanId);
       if (padIndex.empty()) {
-        streamlog_out(ERROR) << red << "[findCerenkov] - Dif '" << difId
+        streamlog_out(ERROR) << red << "[" << __func__ << "] - Dif '" << difId
                              << "' not found in geometry file...skipping hit" << normal << std::endl;
         abort();
       }
 
-      std::unique_ptr<CalorimeterHitImpl> caloHit = make_unique<CalorimeterHitImpl>();
+      CalorimeterHitImpl *caloHit = new CalorimeterHitImpl();
       caloHit->setTime(static_cast<float>(cerHit->getTimeStamp()));
       cellIdEncoder["Dif_id"]  = difId;
       cellIdEncoder["Asic_id"] = asicId;
@@ -759,16 +772,21 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
       } else if (hitThreshold == 1) {
         m_nCerenkov1 += 1;
       } else {
-        streamlog_out(ERROR) << red << "[findCerenkov] - Found Cerenkov hit with weird threshold : '" << hitThreshold
-                             << "'..." << normal << std::endl;
+        streamlog_out(ERROR) << red << "[" << __func__ << "] - Found Cerenkov hit with weird threshold : '"
+                             << hitThreshold << "'..." << normal << std::endl;
+        delete caloHit;
+        caloHit = nullptr;
         abort();
       }
+      cellIdEncoder.setCellID(caloHit);
+      cerCol.get()->addElement(caloHit);
     }
   }
   m_nCerenkovTrigger += (m_nCerenkov1 + m_nCerenkov2 + m_nCerenkov3);
   if (m_nCerenkovTrigger > m_cerenkovRawHitMap.size() && !m_hasTooManyCerenkov) {
-    streamlog_out(WARNING) << yellow << "[findCerenkov] - Cerenkov hit associated with multiple event in Trigger : "
-                                        "Associated hit/total bif_hit in trigger : '"
+    streamlog_out(WARNING) << yellow << "[" << __func__
+                           << "] - Cerenkov hit associated with multiple event in Trigger : "
+                              "Associated hit/total bif_hit in trigger : '"
                            << m_nCerenkovTrigger << "'/" << m_cerenkovRawHitMap.size() << normal << std::endl;
     m_hasTooManyCerenkov = true;
   }
@@ -794,12 +812,12 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
           m_bcid2                     = vTrigger[3];
           unsigned long long Shift    = 16777216ULL; // to shift the value from the 24 first bits
           unsigned long long theBCID_ = m_bcid1 * Shift + m_bcid2;
-          streamlog_out(DEBUG0) << "trigger time : " << theBCID_ << std::endl;
+          streamlog_out(DEBUG0) << "[" << __func__ << "] - trigger time : " << theBCID_ << std::endl;
         }
       }
 
       if (rawHit->getTimeStamp() < 0) {
-        streamlog_out(ERROR) << red << "[fillRawHitTrigger] - Trig '" << m_trigNbr
+        streamlog_out(ERROR) << red << "[" << __func__ << "] - Trig '" << m_trigNbr
                              << "'Found a raw hit with negative timeStamp! : "
                              << "time: " << rawHit->getTimeStamp() << " difId: " << getCellDif_id(rawHit->getCellID0())
                              << " asicId: " << getCellAsic_id(rawHit->getCellID0())
@@ -815,8 +833,8 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
     }
   }
 
-  streamlog_out(DEBUG2) << blue << " Trigger '" << m_trigNbr << "' Found " << m_cerenkovRawHitMap.size()
-                        << " raw hits in BIF!" << normal << std::endl;
+  streamlog_out(DEBUG2) << blue << "[" << __func__ << "] - Trigger '" << m_trigNbr << "' Found "
+                        << m_cerenkovRawHitMap.size() << " raw hits in BIF!" << normal << std::endl;
   if (!m_cerenkovRawHitMap.size()) {
     streamlog_out(DEBUG1) << blue << "\t at time : " << normal << std::endl;
     for (const auto &mapIt : m_cerenkovRawHitMap) {
@@ -842,7 +860,7 @@ TriventProc::getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime, s
     lowerBound = std::prev(candidateTime, m_timeWin);
   // Don't throw a potential candidate found in the first few frames of the trigger
   else {
-    streamlog_out(DEBUG0) << green << "[processEvent] - small lowerBound! m_timeWin : " << m_timeWin
+    streamlog_out(DEBUG0) << green << "[" << __func__ << "] - Small lowerBound! m_timeWin : " << m_timeWin
                           << " distance(beginTime, candidateTime) = " << timeDistance << normal << std::endl;
     lowerBound = std::prev(candidateTime, timeDistance);
   }
@@ -853,11 +871,11 @@ TriventProc::getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime, s
     upperBound = std::next(candidateTime, m_timeWin);
   else { // Don't throw a potential candidate found in the last few frames of the trigger
     upperBound = std::next(candidateTime, timeDistance); // distance > 0 already met in while loop
-    streamlog_out(DEBUG0) << green << "[processEvent] - small upperBound! m_timeWin : " << m_timeWin
+    streamlog_out(DEBUG0) << green << "[" << __func__ << "] - Small upperBound! m_timeWin : " << m_timeWin
                           << " distance(candidateTime, endTime) = " << timeDistance << normal << std::endl;
   }
-  streamlog_out(DEBUG0) << "low: " << distance(beginTime, lowerBound) << " up " << distance(beginTime, upperBound)
-                        << std::endl;
+  streamlog_out(DEBUG0) << "[" << __func__ << "] - low: " << distance(beginTime, lowerBound) << " up "
+                        << distance(beginTime, upperBound) << std::endl;
   assert(lowerBound < upperBound);
   assert(std::distance(upperBound, lowerBound) <= 2 * m_timeWin);
   return {lowerBound, upperBound};
@@ -869,7 +887,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
   m_trigNbr = evtP->getEventNumber();
   if (m_trigNbr > 1E6) {
-    streamlog_out(ERROR) << red << "Too much Triggers : " << m_trigNbr << normal << std::endl;
+    streamlog_out(ERROR) << red << "[" << __func__ << "] - Too much Triggers : " << m_trigNbr << normal << std::endl;
     return;
   }
 
@@ -879,22 +897,24 @@ void TriventProc::processEvent(LCEvent *evtP) {
     try {
       inputLCCol = evtP->getCollection(m_hcalCollections.at(i).c_str());
     } catch (lcio::DataNotAvailableException &zero) {
-      streamlog_out(ERROR) << red << "No data found in collection " << i << normal << std::endl;
+      streamlog_out(ERROR) << red << "[" << __func__ << "] - No data found in collection " << i << normal << std::endl;
     }
 
     if (!inputLCCol) {
-      streamlog_out(WARNING) << red << "TRIGGER SKIPED ... col is nullptr" << normal << std::endl;
+      streamlog_out(WARNING) << red << "[" << __func__ << "] - TRIGGER SKIPED ... col is nullptr" << normal
+                             << std::endl;
       continue;
     }
 
     ++m_trigCount;
     if (0 == m_trigCount % 100) {
-      streamlog_out(MESSAGE) << yellow << "Trigger number == " << m_trigCount << normal << std::endl;
+      streamlog_out(MESSAGE) << yellow << "[" << __func__ << "] - Trigger number == " << m_trigCount << normal
+                             << std::endl;
     }
 
     const int numElements = inputLCCol->getNumberOfElements(); // hit number in trigger
     if (numElements > m_elecNoiseCut) {
-      streamlog_out(MESSAGE) << yellow << "TRIGGER number " << m_trigCount
+      streamlog_out(MESSAGE) << yellow << "[" << __func__ << "] - TRIGGER number " << m_trigCount
                              << " SKIPPED ... hitNumber > m_elecNoiseCut : " << numElements << " > " << m_elecNoiseCut
                              << normal << std::endl;
       continue;
@@ -930,15 +950,16 @@ void TriventProc::processEvent(LCEvent *evtP) {
         continue;
       }
 
-      streamlog_out(DEBUG0) << yellow << "[processEvent] - upperBound '" << std::distance(beginTimeIter, boundaries[1])
-                            << "' lowerBound '" << std::distance(beginTimeIter, boundaries[0]) << " max at time '"
+      streamlog_out(DEBUG0) << yellow << "[" << __func__ << "] - upperBound '"
+                            << std::distance(beginTimeIter, boundaries[1]) << "' lowerBound '"
+                            << std::distance(beginTimeIter, boundaries[0]) << " max at time '"
                             << std::distance(beginTimeIter, maxIter) << "' : " << *maxIter << normal << std::endl;
 
       // Check we didn't already process the peak
       // if (std::distance(maxIter, prevMaxIter) < m_timeWin && std::distance(beginTimeIter, timeIter) > 0) {
       if (maxIter < prevMaxIter && std::distance(beginTimeIter, timeIter) > 0) {
         if (std::distance(prevMaxIter, maxIter) < m_timeWin) {
-          streamlog_out(DEBUG0) << yellow << "[processEvent] - Found duplicate peak, at time '"
+          streamlog_out(DEBUG0) << yellow << "[" << __func__ << "] - Found duplicate peak, at time '"
                                 << std::distance(beginTimeIter, maxIter) << "' previous peak : '"
                                 << std::distance(beginTimeIter, prevMaxIter) << "'..." << normal << std::endl;
           ++timeIter;
@@ -952,7 +973,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
       const unsigned int highBound    = distance(beginTimeIter, boundaries[1]);
       prevMaxIter                     = maxIter;
 
-      streamlog_out(DEBUG0) << blue << "[processEvent] - Trig '" << m_trigCount << "' : Found Peak, at time '"
+      streamlog_out(DEBUG0) << blue << "[" << __func__ << "] - Trig '" << m_trigCount << "' : Found Peak, at time '"
                             << timePeak << "' - hits : " << *maxIter << " prevTimePeak: " << prevTimePeak << normal
                             << std::endl;
 
@@ -974,7 +995,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
       // Event Building
       TriventProc::eventBuilder(outCol, timePeak, lowBound, highBound);
-      streamlog_out(DEBUG0) << blue << " EventBuilding...OK" << normal << std::endl;
+      streamlog_out(DEBUG0) << blue << "[" << __func__ << "] - EventBuilding...OK" << normal << std::endl;
 
       m_evtTrigNbr = m_trigNbr;
       m_evtNbr     = m_evtNum; // dont increment here: rejected event will have same number as last accepted !
@@ -982,13 +1003,13 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
       std::unique_ptr<LCCollectionVec> cerCol = make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
       if (m_hasCherenkov) {
-        streamlog_out(DEBUG0) << " Find Cer " << m_cerenkovRawHitMap.size() << std::endl;
+        streamlog_out(DEBUG0) << "[" << __func__ << "] - Find Cer " << m_cerenkovRawHitMap.size() << std::endl;
         findCerenkovHits(cerCol, timePeak);
-        streamlog_out(DEBUG0) << " Find Cer OK" << normal << std::endl;
+        streamlog_out(DEBUG0) << "[" << __func__ << "] - Find Cer OK" << normal << std::endl;
 
         // if (m_timeCerenkov != -2 * m_cerenkovTimeWindow) // InitialValue
         if (!m_timeCerenkov.empty()) {
-          streamlog_out(DEBUG) << "[processEvent] - " << green << "Trig# " << m_evtTrigNbr << " TrigCount "
+          streamlog_out(DEBUG) << green << "[" << __func__ << "] - Trig# " << m_evtTrigNbr << " TrigCount "
                                << m_trigCount << " Evt# " << m_evtNum << "\tFound Cerenkov!"
                                << "\t cer1 = " << m_nCerenkov1 << "\t cer2 = " << m_nCerenkov2
                                << "\t cer3 = " << m_nCerenkov3 << normal << std::endl;
@@ -998,14 +1019,15 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
       // Apply cut on min number of firedLayer +
       if (static_cast<int>(m_nFiredLayers) < m_layerCut) {
-        streamlog_out(DEBUG0) << green << " Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
+        streamlog_out(DEBUG0) << green << "[" << __func__
+                              << "] - Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
                               << " m_layerCut: " << m_layerCut << normal << std::endl;
         ++m_rejectedNum;
         m_isSelected         = false;
         m_hasNotEnoughLayers = true;
         if (!m_keepRejected) {
           m_firedLayersSet.clear();
-          ++timeIter;
+          timeIter = std::next(timeIter, m_timeWin + 1);
           continue;
         }
       }
@@ -1013,8 +1035,8 @@ void TriventProc::processEvent(LCEvent *evtP) {
       //  Apply cut on time between two events
       assert(timePeak - prevTimePeak > m_time2prevEventCut);
 
-      streamlog_out(DEBUG0) << green << " Trivent find event at :==> " << red << timePeak << green << "\t :Nhit: ==> "
-                            << magenta << outCol->getNumberOfElements() << normal << std::endl;
+      streamlog_out(DEBUG0) << green << "[" << __func__ << "] - Trivent find event at :==> " << red << timePeak << green
+                            << "\t :Nhit: ==> " << magenta << outCol->getNumberOfElements() << normal << std::endl;
 
       lcEvt->setEventNumber(++m_evtNum);
       lcEvt->addCollection(outCol.release(), m_outputCollectionName);
