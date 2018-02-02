@@ -96,7 +96,7 @@ TriventProc::TriventProc()
 
   // collection
   std::vector<std::string> hcalCollections;
-  hcalCollections.push_back(std::string("DHCALRawHits"));
+  hcalCollections.emplace_back("DHCALRawHits");
   registerInputCollections(LCIO::RAWCALORIMETERHIT, "InputCollectionNames", "HCAL Collection Names", m_hcalCollections,
                            hcalCollections);
 
