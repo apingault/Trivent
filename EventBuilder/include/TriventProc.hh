@@ -2,7 +2,7 @@
 #define _TriventProc_hh_
 
 // -- Asics and channels mapping for sdhcal
-#include "Mapping.h"
+#include "Mapping.hh"
 
 // -- std includes
 #include <map>
@@ -117,9 +117,9 @@ public:
 
   // std::unique_ptr<TTree> getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
   TTree *getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
-  void findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCol, const int &timePeak);
-  int getAsicKey(const std::vector<int> &padIndex);
-  int IJKToKey(const std::vector<int> &padIndex);
+  void   findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCol, const int &timePeak);
+  int    getAsicKey(const std::vector<int> &padIndex);
+  int    IJKToKey(const std::vector<int> &padIndex);
 
 protected:
   std::unique_ptr<LCWriter> m_lcWriter;
@@ -138,7 +138,7 @@ protected:
   std::string              m_geomXMLFile;
   std::vector<std::string> m_hcalCollections;
   float                    m_beamEnergy;
-  std::map<int, LayerID> m_mDifMapping;
+  std::map<int, LayerID>   m_mDifMapping;
 
   // Cut parameters
   int m_elecNoiseCut;
@@ -157,7 +157,7 @@ protected:
   std::string      m_cerenkovCollectionName;
   bool             m_hasCherenkov;
   int              m_cerenkovDifId;
-  int              m_cerenkovLayerId;
+  int              m_cerenkovLayerId{};
   int              m_cerenkovTimeWindow;
   std::vector<int> m_cerAsic;
   std::vector<int> m_cerChan;
@@ -189,7 +189,7 @@ protected:
 
   // ROOT histograms
   // std::unique_ptr<TFile> m_rootFile;
-  TFile *m_rootFile;
+  TFile *m_rootFile{};
   // std::vector<std::unique_ptr<TH2>> m_vHitMapPerLayer; // HitMap of selected evt for each Layer
   std::vector<TH2 *> m_vHitMapPerLayer; // HitMap of selected evt for each Layer
   unsigned int       m_runNumber;
@@ -198,7 +198,7 @@ protected:
   // Trees
   // TTree *m_triggerTree;
   // std::unique_ptr<TTree> m_triggerTree;
-  TTree *m_eventTree;
+  TTree *m_eventTree{};
   // std::unique_ptr<TTree> m_eventTree;
 
   // Trigger branches
