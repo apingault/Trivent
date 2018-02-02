@@ -173,7 +173,7 @@ void TriventProc::XMLReader(const std::string &xmlfile) {
     }
 
     // save this for later
-    TiXmlHandle rootHandle(0);
+    TiXmlHandle rootHandle(nullptr);
     rootHandle = TiXmlHandle(pElem);
 
     // parameters block
@@ -883,7 +883,7 @@ TriventProc::getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime, s
 
 //=============================================================================
 void TriventProc::processEvent(LCEvent *evtP) {
-  assert(evtP != NULL);
+  assert(evtP != nullptr);
 
   m_trigNbr = evtP->getEventNumber();
   if (m_trigNbr > 1E6) {
