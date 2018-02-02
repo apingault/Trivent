@@ -494,10 +494,10 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       pos[1] = padIndex[1] * m_cellSizeJ;
       pos[2] = padIndex[2] * m_layerThickness;
 
-      CalorimeterHitImpl *caloHit = new CalorimeterHitImpl();
+      auto *caloHit = new CalorimeterHitImpl();
       caloHit->setTime(static_cast<float>(rawHit->getTimeStamp()));
 
-      const float hitShiftedAmplitude = static_cast<float>(rawHit->getAmplitude() & 3);
+      const auto hitShiftedAmplitude = static_cast<float>(rawHit->getAmplitude() & 3);
       if (hitShiftedAmplitude > 2.5)
         caloHit->setEnergy(hitShiftedAmplitude); // 3rd threshold
       else if (hitShiftedAmplitude > 1.5)
@@ -580,7 +580,7 @@ void TriventProc::defineColors() {
 
 //=============================================================================
 TTree *TriventProc::getOrCreateTree(const std::string &treeName, const std::string &treeDescription) {
-  TTree *tree = static_cast<TTree *>(m_rootFile->Get(treeName.c_str()));
+  auto *tree = static_cast<TTree *>(m_rootFile->Get(treeName.c_str()));
 
   if (!tree) {
     streamlog_out(DEBUG0) << "[" << __func__ << "] - Creating tree '" << treeName << "'" << std::endl;
@@ -722,7 +722,7 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
 
     for (const auto &cerHit : m_cerenkovRawHitMap.at(hitTime)) {
       assert(cerHit);
-      const int bifTime = static_cast<int>(cerHit->getTimeStamp());
+      const auto bifTime = static_cast<int>(cerHit->getTimeStamp());
       assert(bifTime == hitTime);
 
       const int difId = getCellDif_id(cerHit->getCellID0());
@@ -755,7 +755,7 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
         abort();
       }
 
-      CalorimeterHitImpl *caloHit = new CalorimeterHitImpl();
+      auto *caloHit = new CalorimeterHitImpl();
       caloHit->setTime(static_cast<float>(cerHit->getTimeStamp()));
       cellIdEncoder["Dif_id"]  = difId;
       cellIdEncoder["Asic_id"] = asicId;
@@ -798,7 +798,7 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
 
   for (int ihit(0); ihit < inputLCCol.getNumberOfElements(); ++ihit) // loop over the hits
   {
-    RawCalorimeterHit *rawHit = dynamic_cast<RawCalorimeterHit *>(inputLCCol.getElementAt(ihit));
+    auto *rawHit = dynamic_cast<RawCalorimeterHit *>(inputLCCol.getElementAt(ihit));
     if (rawHit) {
       // extract abolute bcid information:
       const int difId = rawHit->getCellID0() & 0xFF;
@@ -851,8 +851,8 @@ TriventProc::getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime, s
   assert(beginTime < endTime);
   assert(candidateTime >= beginTime);
   assert(candidateTime < endTime); // Can't be equal otherwise we'll access out of bound value on next ++timeIter call
-  std::vector<int>::iterator lowerBound = endTime;
-  std::vector<int>::iterator upperBound = beginTime;
+  auto lowerBound = endTime;
+  auto upperBound = beginTime;
 
   // Ensure there is sufficient time between two candidate + we are not looking before begining of timeSpectrumVec
   auto timeDistance = std::distance(beginTime, candidateTime);
@@ -929,10 +929,10 @@ void TriventProc::processEvent(LCEvent *evtP) {
     //! Find the candidate event
     // Event is built at peakTime+-TimeWindow
     // Loop on timeSpectrumVec vector without going out of range
-    std::vector<int>::iterator beginTimeIter = timeSpectrumVec.begin();
-    std::vector<int>::iterator endTimeIter   = timeSpectrumVec.end();
-    std::vector<int>::iterator timeIter      = beginTimeIter;
-    std::vector<int>::iterator prevMaxIter   = beginTimeIter;
+    auto beginTimeIter = timeSpectrumVec.begin();
+    auto endTimeIter   = timeSpectrumVec.end();
+    auto timeIter      = beginTimeIter;
+    auto prevMaxIter   = beginTimeIter;
 
     while (std::distance(timeIter, endTimeIter) > 0) { // Ensure that timeIter < endTime
       if (*(timeIter) < m_noiseCut) {                  // Not enough hit in frame, look in next one
@@ -1066,7 +1066,7 @@ void TriventProc::end() {
     std::string cerCut = "CerenkovTime>-" + std::to_string(m_cerenkovTimeWindow);
     m_eventTree->Draw("CerenkovTime>>hcer", cerCut.c_str());
     // std::unique_ptr<TH1> hcer(dynamic_cast<TH1 *>(gDirectory->Get("hcer")));
-    TH1 *hcer = dynamic_cast<TH1 *>(gDirectory->Get("hcer"));
+    auto *hcer = dynamic_cast<TH1 *>(gDirectory->Get("hcer"));
     streamlog_out(MESSAGE) << "Cerenkov Probable time shift at "
                            << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin()) << " with "
                            << hcer->GetBinContent(hcer->GetMaximumBin()) << "/" << m_nCerenkovEvts << " event tagged"
