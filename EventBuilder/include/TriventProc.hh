@@ -1,5 +1,5 @@
-#ifndef _TriventProc_hh_
-#define _TriventProc_hh_
+#ifndef TRIVENTPROC_HH
+#define TRIVENTPROC_HH
 
 // -- Asics and channels mapping for sdhcal
 #include "Mapping.hh"
@@ -31,15 +31,15 @@
 
 class TriventProc : public marlin::Processor {
 public:
-  Processor *newProcessor() { return new TriventProc; }
+  Processor *newProcessor() override { return new TriventProc; }
 
   TriventProc();
-  ~TriventProc() { ; };
+  ~TriventProc() override { ; };
 
-  void init();
+  void init() override;
   void initRootTree();
-  void processEvent(LCEvent *evtP);
-  void processRunHeader(LCRunHeader * /*runH*/){};
+  void processEvent(LCEvent *evtP) override;
+  void processRunHeader(LCRunHeader * /*runH*/) override{};
   void XMLReader(const std::string &xmlfile);
   void printDifGeom();
   void defineColors();
@@ -111,7 +111,7 @@ public:
   void eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int &timePeak, const int &lowTimeBoundary,
                     const int &highTimeBoundary);
 
-  void end();
+  void end() override;
 
   TH2 *makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle);
 
