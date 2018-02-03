@@ -36,7 +36,7 @@ public:
   TriventProc();
   TriventProc(const TriventProc & /*proc*/)  = delete;
   TriventProc(const TriventProc && /*proc*/) = delete;
-  ~TriventProc() override{};
+  ~TriventProc() override                    = default;
 
   TriventProc &operator=(const TriventProc & /*proc*/) = delete;
   TriventProc &operator=(const TriventProc && /*proc*/) = delete;
@@ -130,46 +130,46 @@ protected:
   std::string              m_treeDescription;
   std::string              m_geomXMLFile;
   std::vector<std::string> m_hcalCollections;
-  float                    m_beamEnergy;
+  float                    m_beamEnergy{0};
   std::map<int, LayerID>   m_mDifMapping;
 
   // Cut parameters
-  int m_elecNoiseCut;
-  int m_noiseCut;
-  int m_layerCut;
-  int m_timeWin;
-  int m_time2prevEventCut;
+  int m_elecNoiseCut{5000};
+  int m_noiseCut{10};
+  int m_layerCut{10};
+  int m_timeWin{2};
+  int m_time2prevEventCut{0};
 
   // Geometry paramaters
-  float          m_cellSizeI;
-  float          m_cellSizeJ;
-  float          m_layerThickness;
+  float          m_cellSizeI{10.408};
+  float          m_cellSizeJ{10.408};
+  float          m_layerThickness{26.131};
   std::set<uint> m_layerSet;
 
   // Cerenkov
   std::string      m_cerenkovCollectionName;
-  bool             m_hasCherenkov;
-  int              m_cerenkovDifId;
+  bool             m_hasCherenkov{true};
+  int              m_cerenkovDifId{3};
   int              m_cerenkovLayerId{};
-  int              m_cerenkovTimeWindow;
+  int              m_cerenkovTimeWindow{10};
   std::vector<int> m_cerAsic;
   std::vector<int> m_cerChan;
   std::vector<int> m_cerThreshold;
-  unsigned int     m_nCerenkov1;         // Number of hit in first Cerenkov
-  unsigned int     m_nCerenkov2;         // Number of hit in second Cerenkov
-  unsigned int     m_nCerenkov3;         // Number of hit in first + second Cerenkov
-  unsigned int     m_nCerenkovTrigger;   // Tot number of hit in cerenkov for current trigger
-  bool             m_hasTooManyCerenkov; // if m_nCerenkovTrigger > bifHit in trigger
-  std::vector<int> m_timeCerenkov;       // Timing between peak and Cerenkov signal
-  unsigned int     m_nCerenkovEvts;      // Number of events tagged with the cerenkov
+  unsigned int     m_nCerenkov1{0};             // Number of hit in first Cerenkov
+  unsigned int     m_nCerenkov2{0};             // Number of hit in second Cerenkov
+  unsigned int     m_nCerenkov3{0};             // Number of hit in first + second Cerenkov
+  unsigned int     m_nCerenkovTrigger{0};       // Tot number of hit in cerenkov for current trigger
+  bool             m_hasTooManyCerenkov{false}; // if m_nCerenkovTrigger > bifHit in trigger
+  std::vector<int> m_timeCerenkov;              // Timing between peak and Cerenkov signal
+  unsigned int     m_nCerenkovEvts{0};          // Number of events tagged with the cerenkov
 
-  unsigned int m_trigNbr;
-  unsigned int m_trigCount;
-  unsigned int m_evtNum;
-  unsigned int m_selectedNum;
-  unsigned int m_rejectedNum;
-  int          m_bcid1;
-  int          m_bcid2;
+  unsigned int m_trigNbr{0};
+  unsigned int m_trigCount{0};
+  unsigned int m_evtNum{0};
+  unsigned int m_selectedNum{0};
+  unsigned int m_rejectedNum{0};
+  int          m_bcid1{0};
+  int          m_bcid2{0};
 
   // Color for streamlog output
   std::string normal;
@@ -185,7 +185,7 @@ protected:
   TFile *m_rootFile{};
   // std::vector<std::unique_ptr<TH2>> m_vHitMapPerLayer; // HitMap of selected evt for each Layer
   std::vector<TH2 *> m_vHitMapPerLayer; // HitMap of selected evt for each Layer
-  unsigned int       m_runNumber;
+  unsigned int       m_runNumber{0};
   std::string        m_plotFolder;
 
   // Trees
@@ -200,9 +200,9 @@ protected:
   // std::vector<unsigned int> m_vTimeSpectrum; // number of hits per time clock
 
   // Event branches
-  unsigned int m_evtTrigNbr; // Current trigger Number
-  unsigned int m_evtNbr;     // Current Evt number
-  unsigned int m_nHit;       // Number of hits
+  unsigned int m_evtTrigNbr{0}; // Current trigger Number
+  unsigned int m_evtNbr{0};     // Current Evt number
+  unsigned int m_nHit{0};       // Number of hits
 
   // std::vector<unsigned long int> m_hitBCID;             // Hit time
   std::vector<int> m_hitI; // Hit position
@@ -210,14 +210,14 @@ protected:
   std::vector<int> m_hitK; // Hit position
   std::vector<int> m_hitThreshold;
 
-  std::set<unsigned int> m_firedLayersSet;     // set of Layers touched in evt
-  unsigned int           m_nFiredLayers;       // Number of Layers touched in evt = m_firedLayersSet.size()
-  bool                   m_isSelected;         // Event is selected/rejected
-  bool                   m_isNoise;            // If rejected, is it noise
-  bool                   m_hasNotEnoughLayers; // If rejected, has not touched sufficient layers
-  bool                   m_hasFullAsic;        // If rejected, has full asics
-  bool                   m_hasRamFull;         // If rejected, has ram full
-  bool                   m_keepRejected;       // Wether or not to keep rejected data in the output
+  std::set<unsigned int> m_firedLayersSet;            // set of Layers touched in evt
+  unsigned int           m_nFiredLayers{0};           // Number of Layers touched in evt = m_firedLayersSet.size()
+  bool                   m_isSelected{true};          // Event is selected/rejected
+  bool                   m_isNoise{false};            // If rejected, is it noise
+  bool                   m_hasNotEnoughLayers{false}; // If rejected, has not touched sufficient layers
+  bool                   m_hasFullAsic{false};        // If rejected, has full asics
+  bool                   m_hasRamFull{false};         // If rejected, has ram full
+  bool                   m_keepRejected{false};       // Wether or not to keep rejected data in the output
 };
 
 #endif
