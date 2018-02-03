@@ -116,8 +116,8 @@ public:
 private:
   std::unique_ptr<LCWriter> m_lcWriter;
   // map of <hitTimeStamp, rawHit>
-  std::map<int, std::vector<EVENT::RawCalorimeterHit *>> m_triggerRawHitMap;
-  std::map<int, std::vector<EVENT::RawCalorimeterHit *>> m_cerenkovRawHitMap;
+  std::map<int, std::vector<EVENT::RawCalorimeterHit *>> m_triggerRawHitMap{};
+  std::map<int, std::vector<EVENT::RawCalorimeterHit *>> m_cerenkovRawHitMap{};
   // std::vector<std::shared_ptr<EVENT::RawCalorimeterHit>> m_trigger_raw_hit;
   // std::vector<std::shared_ptr<EVENT::RawCalorimeterHit>> m_cerenkov_raw_hit;
 
@@ -128,9 +128,9 @@ private:
   std::string              m_treeName;
   std::string              m_treeDescription;
   std::string              m_geomXMLFile;
-  std::vector<std::string> m_hcalCollections;
+  std::vector<std::string> m_hcalCollections{};
   float                    m_beamEnergy{0};
-  std::map<int, LayerID>   m_mDifMapping;
+  std::map<int, LayerID>   m_mDifMapping{};
 
   // Cut parameters
   int m_elecNoiseCut{5000};
@@ -151,15 +151,15 @@ private:
   int              m_cerenkovDifId{3};
   int              m_cerenkovLayerId{};
   int              m_cerenkovTimeWindow{10};
-  std::vector<int> m_cerAsic;
-  std::vector<int> m_cerChan;
-  std::vector<int> m_cerThreshold;
+  std::vector<int> m_cerAsic{};
+  std::vector<int> m_cerChan{};
+  std::vector<int> m_cerThreshold{};
   unsigned int     m_nCerenkov1{0};             // Number of hit in first Cerenkov
   unsigned int     m_nCerenkov2{0};             // Number of hit in second Cerenkov
   unsigned int     m_nCerenkov3{0};             // Number of hit in first + second Cerenkov
   unsigned int     m_nCerenkovTrigger{0};       // Tot number of hit in cerenkov for current trigger
   bool             m_hasTooManyCerenkov{false}; // if m_nCerenkovTrigger > bifHit in trigger
-  std::vector<int> m_timeCerenkov;              // Timing between peak and Cerenkov signal
+  std::vector<int> m_timeCerenkov{};            // Timing between peak and Cerenkov signal
   unsigned int     m_nCerenkovEvts{0};          // Number of events tagged with the cerenkov
 
   unsigned int m_trigNbr{0};
@@ -183,7 +183,7 @@ private:
   // std::unique_ptr<TFile> m_rootFile;
   TFile *m_rootFile{};
   // std::vector<std::unique_ptr<TH2>> m_vHitMapPerLayer; // HitMap of selected evt for each Layer
-  std::vector<TH2 *> m_vHitMapPerLayer; // HitMap of selected evt for each Layer
+  std::vector<TH2 *> m_vHitMapPerLayer{}; // HitMap of selected evt for each Layer
   unsigned int       m_runNumber{0};
   std::string        m_plotFolder;
 
@@ -204,12 +204,12 @@ private:
   unsigned int m_nHit{0};       // Number of hits
 
   // std::vector<unsigned long int> m_hitBCID;             // Hit time
-  std::vector<int> m_hitI; // Hit position
-  std::vector<int> m_hitJ; // Hit position
-  std::vector<int> m_hitK; // Hit position
-  std::vector<int> m_hitThreshold;
+  std::vector<int> m_hitI{}; // Hit position
+  std::vector<int> m_hitJ{}; // Hit position
+  std::vector<int> m_hitK{}; // Hit position
+  std::vector<int> m_hitThreshold{};
 
-  std::set<unsigned int> m_firedLayersSet;            // set of Layers touched in evt
+  std::set<unsigned int> m_firedLayersSet{};          // set of Layers touched in evt
   unsigned int           m_nFiredLayers{0};           // Number of Layers touched in evt = m_firedLayersSet.size()
   bool                   m_isSelected{true};          // Event is selected/rejected
   bool                   m_isNoise{false};            // If rejected, is it noise

@@ -247,7 +247,7 @@ bool TriventProc::checkPadLimits(const std::vector<int> &padIndex, const std::ve
 
 //=============================================================================
 std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, const int &chanId) const {
-  std::map<int, LayerID>::const_iterator findIter = m_mDifMapping.find(difId);
+  const auto findIter = m_mDifMapping.find(difId);
 
   if (findIter == m_mDifMapping.end()) {
     streamlog_out(ERROR) << "[" << __func__ << "] - difId '" << difId << "' not found in geometry file" << std::endl;
