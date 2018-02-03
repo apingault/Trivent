@@ -194,7 +194,7 @@ void TriventProc::XMLReader(const std::string &xmlfile) {
 }
 
 //=============================================================================
-void TriventProc::printDifGeom() {
+void TriventProc::printDifGeom() const {
   streamlog_out(DEBUG1) << "[" << __func__ << "] --- Dumping geomtry File: " << std::endl;
   // for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); ++itt) {
   for (const auto &itt : m_mDifMapping) {
@@ -206,15 +206,15 @@ void TriventProc::printDifGeom() {
 // ============ decode the cell ids =============
 // bit shift & 0xFF = Apply mask 1111 1111 to binary value
 // eg: Dif 1 => cellID0 = 00983297 => DifID = 1 / AsicID = 1 / ChanID = 15
-int TriventProc::getCellDif_id(const int &cellId) { return cellId & 0xFF; }
+int TriventProc::getCellDif_id(const int &cellId) const { return cellId & 0xFF; }
 
 //=============================================================================
 //  bit shift & 0xFF00 Apply mask 1111 1111 0000 0000 then cut last 8 bits
-int TriventProc::getCellAsic_id(const int &cellId) { return (cellId & 0xFF00) >> 8; }
+int TriventProc::getCellAsic_id(const int &cellId) const { return (cellId & 0xFF00) >> 8; }
 
 //=============================================================================
 //  bit shift & 0x3F0000 Apply mask 1111 0000 0000 0000 0000 then cut last 16 bits
-int TriventProc::getCellChan_id(const int &cellId) { return (cellId & 0x3F0000) >> 16; }
+int TriventProc::getCellChan_id(const int &cellId) const { return (cellId & 0x3F0000) >> 16; }
 
 // ============ ============ ============ ============ ============ ============ ============
 // ============ ============ ============ ============ ============ ============ ============
@@ -228,7 +228,7 @@ int TriventProc::getCellChan_id(const int &cellId) { return (cellId & 0x3F0000) 
 
 //=============================================================================
 
-bool TriventProc::checkPadLimits(const std::vector<int> &padIndex, const std::vector<int> &padLimits) {
+bool TriventProc::checkPadLimits(const std::vector<int> &padIndex, const std::vector<int> &padLimits) const {
   assert(padLimits.size() == padIndex.size() * 2);
   // std::cout << "pads: ";
   // for (const auto &pad : padIndex)
@@ -246,7 +246,7 @@ bool TriventProc::checkPadLimits(const std::vector<int> &padIndex, const std::ve
 }
 
 //=============================================================================
-std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, const int &chanId) {
+std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, const int &chanId) const {
   std::map<int, LayerID>::const_iterator findIter = m_mDifMapping.find(difId);
 
   if (findIter == m_mDifMapping.end()) {
@@ -266,7 +266,8 @@ std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, c
     padLims.pop_back();
     padLims.push_back(m_cerenkovLayerId);
   }
-  assert(checkPadLimits(index, padLims));
+  const bool padOk = checkPadLimits(index, padLims);
+  assert(padOk);
 
   // if (difId == m_cerenkovDifId) {
   // streamlog_out(DEBUG0) << "[" << __func__ << "] - difId== " << difId<< " asicId ==" << asicId << " chanId ==" <<
@@ -276,14 +277,13 @@ std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, c
 }
 
 //=============================================================================
-int TriventProc::getMaxTime() {
+int TriventProc::getMaxTime() const {
   assert(!m_triggerRawHitMap.empty());
   return m_triggerRawHitMap.rbegin()->first;
 }
 
 //=============================================================================
-std::vector<int> TriventProc::getTimeSpectrum(const int &maxTime) //__attribute__((optimize(0)))
-{
+std::vector<int> TriventProc::getTimeSpectrum(const int &maxTime) const {
   std::vector<int> timeSpectrumVec(maxTime + 1, 0);
   for (const auto &mapIt : m_triggerRawHitMap) {
     int time = mapIt.first;
@@ -300,19 +300,20 @@ std::vector<int> TriventProc::getTimeSpectrum(const int &maxTime) //__attribute_
 }
 
 //=============================================================================
-int TriventProc::IJKToKey(const std::vector<int> &padIndex) {
+int TriventProc::IJKToKey(const std::vector<int> &padIndex) const {
   return 100 * 100 * padIndex[2] + 100 * padIndex[1] + padIndex[0];
 }
 
 //=============================================================================
-int TriventProc::getAsicKey(const std::vector<int> &padIndex) {
+int TriventProc::getAsicKey(const std::vector<int> &padIndex) const {
   // Not necessary to check for boundary here as already tested in getPadIndex
   std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
   if (padIndex[2] == m_cerenkovLayerId) {
     padLims.pop_back();
     padLims.push_back(m_cerenkovLayerId);
   }
-  assert(checkPadLimits(padIndex, padLims));
+  bool padOk = checkPadLimits(padIndex, padLims);
+  assert(padOk);
 
   const int jnum = (padIndex[1] - 1) / 8;
   const int inum = (padIndex[0] - 1) / 8;
@@ -519,26 +520,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
 }
 
 //=============================================================================
-void TriventProc::defineColors() {
-  char cnormal[8]  = {0x1b, '[', '0', ';', '3', '9', 'm', 0};
-  char cred[8]     = {0x1b, '[', '1', ';', '3', '1', 'm', 0};
-  char cgreen[8]   = {0x1b, '[', '1', ';', '3', '2', 'm', 0};
-  char cyellow[8]  = {0x1b, '[', '1', ';', '3', '3', 'm', 0};
-  char cblue[8]    = {0x1b, '[', '1', ';', '3', '4', 'm', 0};
-  char cmagenta[8] = {0x1b, '[', '1', ';', '3', '5', 'm', 0};
-  char cwhite[8]   = {0x1b, '[', '1', ';', '3', '9', 'm', 0};
-
-  normal  = cnormal;
-  red     = cred;
-  green   = cgreen;
-  yellow  = cyellow;
-  blue    = cblue;
-  magenta = cmagenta;
-  white   = cwhite;
-}
-
-//=============================================================================
-TTree *TriventProc::getOrCreateTree(const std::string &treeName, const std::string &treeDescription) {
+TTree *TriventProc::getOrCreateTree(const std::string &treeName, const std::string &treeDescription) const {
   auto *tree = dynamic_cast<TTree *>(m_rootFile->Get(treeName.c_str()));
 
   if (tree == nullptr) {
@@ -628,7 +610,6 @@ void TriventProc::init() {
   m_evtNum    = 0; // event number
   // ========================
   printParameters();
-  defineColors();
 
   // Create writer for lcio output file
   m_lcWriter = std::unique_ptr<LCWriter>(LCFactory::getInstance()->createLCWriter());
@@ -659,7 +640,7 @@ void TriventProc::init() {
 }
 
 //=============================================================================
-TH2 *TriventProc::makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle) {
+TH2 *TriventProc::makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle) const {
   TH2 *hMap = new TH2D(title.c_str(), title.c_str(), 96, 1, 97, 96, 1, 97);
   hMap->GetXaxis()->SetTitle(xTitle.c_str());
   hMap->GetYaxis()->SetTitle(yTitle.c_str());
@@ -805,9 +786,10 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
 }
 
 //=============================================================================
-std::vector<std::vector<int>::iterator>
-TriventProc::getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime, std::vector<int>::iterator &endTime,
-                                        std::vector<int>::iterator &candidateTime) {
+std::vector<const std::vector<int>::iterator>
+TriventProc::getCandidateTimeBoundaries(const std::vector<int>::iterator &beginTime,
+                                        const std::vector<int>::iterator &endTime,
+                                        const std::vector<int>::iterator &candidateTime) const {
   assert(beginTime < endTime);
   assert(candidateTime >= beginTime);
   assert(candidateTime < endTime); // Can't be equal otherwise we'll access out of bound value on next ++timeIter call

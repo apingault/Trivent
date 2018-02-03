@@ -46,16 +46,15 @@ public:
   void processEvent(LCEvent *evtP) override;
   void processRunHeader(LCRunHeader * /*runH*/) override{};
   void XMLReader(const std::string &xmlfile);
-  void printDifGeom();
-  void defineColors();
+  void printDifGeom() const;
 
-  int getCellDif_id(const int &cellId);
-  int getCellAsic_id(const int &cellId);
-  int getCellChan_id(const int &cellId);
+  int getCellDif_id(const int &cellId) const;
+  int getCellAsic_id(const int &cellId) const;
+  int getCellChan_id(const int &cellId) const;
 
-  int getMaxTime();
+  int getMaxTime() const;
 
-  std::vector<int> getTimeSpectrum(const int &maxTime);
+  std::vector<int> getTimeSpectrum(const int &maxTime) const;
 
   /**
    * @brief
@@ -70,13 +69,13 @@ public:
    * @param beginTime
    * @param endTime
    * @param candidateTime
-   * @return std::vector<std::vector<int>::iterator>
+   * @return std::vector<const std::vector<int>::iterator>
    */
-  std::vector<std::vector<int>::iterator> getCandidateTimeBoundaries(std::vector<int>::iterator &beginTime,
-                                                                     std::vector<int>::iterator &endTime,
-                                                                     std::vector<int>::iterator &candidateTime);
+  std::vector<const std::vector<int>::iterator>
+  getCandidateTimeBoundaries(const std::vector<int>::iterator &beginTime, const std::vector<int>::iterator &endTime,
+                             const std::vector<int>::iterator &candidateTime) const;
 
-  bool checkPadLimits(const std::vector<int> &padIndex, const std::vector<int> &padLimits);
+  bool checkPadLimits(const std::vector<int> &padIndex, const std::vector<int> &padLimits) const;
 
   /**
    * @brief return I, J, K for hit in given difId, asicId, chanId
@@ -87,7 +86,7 @@ public:
    * @param chanId
    * @return std::vector<int>
    */
-  std::vector<int> getPadIndex(const int &difId, const int &asicId, const int &chanId);
+  std::vector<int> getPadIndex(const int &difId, const int &asicId, const int &chanId) const;
 
   /**
    * @brief
@@ -106,15 +105,15 @@ public:
 
   void end() override;
 
-  TH2 *makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle);
+  TH2 *makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle) const;
 
   // std::unique_ptr<TTree> getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
-  TTree *getOrCreateTree(const std::string &treeName, const std::string &treeDescription);
+  TTree *getOrCreateTree(const std::string &treeName, const std::string &treeDescription) const;
   void   findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCol, const int &timePeak);
-  int    getAsicKey(const std::vector<int> &padIndex);
-  int    IJKToKey(const std::vector<int> &padIndex);
+  int    getAsicKey(const std::vector<int> &padIndex) const;
+  int    IJKToKey(const std::vector<int> &padIndex) const;
 
-protected:
+private:
   std::unique_ptr<LCWriter> m_lcWriter;
   // map of <hitTimeStamp, rawHit>
   std::map<int, std::vector<EVENT::RawCalorimeterHit *>> m_triggerRawHitMap;
@@ -144,7 +143,7 @@ protected:
   float          m_cellSizeI{10.408};
   float          m_cellSizeJ{10.408};
   float          m_layerThickness{26.131};
-  std::set<uint> m_layerSet;
+  std::set<uint> m_layerSet{};
 
   // Cerenkov
   std::string      m_cerenkovCollectionName;
@@ -172,13 +171,13 @@ protected:
   int          m_bcid2{0};
 
   // Color for streamlog output
-  std::string normal;
-  std::string red;
-  std::string green;
-  std::string yellow;
-  std::string blue;
-  std::string magenta;
-  std::string white;
+  std::string normal{0x1b, '[', '0', ';', '3', '9', 'm', 0};
+  std::string red{0x1b, '[', '1', ';', '3', '1', 'm', 0};
+  std::string green{0x1b, '[', '1', ';', '3', '2', 'm', 0};
+  std::string yellow{0x1b, '[', '1', ';', '3', '3', 'm', 0};
+  std::string blue{0x1b, '[', '1', ';', '3', '4', 'm', 0};
+  std::string magenta{0x1b, '[', '1', ';', '3', '5', 'm', 0};
+  std::string white{0x1b, '[', '1', ';', '3', '9', 'm', 0};
 
   // ROOT histograms
   // std::unique_ptr<TFile> m_rootFile;
