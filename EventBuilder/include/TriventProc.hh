@@ -34,7 +34,12 @@ public:
   Processor *newProcessor() override { return new TriventProc; }
 
   TriventProc();
-  ~TriventProc() override { ; };
+  TriventProc(const TriventProc & /*proc*/)  = delete;
+  TriventProc(const TriventProc && /*proc*/) = delete;
+  ~TriventProc() override{};
+
+  TriventProc &operator=(const TriventProc & /*proc*/) = delete;
+  TriventProc &operator=(const TriventProc && /*proc*/) = delete;
 
   void init() override;
   void initRootTree();
