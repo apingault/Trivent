@@ -25,6 +25,7 @@ ENDIF()
 SET( CMAKE_MACOSX_RPATH ON )
 
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+INCLUDE(cmake/clang-cxx-dev-tools.cmake)
 
 ### DEPENDENCIES ############################################################
 
@@ -54,7 +55,7 @@ IF( INSTALL_DOC AND EXISTS "${PROJECT_SOURCE_DIR}/doc/CMakeLists.txt" )
     ADD_SUBDIRECTORY( ./doc )
 ENDIF()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic -O2 -Wno-effc++ -Wno-shadow")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wnon-virtual-dtor -Weffc++ -Wshadow -Wnull-dereference -Wuninitialized -Winit-self")
 
 ADD_SUBDIRECTORY( ./EventBuilder )
 
