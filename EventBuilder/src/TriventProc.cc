@@ -975,7 +975,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
                             << std::endl;
 
       //---------- set event paramters ------
-      std::unique_ptr<LCEventImpl> lcEvt           = make_unique<LCEventImpl>(); // create the event
+      std::unique_ptr<LCEventImpl> lcEvt           = std::make_unique<LCEventImpl>(); // create the event
       const std::string            parname_trigger = "trigger";
       const std::string            parname_energy  = "beamEnergy";
       const std::string            parname_bcid1   = "bcid1";
@@ -988,7 +988,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
       m_runNumber = evtP->getRunNumber();
       //-------------------------------------
 
-      std::unique_ptr<LCCollectionVec> outCol = make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
+      std::unique_ptr<LCCollectionVec> outCol = std::make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
 
       // Event Building
       TriventProc::eventBuilder(outCol, timePeak, lowBound, highBound);
@@ -998,7 +998,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
       m_evtNbr     = m_evtNum; // dont increment here: rejected event will have same number as last accepted !
       m_nHit       = outCol->getNumberOfElements();
 
-      std::unique_ptr<LCCollectionVec> cerCol = make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
+      std::unique_ptr<LCCollectionVec> cerCol = std::make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
       if (m_hasCherenkov) {
         streamlog_out(DEBUG0) << "[" << __func__ << "] - Find Cer " << m_cerenkovRawHitMap.size() << std::endl;
         findCerenkovHits(cerCol, timePeak);
@@ -1082,7 +1082,7 @@ void TriventProc::end() {
   m_lcWriter->close();
 
   // TCanvas *c1 = new TCanvas();
-  // std::unique_ptr<TCanvas> c1 = make_unique<TCanvas>();
+  // std::unique_ptr<TCanvas> c1 = std::make_unique<TCanvas>();
   // c1->SetCanvasSize(2048, 1024);
   // c1->Update();
   // c1->cd();
