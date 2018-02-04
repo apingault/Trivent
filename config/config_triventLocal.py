@@ -87,8 +87,8 @@ runList = [736572]
 ####################
 # Grid Section
 ####################
-runOnGrid = True
-# runOnGrid = False
+# runOnGrid = True
+runOnGrid = False
 runOnLxplus = False
 if platform.node().find("lxplus") != -1:
     runOnLxplus = True
@@ -120,8 +120,8 @@ ilcSoftVersion = "v01-19-05"
 gridIlcSoftVersion = 'v01-19-05'
 ilcSoftPath = '/opt/ilcsoft/'
 gridIlcSoftPath = '/cvmfs/ilc.desy.de/sw/x86_64_gcc49_sl6/'
-processorType = 'Trivent Laurent'
-# processorType = 'Trivent'
+# processorType = 'Trivent Laurent'
+processorType = 'Trivent'
 
 # General Path to find/store data: the following assumes that all data is in a subfolder of dataPath
 # Overwritten by gridDataPath if runOnGrid is True
@@ -217,6 +217,7 @@ class xmlOptionSection(object):
 
 # Global param
 ###
+# Verb = "DEBUG0"
 Verb = "MESSAGE"
 glob = xmlOptionSection('global')
 # glob.Verbosity = "DEBUG0"

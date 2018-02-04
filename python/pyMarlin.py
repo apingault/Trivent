@@ -12,12 +12,12 @@ import sys
 import time
 import subprocess
 
-from marlin import Marlin
 import pymysql as pmsql
+import yaml
 
+from marlin import Marlin
 import dbUtils as dbu  # custom interfaces to TestBeam databases
 
-import yaml
 try:
     import Ganga
 except ImportError:
@@ -109,6 +109,7 @@ def checkPeriod(runNumber, runPeriod, configFile):
     ''' Check runNumber is associated to correct runPeriod
         Abort execution if not
     '''
+
     def periodError(goodPeriod):
         return "[{}] - RunNumber '{}' is from TestBeam '{}', you selected '{}' in configFile '{}'".format(
             os.path.basename(__file__), runNumber, goodPeriod, runPeriod, configFile)
@@ -142,11 +143,8 @@ def checkPeriod(runNumber, runPeriod, configFile):
 def scp(runNumber, fName, serverName, serverPath, localPath):
     ''' Download file from serverName:serverPath to localPath
     '''
-    print(
-        "[{}] - Downloading run '{}' from {}:{}".format(
-            os.path.basename(__file__), runNumber, serverName, serverPath
-        )
-    )
+    print("[{}] - Downloading run '{}' from {}:{}".format(
+        os.path.basename(__file__), runNumber, serverName, serverPath))
     fName.format(runNumber)
     scpPath = serverName + ":" + serverPath + fName.format(runNumber)
     print(scpPath)
@@ -221,7 +219,7 @@ def main():
         # --- Load configuration File
         configFile = sys.argv[1]
         try:
-            exec("import {0} as conf".format(configFile))
+            exec ("import {0} as conf".format(configFile.replace('/', '.')))
         except (ImportError, SyntaxError):
             sys.exit("[{}] - Cannot import config file '{}'".format(scriptName, configFile))
         # --- /Load configuration File
@@ -229,9 +227,9 @@ def main():
             # --- Load runList
             runListArg = sys.argv[2]
 
-    elif conf.runList:  # runNumber configured in configFile
-        runList = conf.runList
-        print("[{}] : Running with configuration file '{}' on runs '{}'".format(scriptName, configFile, runList))
+        elif conf.runList:  # runNumber configured in configFile
+            runList = conf.runList
+            print("[{}] : Running with configuration file '{}' on runs '{}'".format(scriptName, configFile, runList))
     else:
         sys.exit("Please give : configFile - runNumber(s)(optional if set up in configFile)")
     # --- /Parse CLI arguments
@@ -260,13 +258,15 @@ def main():
         runNumber = int(run)
         #   Create list of files to run on
         if conf.runOnGrid is False:
-            print("[{}] - Looking for files to process for run '{}' in '{}'... ".format(scriptName, runNumber, conf.inputPath))
+            print("[{}] - Looking for files to process for run '{}' in '{}'... ".format(
+                scriptName, runNumber, conf.inputPath))
             if os.path.exists(conf.inputPath) is False:
                 sys.exit("\n[{}] - Folder '{}' does not exist...exiting".format(scriptName, conf.inputPath))
 
             inputDataFileList = [f for f in os.listdir(conf.inputPath) if str(runNumber) in f]
             if not inputDataFileList:
-                doScp = raw_input("[{}] - No file found...download it from '{}' ? (y/n)".format(scriptName, conf.serverName))
+                doScp = raw_input("[{}] - No file found...download it from '{}' ? (y/n)".format(
+                    scriptName, conf.serverName))
                 if doScp == 'y':
                     scp(runNumber, conf.inputFile, conf.serverName, conf.serverDataPath, conf.inputPath)
                 else:
@@ -361,9 +361,9 @@ def main():
             print("[{}] --- Output is logged to '{}'".format(scriptName, log))
             beginTime = time.time()
             if conf.logToFile is True:
-                subprocess.call(['python', 'run_marlin.py', conf.marlinCfgPath + marlinCfgFile], stdout=log, stderr=log)
+                subprocess.call(['python', 'python/run_marlin.py', conf.marlinCfgPath + marlinCfgFile], stdout=log, stderr=log)
             else:
-                subprocess.call(['python', 'run_marlin.py', conf.marlinCfgPath + marlinCfgFile])
+                subprocess.call(['python', 'python/run_marlin.py', conf.marlinCfgPath + marlinCfgFile])
 
             print('[{}] - Running Marlin...OK - '.format(scriptName), end='')
             try:
@@ -480,7 +480,7 @@ def main():
 
                 # Add a postprocessor that will move the outputfiles on the grid to their proper location
                 # This needs to be present in the same folder
-                j.postprocessors.append(CustomChecker(module='GangaCheckerMoveFileOnGrid.py'))
+                j.postprocessors.append(CustomChecker(module='python/GangaCheckerMoveFileOnGrid.py'))
                 jobtree.add(j)
 
                 # Don't submit if inputdata is empty

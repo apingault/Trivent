@@ -7,6 +7,7 @@ file(GLOB_RECURSE
      )
 
 # Adding clang-format target if executable is found
+# Will look for a .clang-format file at the root of the project
 find_program(CLANG_FORMAT "clang-format")
 if(CLANG_FORMAT)
   add_custom_target(
@@ -19,6 +20,7 @@ if(CLANG_FORMAT)
 endif()
 
 # Adding clang-tidy target if executable is found
+# Will look for a .clang-tidy file at the root of the project
 find_program(CLANG_TIDY "clang-tidy")
 if(CLANG_TIDY)
   add_custom_target(
