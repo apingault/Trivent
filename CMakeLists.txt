@@ -12,7 +12,7 @@ SET( ${PROJECT_NAME}_VERSION_MAJOR 0 )
 SET( ${PROJECT_NAME}_VERSION_MINOR 5 )
 SET( ${PROJECT_NAME}_VERSION_PATCH 0 )
 
-# Require C++11
+# Require C++14
 INCLUDE( CheckCXXCompilerFlag )
 CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 IF( COMPILER_SUPPORTS_CXX14 )
@@ -55,8 +55,8 @@ IF( INSTALL_DOC AND EXISTS "${PROJECT_SOURCE_DIR}/doc/CMakeLists.txt" )
     ADD_SUBDIRECTORY( ./doc )
 ENDIF()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wnon-virtual-dtor -Weffc++ -Wshadow -Wnull-dereference -Wuninitialized -Winit-self")
-
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wnon-virtual-dtor -Weffc++ -Wshadow -Wuninitialized -Winit-self")
+# -Wnull-dereference # Not available on gcc<6
 ADD_SUBDIRECTORY( ./EventBuilder )
 
 # display some variables and write them to cache

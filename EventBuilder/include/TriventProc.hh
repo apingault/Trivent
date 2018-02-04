@@ -71,7 +71,7 @@ public:
    * @param candidateTime
    * @return std::vector<const std::vector<int>::iterator>
    */
-  std::vector<const std::vector<int>::iterator>
+  std::vector<std::vector<int>::iterator>
   getCandidateTimeBoundaries(const std::vector<int>::iterator &beginTime, const std::vector<int>::iterator &endTime,
                              const std::vector<int>::iterator &candidateTime) const;
 
