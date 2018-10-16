@@ -1,63 +1,60 @@
-########################################################
-# cmake file for building Marlin example Package
-# @author Jan Engels, Desy IT
-CMAKE_MINIMUM_REQUIRED(VERSION 2.8 FATAL_ERROR)
-########################################################
+cmake_minimum_required(VERSION 3.5)
 
-# project name
-PROJECT(TriventProcessor)
+project(TriventProcessor VERSION 0.9.0 LANGUAGES CXX)
 
-# project version
-SET( ${PROJECT_NAME}_VERSION_MAJOR 0 )
-SET( ${PROJECT_NAME}_VERSION_MINOR 5 )
-SET( ${PROJECT_NAME}_VERSION_PATCH 0 )
+# -- Find Dependencies
+find_package(ILCUTIL REQUIRED COMPONENTS ILCSOFT_CMAKE_MODULES)
+include(ilcsoft_default_settings)
+find_package(Marlin 1.10 REQUIRED) # minimum required Marlin version
+find_package(CLHEP REQUIRED) # Required for Marlin >v1.10
+find_package(ROOT 6.08 REQUIRED)
 
-# Require C++14
-INCLUDE( CheckCXXCompilerFlag )
-CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
-IF( COMPILER_SUPPORTS_CXX14 )
-  SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-ELSE()
-  MESSAGE( SEND_ERROR " ${PROJECT_NAME} Requires C++14 support. Please upgrade your compiler !" )
-ENDIF()
+# If no nlohmann json installation found, use the embeded files
+# find_package(nlohmann_json 3.2.0 QUIET )
+# if (NOT nlohmann_json_FOUND)
+#   message("-- WARNING: nlohmann_json version>3.2.0 not found, using embeded version")
+#   set(JSON_BuildTests OFF CACHE INTERNAL "")
+#   add_subdirectory(nlohmann_json)
+# endif()
 
-# Add Rpath for osx
-SET( CMAKE_MACOSX_RPATH ON )
+# -- Set some CMake specific variables
+set(CMAKE_MACOSX_RPATH ON)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-INCLUDE(cmake/clang-cxx-dev-tools.cmake)
+# -- Create target and set properties
+add_library(TriventProc SHARED EventBuilder/src/TriventProc.cc)
+target_include_directories(TriventProc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/EventBuilder/include)
 
-### DEPENDENCIES ############################################################
+target_compile_features(TriventProc PUBLIC cxx_std_14)
 
-FIND_PACKAGE( ILCUTIL REQUIRED COMPONENTS ILCSOFT_CMAKE_MODULES )
+# Define cxxFlags to use
+target_compile_options(TriventProc PRIVATE $<$<CXX_COMPILER_ID:Clang>:-Weverything -Wno-c++98-compat -Wno-global-constructors -Wno-exit-time-destructors -Wno-padded -Wdocumentation> -Wall -Wextra -pedantic -Wnon-virtual-dtor -Weffc++ -Wshadow -Wuninitialized -Winit-self -D_FORTIFY_SOURCE)
 
-# load default settings from ILCSOFT_CMAKE_MODULES
-INCLUDE( ilcsoft_default_settings )
+# ILCSOFT/ROOT uses old style cmake, need to manually set include dirs. (As system to avoid getting crushed by warnings at compilation)
+foreach(pkg ROOT Marlin CLHEP)
+  list(APPEND TARGET_LIBS ${${pkg}_LIBRARIES})
+  target_include_directories(TriventProc SYSTEM PUBLIC ${${pkg}_INCLUDE_DIRS})
+endforeach()
 
 
-FIND_PACKAGE( Marlin 1.10 REQUIRED ) # minimum required Marlin version
-FIND_PACKAGE( CLHEP REQUIRED ) # Required for Marlin >v1.10
-FIND_PACKAGE( ROOT 6.08 REQUIRED )
 
-FOREACH( pkg ROOT Marlin CLHEP)
-  IF( ${pkg}_FOUND )
-    INCLUDE_DIRECTORIES( ${${pkg}_INCLUDE_DIRS} )
-    LINK_LIBRARIES( ${${pkg}_LIBRARIES} )
-    ADD_DEFINITIONS( ${${pkg}_DEFINITIONS} )
-  ENDIF()
-ENDFOREACH()
+target_link_libraries(TriventProc PUBLIC ${TARGET_LIBS})
+# target_link_libraries(TriventProc PUBLIC ${TARGET_LIBS} nlohmann_json::nlohmann_json)
 
-### DOCUMENTATION ###########################################################
+# -- Install instruction
+install(TARGETS TriventProc
+    EXPORT TriventProc-targets
+    LIBRARY DESTINATION ${PROJECT_SOURCE_DIR}/lib
+    ARCHIVE DESTINATION ${PROJECT_SOURCE_DIR}/lib
+    INCLUDES DESTINATION ${PROJECT_SOURCE_DIR}/include
+)
 
-OPTION( INSTALL_DOC "Set to OFF to skip build/install Documentation" OFF )
-
-IF( INSTALL_DOC AND EXISTS "${PROJECT_SOURCE_DIR}/doc/CMakeLists.txt" )
-    ADD_SUBDIRECTORY( ./doc )
-ENDIF()
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Wnon-virtual-dtor -Weffc++ -Wshadow -Wuninitialized -Winit-self")
-# -Wnull-dereference # Not available on gcc<6
-ADD_SUBDIRECTORY( ./EventBuilder )
-
-# display some variables and write them to cache
-DISPLAY_STD_VARIABLES()
+install(EXPORT TriventProc-targets
+  FILE
+    TriventProcTargets.cmake
+  NAMESPACE
+    Trivent::
+  DESTINATION
+    ${PROJECT_SOURCE_DIR}/lib/cmake/TriventProc
+)
