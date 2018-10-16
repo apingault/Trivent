@@ -102,7 +102,7 @@ voms = 'calice'
 # CE = 'lpnhe-cream.in2p3.fr:8443/cream-pbs-calice'
 CE = 'grid-cr0.desy.de:8443/cream-pbs-desy'
 SE = 'lyogrid06.in2p3.fr'
-lfc_home="/grid/calice/"
+lfc_home = "/grid/calice/"
 
 lcg_catalog_type = 'lfc'
 lfc_host = 'grid-lfc.desy.de'
@@ -165,7 +165,7 @@ xmlFile = 'TriventProcessor.xml'
 libExt = 'so'
 if sys.platform == 'darwin':
     libExt = 'dylib'
-marlinLib = "libTriventProcessor.{}".format(libExt)  # Marlin library for processor
+marlinLib = "libTriventProc.{}".format(libExt)  # Marlin library for processor
 
 geomFile = None
 geomFile2014 = 'm3_bonneteau.xml'

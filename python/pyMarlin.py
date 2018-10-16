@@ -355,7 +355,7 @@ def main():
         marlin.setUploadScript("carefulUpload.sh")
         marlin.setDownloadScript("carefulDownload.sh")
         marlin.setOutputPath(conf.outputPath)
-        marlin.setOutputFiles([conf.marlinProc.LCIOOutputFile, conf.marlinProc.ROOTOutputFile, conf.marlinProc.ROOTECALOutputFile])
+        marlin.setOutputFiles([conf.marlinProc.LCIOOutputFile, conf.marlinProc.ROOTOutputFile])
         setCliOptions(marlin, conf.glob)  # TODO: Move to Marlin.py
         setCliOptions(marlin, conf.marlinProc)
         marlin.writeConfigFile(marlinCfgFile)

@@ -83,7 +83,7 @@ runPeriod = "SPS_09_2018"
 #     736521, 736520, 736519, 736517, 736516, 736515, 736514, 736513, 736512, 736511, 736509, 736508, 736507, 736506,
 #     736505, 736503, 736501, 736500
 # ]
-runList = [744299]
+runList = [744202]
 
 ####################
 # Grid Section
@@ -163,7 +163,7 @@ xmlFile = 'TriventProcessor.xml'
 libExt = 'so'
 if sys.platform == 'darwin':
     libExt = 'dylib'
-marlinLib = "libTriventProcessor.{}".format(libExt)  # Marlin library for processor
+marlinLib = "libTriventProc.{}".format(libExt)  # Marlin library for processor
 
 geomFile = None
 geomFile2014 = 'm3_bonneteau.xml'
