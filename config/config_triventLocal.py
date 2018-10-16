@@ -16,7 +16,8 @@ import platform
 # runPeriod = "SPS_10_2015"
 # runPeriod = "SPS_06_2016"
 # runPeriod = "SPS_10_2016"
-runPeriod = "SPS_09_2017"
+# runPeriod = "SPS_09_2017"
+runPeriod = "SPS_09_2018"
 ''' ------------------------- Complete SPS_12_2014 runList ------------------------- '''
 # 72 runs
 # runList = [ 726195, 726196, 726197, 726204, 726205, 726206, 726207, 726208, 726209, 726210]
@@ -82,7 +83,7 @@ runPeriod = "SPS_09_2017"
 #     736521, 736520, 736519, 736517, 736516, 736515, 736514, 736513, 736512, 736511, 736509, 736508, 736507, 736506,
 #     736505, 736503, 736501, 736500
 # ]
-runList = [736572]
+runList = [744299]
 
 ####################
 # Grid Section
@@ -170,6 +171,7 @@ geomFile2015 = 'm3_bonneteau_avril2015.xml'
 geomFileOct2015 = 'm3_oct2015.xml'
 geomFile2012 = 'setup_geometry_nov.xml'
 geomFileSept2017 = 'TRIVENTsdhcal_07_09_2017.xml'
+geomFileSept2018 = 'geometry_10_2018_2ndWeek.xml'
 
 gridInputFiles = []
 if runOnGrid is True:
@@ -187,7 +189,8 @@ if runOnGrid is True:
 ####################
 # If file not available, use serverName to scp it from.
 # serverName = 'lyoac29'
-serverName = 'lyoac30'
+# serverName = 'lyoac30'
+serverName = 'lyosdhcal8'
 # serverName = 'lyosdhcal10'
 # serverName = 'lyosdhcal12'
 
@@ -206,6 +209,8 @@ if runPeriod == 'SPS_10_2016':
     serverDataPath = '/data/NAS/Oct2016/'
 if runPeriod == 'SPS_09_2017':
     serverDataPath = '/data/NAS/H2SEPT2017/'
+if runPeriod == 'SPS_09_2018':
+    serverDataPath = '/data/NAS/Sept2018/'
 
 
 ####################
@@ -223,7 +228,7 @@ Verb = "MESSAGE"
 glob = xmlOptionSection('global')
 # glob.Verbosity = "DEBUG0"
 glob.Verbosity = Verb
-glob.MaxRecordNumber = 0  # Max Number of event to process
+glob.MaxRecordNumber = 1000  # Max Number of event to process
 glob.SkipNEvents = 0  # Number of event to skip
 glob.LCIOInputFiles = []
 
@@ -263,6 +268,9 @@ elif runPeriod.find("SPS_10_2015") != -1 or runPeriod.find("2016") != -1:
 
 elif runPeriod.find("2017") != -1:
     geomFile = geomFileSept2017
+
+elif runPeriod.find("2018") != -1:
+    geomFile = geomFileSept2018
     # TODO: Check for geom change within TB
 
 if runOnGrid is True:
