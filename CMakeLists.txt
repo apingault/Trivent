@@ -9,13 +9,13 @@ find_package(Marlin 1.10 REQUIRED) # minimum required Marlin version
 find_package(CLHEP REQUIRED) # Required for Marlin >v1.10
 find_package(ROOT 6.08 REQUIRED)
 
-# If no nlohmann json installation found, use the embeded files
-# find_package(nlohmann_json 3.2.0 QUIET )
-# if (NOT nlohmann_json_FOUND)
-#   message("-- WARNING: nlohmann_json version>3.2.0 not found, using embeded version")
-#   set(JSON_BuildTests OFF CACHE INTERNAL "")
-#   add_subdirectory(nlohmann_json)
-# endif()
+If no nlohmann json installation found, use the embeded files
+find_package(nlohmann_json 3.2.0 QUIET )
+if (NOT nlohmann_json_FOUND)
+  message("-- WARNING: nlohmann_json version>3.2.0 not found, using embeded version")
+  set(JSON_BuildTests OFF CACHE INTERNAL "")
+  add_subdirectory(nlohmann_json)
+endif()
 
 # -- Set some CMake specific variables
 set(CMAKE_MACOSX_RPATH ON)
@@ -37,10 +37,7 @@ foreach(pkg ROOT Marlin CLHEP)
   target_include_directories(TriventProc SYSTEM PUBLIC ${${pkg}_INCLUDE_DIRS})
 endforeach()
 
-
-
-target_link_libraries(TriventProc PUBLIC ${TARGET_LIBS})
-# target_link_libraries(TriventProc PUBLIC ${TARGET_LIBS} nlohmann_json::nlohmann_json)
+target_link_libraries(TriventProc PUBLIC ${TARGET_LIBS} nlohmann_json::nlohmann_json)
 
 # -- Install instruction
 install(TARGETS TriventProc
