@@ -19,6 +19,13 @@ if(CLANG_FORMAT)
     )
 endif()
 
+
+# Generate a proper list of include dirs for clang-tidy
+FOREACH( inc ${INC_DIRS} )
+  SET( CLANG_TIDY_INCLUDES "${CLANG_TIDY_INCLUDES};-I${inc}")
+ENDFOREACH()
+MESSAGE( "CLANG_TIDY_INCLUDES : ${CLANG_TIDY_INCLUDES}" )
+
 # Adding clang-tidy target if executable is found
 # Will look for a .clang-tidy file at the root of the project
 find_program(CLANG_TIDY "clang-tidy")
@@ -28,8 +35,7 @@ if(CLANG_TIDY)
     COMMAND clang-tidy
     ${ALL_CXX_SOURCE_FILES}
     -config=''
-    --
-    -std=c++14
-    ${INCLUDE_DIRECTORIES}
+    -- -std=c++14
+    ${CLANG_TIDY_INCLUDES}
     )
 endif()
