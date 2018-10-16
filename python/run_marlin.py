@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 from marlin import Marlin
 import sys
@@ -12,3 +12,4 @@ if __name__ == '__main__':
 
     marlin.readConfigFile(cfgFile)
     marlin.run(cfgFile)
+    marlin.uploadFiles()

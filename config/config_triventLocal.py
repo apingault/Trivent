@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 '''
     Configuration file for trivent processor. Is read by trivent.py
     Usage :    python steer/trivent.py config_trivent 732875,732882
@@ -120,8 +120,8 @@ ilcSoftVersion = "v01-19-05"
 gridIlcSoftVersion = 'v01-19-05'
 ilcSoftPath = '/opt/ilcsoft/'
 gridIlcSoftPath = '/cvmfs/ilc.desy.de/sw/x86_64_gcc49_sl6/'
-# processorType = 'Trivent Laurent'
-processorType = 'Trivent'
+processorType = 'Trivent Laurent'
+# processorType = 'Trivent'
 
 # General Path to find/store data: the following assumes that all data is in a subfolder of dataPath
 # Overwritten by gridDataPath if runOnGrid is True
@@ -178,6 +178,7 @@ if runOnGrid is True:
     gridInputFiles.append(gridProcessorPath + 'processor.tgz')
     gridInputFiles.append(gridProcessorPath + 'marlin.py')
     gridInputFiles.append(gridProcessorPath + 'run_marlin.py')
+    gridInputFiles.append(gridUploader)
     # gridInputFiles.append(marlinCfgFile) # Need to be added in the main script as the name is dynamically generated with the runNumber
 
 

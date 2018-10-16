@@ -99,6 +99,7 @@ voms = 'calice'
 # CE = 'lpnhe-cream.in2p3.fr:8443/cream-pbs-calice'
 CE = 'grid-cr0.desy.de:8443/cream-pbs-desy'
 SE = 'lyogrid06.in2p3.fr'
+lfc_home="/grid/calice/"
 
 lcg_catalog_type = 'lfc'
 lfc_host = 'grid-lfc.desy.de'
@@ -177,6 +178,8 @@ if runOnGrid is True:
     gridInputFiles.append(gridProcessorPath + 'processor.tgz')
     gridInputFiles.append(gridProcessorPath + 'marlin.py')
     gridInputFiles.append(gridProcessorPath + 'run_marlin.py')
+    gridInputFiles.append(gridUploader)
+
     # gridInputFiles.append(marlinCfgFile) # Need to be added in the main script as the name is dynamically generated with the runNumber
 
 

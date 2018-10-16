@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 from Ganga.Utility.GridShell import getShell
 from Ganga.Utility.Config import getConfig
 from Ganga.Core.exceptions import ProtectedAttributeError

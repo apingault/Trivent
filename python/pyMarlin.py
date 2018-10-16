@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 """
     Configuration module for Marlin processor
     export PYTHONPATH=/cvmfs/ganga.cern.ch/Ganga/install/LATEST/python:${PYTHONPATH}
@@ -349,6 +349,10 @@ def main():
         marlin.setXMLConfig(conf.xmlFile)
         marlin.setLibraries(marlinLib)
         marlin.setILCSoftScript(conf.initILCSoftScript)
+        marlin.setUploadScript("carefulUpload.sh")
+        marlin.setDownloadScript("carefulDownload.sh")
+        marlin.setOutputPath(conf.outputPath)
+        marlin.setOutputFiles([conf.marlinProc.LCIOOutputFile, conf.marlinProc.ROOTOutputFile, conf.marlinProc.ROOTECALOutputFile])
         setCliOptions(marlin, conf.glob)  # TODO: Move to Marlin.py
         setCliOptions(marlin, conf.marlinProc)
         marlin.writeConfigFile(marlinCfgFile)
@@ -442,8 +446,8 @@ def main():
                 inputData = GangaDataset(treat_as_inputfiles=True, files=[f for f in inputList])
 
                 j = createJob(
-                    executable='generateEnv.sh',
-                    args=['run_marlin.py', marlinCfgFile],
+                    executable='config/generateEnv.sh',
+                    args=['python/run_marlin.py', marlinCfgFile],
                     comment=conf.processorType + ' ' + conf.runPeriod,
                     name=str(runNumber),
                     backend=conf.backend,
@@ -456,31 +460,31 @@ def main():
                 # not set at the end of the job https://github.com/ganga-devs/ganga/issues/1186
                 # Only the first file will have its locations attribute updated (others fail because of the \n at the begining of the line...)
                 # TODO: make script to recover name from the files that were not uploaded and make the proper alias
-                j.outputfiles = [
-                    LCGSEFile(
-                        namePattern=outputFile + ".slcio",
-                        se_rpath=conf.outputPath,
-                        lfc_host=conf.lfc_host,
-                        se=conf.SE,
-                        credential_requirements=VomsProxy(vo=conf.voms))
-                ]
-                # TODO: Remove ugly 'hack'
-                if 'Streamout' not in conf.processorType:
-                    j.outputfiles += [
-                        LCGSEFile(
-                            namePattern=outputFile + ".root",
-                            se_rpath=conf.outputPath,
-                            lfc_host=conf.lfc_host,
-                            se=conf.SE,
-                            credential_requirements=VomsProxy(vo=conf.voms))
-                    ]
+                # j.outputfiles = [
+                #     LCGSEFile(
+                #         namePattern=outputFile + ".slcio",
+                #         se_rpath=conf.outputPath,
+                #         lfc_host=conf.lfc_host,
+                #         se=conf.SE,
+                #         credential_requirements=VomsProxy(vo=conf.voms))
+                # ]
+                # # TODO: Remove ugly 'hack'
+                # if 'Streamout' not in conf.processorType:
+                #     j.outputfiles += [
+                #         LCGSEFile(
+                #             namePattern=outputFile + ".root",
+                #             se_rpath=conf.outputPath,
+                #             lfc_host=conf.lfc_host,
+                #             se=conf.SE,
+                #             credential_requirements=VomsProxy(vo=conf.voms))
+                #     ]
 
                 j.inputfiles = inputFiles
                 j.inputdata = inputData
 
                 # Add a postprocessor that will move the outputfiles on the grid to their proper location
                 # This needs to be present in the same folder
-                j.postprocessors.append(CustomChecker(module='python/GangaCheckerMoveFileOnGrid.py'))
+                # j.postprocessors.append(CustomChecker(module='python/GangaCheckerMoveFileOnGrid.py'))
                 jobtree.add(j)
 
                 # Don't submit if inputdata is empty
