@@ -16,6 +16,7 @@
     <parameter name="ROOTOutputFile" type="string"></parameter>
     <parameter name="PlotFolder" type="string"></parameter>
     <parameter name="SetupGeometry" type="string"></parameter>
+    <parameter name="CellIdFormat" type="string"></parameter>
     <parameter name="GainCorrectionMode" type="bool">False</parameter>
     <parameter name="ElectronicNoiseCut" type="int">350000</parameter>
     <parameter name="LayerGap" type="double">2.8</parameter>

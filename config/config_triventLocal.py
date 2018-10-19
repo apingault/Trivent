@@ -240,6 +240,8 @@ marlinProc.Verbosity = Verb
 marlinProc.InputCollectionNames = "DHCALRawHits"
 marlinProc.OutputCollectionName = "SDHCAL_HIT"
 
+marlinProc.CellIdFormat = "M:3,S-1:3,I:9,J:9,K-1:6"
+
 marlinProc.GainCorrectionMode = False
 marlinProc.ElectronicNoiseCut = 500000
 marlinProc.LayerGap = 2.8  # Not used

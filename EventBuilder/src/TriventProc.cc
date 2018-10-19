@@ -96,6 +96,11 @@ TriventProc::TriventProc()
                              m_keepRejected);
 
   registerProcessorParameter("PlotFolder", "Folder Path to save Plot", m_plotFolder, m_plotFolder);
+
+  registerProcessorParameter("CellIdFormat",
+                             "Data Format string: it could be M:3,S-1:3,I:9,J:9,K-1:6 (ILD_ENDCAP) or "
+                             "I:9,J:9,K-1:6,Dif_id:8,Asic_id:6,Chan_id:7",
+                             m_cellIdFormat, m_cellIdFormat);
 }
 
 //=============================================================================
@@ -347,7 +352,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
   evtCol->setFlag(evtCol->getFlag() | (1 << LCIO::RCHBIT_LONG));
   evtCol->setFlag(evtCol->getFlag() | (1 << LCIO::RCHBIT_TIME));
 
-  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder("M:3,S-1:3,I:9,J:9,K-1:6", evtCol.get());
+  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder(m_cellIdFormat.c_str(), evtCol.get());
 
   std::map<int, int> asicMap{};
   std::map<int, int> ramFullMap{};
@@ -474,9 +479,17 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       // set the cell id
       cellIdEncoder["I"]   = I;
       cellIdEncoder["J"]   = J;
-      cellIdEncoder["K-1"] = K - 1;
-      cellIdEncoder["M"]   = 0;
-      cellIdEncoder["S-1"] = 3;
+      cellIdEncoder["K-1"] = K;
+      if (m_cellIdFormat == std::string("M:3,S-1:3,I:9,J:9,K-1:6")) {
+        cellIdEncoder["M"]   = 0;
+        cellIdEncoder["S-1"] = 3;
+      } else if (m_cellIdFormat == std::string("I:9,J:9,K-1:6,Dif_id:8,Asic_id:6,Chan_id:7")) {
+        cellIdEncoder["Dif_id"]  = difId;
+        cellIdEncoder["Asic_id"] = asicId;
+        cellIdEncoder["Chan_id"] = chanId;
+      } else {
+        throw std::runtime_error(m_cellIdFormat + " is not a valid encoding format...");
+      }
 
       if (difId != m_cerenkovDifId) { //
         // Fill hitsMap for each Layer, cerenkov not included in m_vHitMapPerLayer
@@ -632,11 +645,11 @@ TH2 *TriventProc::makeTH2(const std::string &title, const std::string &xTitle, c
 }
 
 //=============================================================================
-void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCol, const int &timePeak) {
+void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCol, const int timePeak) {
   cerCol->setFlag(cerCol->getFlag() | (1 << LCIO::RCHBIT_LONG));
   cerCol->setFlag(cerCol->getFlag() | (1 << LCIO::RCHBIT_TIME));
 
-  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder("I:9,J:9,K-1:6,Dif_id:8,Asic_id:6,Chan_id:7", cerCol.get());
+  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder(m_cellIdFormat, cerCol.get());
 
   for (int hitTime = timePeak - m_cerenkovTimeWindow; hitTime <= timePeak + m_cerenkovTimeWindow; ++hitTime) {
 
@@ -682,12 +695,21 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
 
       auto *caloHit = new CalorimeterHitImpl();
       caloHit->setTime(static_cast<float>(cerHit->getTimeStamp()));
-      cellIdEncoder["Dif_id"]  = difId;
-      cellIdEncoder["Asic_id"] = asicId;
-      cellIdEncoder["Chan_id"] = chanId;
+
       cellIdEncoder["I"]       = padIndex[0];
       cellIdEncoder["J"]       = padIndex[1];
-      cellIdEncoder["K-1"]     = padIndex[2];
+      cellIdEncoder["K-1"]     = 0; // No layerId needed for the bif
+
+      if (m_cellIdFormat == std::string("M:3,S-1:3,I:9,J:9,K-1:6")) {
+        cellIdEncoder["M"]   = 0;
+        cellIdEncoder["S-1"] = 3;
+      } else if (m_cellIdFormat == std::string("I:9,J:9,K-1:6,Dif_id:8,Asic_id:6,Chan_id:7")) {
+        cellIdEncoder["Dif_id"]  = difId;
+        cellIdEncoder["Asic_id"] = asicId;
+        cellIdEncoder["Chan_id"] = chanId;
+      } else {
+        throw std::runtime_error(m_cellIdFormat + " is not a valid encoding format...");
+      }
 
       caloHit->setEnergy(hitThreshold); // 3rd threshold
       if (hitThreshold == 3) {
