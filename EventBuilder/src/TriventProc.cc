@@ -432,10 +432,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       }
 
       // Creating Calorimeter Hit
-      float pos[3];
-      pos[0] = padIndex[0] * m_cellSizeI;
-      pos[1] = padIndex[1] * m_cellSizeJ;
-      pos[2] = padIndex[2] * m_layerThickness;
+      std::array<float, 3> pos{padIndex[0] * m_cellSizeI, padIndex[1] * m_cellSizeJ, padIndex[2] * m_layerThickness};
 
       auto *caloHit = new CalorimeterHitImpl();
       caloHit->setTime(static_cast<float>(rawHit->getTimeStamp()));
@@ -499,7 +496,8 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       cellIdEncoder.setCellID(caloHit);
       // add layer to list of unique touched layers
       m_firedLayersSet.insert(K);
-      caloHit->setPosition(pos);
+
+      caloHit->setPosition(pos.data());
       evtCol->addElement(caloHit);
       hitKeys.insert(std::pair<int, int>(aHitKey, hitTime));
       m_hitI.push_back(I);
