@@ -297,14 +297,6 @@ int TriventProc::IJKToKey(const std::vector<int> &padIndex) const {
 //=============================================================================
 int TriventProc::getAsicKey(const std::vector<int> &padIndex) const {
   // Not necessary to check for boundary here as already tested in getPadIndex
-  std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
-  if (padIndex[2] == m_cerenkovLayerId) {
-    padLims.pop_back();
-    padLims.push_back(m_cerenkovLayerId);
-  }
-  bool padOk = checkPadLimits(padIndex, padLims);
-  assert(padOk);
-
   const int jnum = (padIndex[1] - 1) / 8;
   const int inum = (padIndex[0] - 1) / 8;
   const int num  = jnum * 12 + inum;
@@ -416,7 +408,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
         asicMap[asicKey] = 1;
       }
 
-      if (asicMap[asicKey] == 64 && difId != m_cerenkovDifId) {
+      if (asicMap[asicKey] == 64) {
         streamlog_out(DEBUG1) << yellow << "[" << __func__ << "] - Rejecting event with full asic. Dif '" << difId
                               << "' asic '" << asicId << "' at time '" << timePeak << "'" << normal << std::endl;
 
@@ -451,15 +443,10 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
 
       // Avoid two hit in the same cell
       std::map<int, int>::const_iterator findIter = hitKeys.find(aHitKey);
-
       if (findIter != hitKeys.end()) {
-        if (difId != m_cerenkovDifId) {
           delete caloHit;
           caloHit = nullptr;
           continue;
-        }
-        streamlog_out(ERROR) << yellow << "[" << __func__ << "] - So much Hit in my cherenkov " << normal << std::endl;
-        abort();
       }
 
       const int I = padIndex[0];
