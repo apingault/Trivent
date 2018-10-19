@@ -10,7 +10,6 @@
 
 // -- marlin includes
 #include "marlin/VerbosityLevels.h"
-#include "marlin/tinyxml.h"
 #include <marlin/Processor.h>
 
 // -- lcio includes
@@ -42,11 +41,13 @@ public:
   TriventProc &operator=(const TriventProc && /*proc*/) = delete;
 
   void init() override;
-  void initRootTree();
   void processEvent(LCEvent *evtP) override;
-  void XMLReader(const std::string &xmlfile);
   void end() override;
+
+  void insertDifIntoMap(int difId, difGeom &dif);
+  void readGeometry(const std::string &geomFile);
   void printDifGeom() const;
+  void initRootTree();
 
   int getCellDif_id(const int cellId) const;
   int getCellAsic_id(const int cellId) const;

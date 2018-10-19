@@ -172,6 +172,7 @@ geomFileOct2015 = 'm3_oct2015.xml'
 geomFile2012 = 'setup_geometry_nov.xml'
 geomFileSept2017 = 'TRIVENTsdhcal_07_09_2017.xml'
 geomFileSept2018 = 'geometry_10_2018_2ndWeek.xml'
+geomFileSept2018 = 'sdhcal_SPS_09_2018.json'
 
 gridInputFiles = []
 if runOnGrid is True:

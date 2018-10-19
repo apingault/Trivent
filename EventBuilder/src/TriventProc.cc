@@ -36,6 +36,10 @@
 
 TriventProc myTriventProc;
 
+// -- json
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+
 //=========================================================
 TriventProc::TriventProc()
     : Processor("TriventProc")
@@ -64,9 +68,9 @@ TriventProc::TriventProc()
 
   // time windows
   registerProcessorParameter("TimeWin", "time window = 2 in default", m_timeWin, m_timeWin);
-  // maping on XML file
-  registerProcessorParameter("SetupGeometry", "Dif geometry and position on the detector XML", m_geomXMLFile,
-                             m_geomXMLFile);
+  // dif mapping in json file
+  registerProcessorParameter("SetupGeometry", "Dif geometry and position on the detector in json", m_geomFile,
+                             m_geomFile);
 
   // electronic noise cut
   registerProcessorParameter("ElectronicNoiseCut", "number of hit max on time stamp", m_elecNoiseCut, m_elecNoiseCut);
@@ -104,97 +108,86 @@ TriventProc::TriventProc()
 }
 
 //=============================================================================
-void TriventProc::XMLReader(const std::string &xmlfile) {
-  TiXmlDocument xml(xmlfile.c_str());
-  bool          load_key = xml.LoadFile();
-
-  if (load_key) {
-    streamlog_out(MESSAGE) << yellow << "[" << __func__ << "] - Found Geometry File : " << xmlfile.c_str() << normal
-                           << std::endl;
-
-    TiXmlHandle   xmlHandle(&xml);
-    TiXmlElement *pElem = xmlHandle.FirstChildElement().Element();
-
-    // should always have a valid root but handle gracefully if it does not
-    if (pElem == nullptr) {
-      streamlog_out(ERROR) << red << "[" << __func__ << "] - Error No root handle Found in xml file" << normal
-                           << std::endl;
-    }
-
-    // save this for later
-    TiXmlHandle rootHandle(nullptr);
-    rootHandle = TiXmlHandle(pElem);
-
-    // parameters block
-    pElem = rootHandle.FirstChild("parameter").Element();
-    assert(pElem);
-    streamlog_out(DEBUG0) << "[" << __func__ << "] - Reading data for key: " << pElem->Attribute("name") << std::endl;
-    streamlog_out(DEBUG0) << "[" << __func__ << "] - parameter : " << pElem->Attribute("name") << std::endl;
-
-    std::string value = pElem->GetText();
-    streamlog_out(DEBUG0) << "[" << __func__ << "] - value : " << value << std::endl;
-
-    std::string              line;
-    std::vector<std::string> lines;
-    std::istringstream       iss(value);
-
-    // value no longer has the formatted eol, all replaced by a space character...
-    while (std::getline(iss, line, ' ')) {
-      // streamlog_out( MESSAGE ) << blue << line << normal << std::endl;
-      lines.push_back(line);
-    }
-    streamlog_out(MESSAGE) << yellow << "[" << __func__ << "] - Found " << lines.size()
-                           << " difs in geometry file corresponding to : "
-                           << static_cast<unsigned int>(lines.size()) / 3 << " layers + " << lines.size() % 3 << " difs"
-                           << normal << std::endl;
-    // for (std::vector<std::string>::const_iterator lineIter = lines.begin(); lineIter != lines.end(); ++lineIter) {
-    for (const auto &lineIter : lines) {
-      std::stringstream        ss(lineIter);
-      std::vector<std::string> result;
-
-      while (ss.good()) {
-        std::string substr;
-        getline(ss, substr, ',');
-        // streamlog_out( MESSAGE ) << red << substr << normal << std::endl;
-        result.push_back(substr);
-      }
-
-      LayerID mapp{};
-      int     difId;
-      while (ss.good()) {
-        std::string substr;
-        getline(ss, substr, ',');
-        result.push_back(substr);
-      }
-      std::istringstream(result.at(0)) >> difId;
-      std::istringstream(result.at(1)) >> mapp.K;
-      std::istringstream(result.at(2)) >> mapp.DifX;
-      std::istringstream(result.at(3)) >> mapp.DifY;
-      std::istringstream(result.at(4)) >> mapp.IncX;
-      std::istringstream(result.at(5)) >> mapp.IncY;
-      m_mDifMapping[difId] = mapp;
-      m_layerSet.insert(mapp.K);
-    }
-    // Cerenkov layer should not be counted it the total number of layer
-    if (m_hasCherenkov) {
-      m_cerenkovLayerId = m_mDifMapping.find(m_cerenkovDifId)->second.K;
-      m_layerSet.erase(m_cerenkovLayerId);
-    }
-  } else {
-    std::ostringstream oss;
-    oss << "[" << __func__ << "] - Failed to load geometry file '" << xmlfile.c_str() << "'";
-    streamlog_out(WARNING) << red << oss.str() << normal << std::endl;
-    throw(oss.str());
+// insert the new dif and check if it already exists elsewhere
+void TriventProc::insertDifIntoMap(int difId, difGeom &dif) {
+  auto it = m_difMapping.insert({difId, dif});
+  if (!it.second) {
+    // std::cout << "ERROR in geometry : dif " << difId << " of layer " << dif.layerId << " already exists" << std::endl;
+    throw std::runtime_error("ERROR in geometry : dif " + std::to_string(difId) + " of layer " + std::to_string(dif.layerId) +
+                             " already exists");
   }
+}
+
+//=============================================================================
+void TriventProc::readGeometry(const std::string &geomFile) {
+
+  std::ifstream jsonStream(geomFile);
+  const auto    jsonFile  = json::parse(jsonStream);
+  const auto    layerList = jsonFile.at("chambers");
+
+  for (const auto &layer : layerList) {
+    const int slotId = layer.at("slot");
+    int difId  = layer.at("left");
+    difGeom temp{slotId, 0};
+    insertDifIntoMap(difId, temp);
+
+    difId       = layer.at("center");
+    temp.shiftY = 32;
+    insertDifIntoMap(difId, temp);
+
+    difId       = layer.at("right");
+    temp.shiftY = 64;
+    insertDifIntoMap(difId, temp);
+
+    streamlog_out(DEBUG) << "inserting layer " << slotId << std::endl;
+
+    // Make sure dummy layer for the bif is not in the list of layer (some geometry files implement this...)
+    if (m_hasCherenkov && difId == m_cerenkovDifId){
+      throw std::runtime_error("Bif should not be present in this part of the geometry, please move it to a separate 'bifId' section");
+    }
+    m_layerSet.insert(slotId);
+  }
+
+  if (m_hasCherenkov) {
+    // make sure we didn't already added the dif in the mapping
+    const auto difIter = m_difMapping.find(m_cerenkovDifId);
+    m_cerenkovLayerId = *(m_layerSet.rbegin()) + 100 ; // Set dummy layerId for the bif to be 100 layers after the end of the prototype, so it doesn't register in the displays
+
+    if (difIter == m_difMapping.end()) {
+      try {
+        const int bifId = jsonFile.at("bifId").get<int>();
+        if (bifId != m_cerenkovDifId){
+          throw std::runtime_error("BifId from geometry file (" + std::to_string(bifId) +
+                                   ") is different than marlin xml parameter (" + std::to_string(m_cerenkovDifId) +
+                                   ")");
+        }
+        difGeom bifGeom{m_cerenkovLayerId, 0, 0, 1}; //
+        insertDifIntoMap(bifId, bifGeom);
+      } catch (std::exception &e) { // TODO: having to declare the bif id in geomFile + config file is dumb af!
+        streamlog_out(WARNING)
+            << "[" << __func__
+            << "] - No bifId (cerenkov dif) found in geometry file, using default parameter from marlin config file : "
+            << m_cerenkovDifId << std::endl;
+        difGeom bifGeom{m_cerenkovLayerId, 0, 0, 1};
+        insertDifIntoMap(m_cerenkovDifId, bifGeom);
+      }
+    }else{ // should never happen now
+      throw std::runtime_error("No reason the bif dummy layer should be present");
+    }
+  }
+
+  streamlog_out(MESSAGE) << yellow << "[" << __func__ << "] - Found " << m_difMapping.size()
+                         << " difs in geometry file corresponding to : "
+                         << static_cast<unsigned int>(m_difMapping.size()) / 3 << " layers + "
+                         << m_difMapping.size() % 3 << " difs" << normal << std::endl;
 }
 
 //=============================================================================
 void TriventProc::printDifGeom() const {
   streamlog_out(DEBUG1) << "[" << __func__ << "] --- Dumping geomtry File: " << std::endl;
-  // for (std::map<int, LayerID>::iterator itt = m_mDifMapping.begin(); itt != m_mDifMapping.end(); ++itt) {
-  for (const auto &itt : m_mDifMapping) {
-    streamlog_out(DEBUG1) << itt.first << "\t" << itt.second.K << "\t" << itt.second.DifX << "\t" << itt.second.DifY
-                          << "\t" << itt.second.IncX << "\t" << itt.second.IncY << std::endl;
+  for (const auto &dif : m_difMapping) {
+    streamlog_out(DEBUG1) << dif.first << "\t" << dif.second.layerId << "\t" << dif.second.shiftY << "\t" << dif.second.shiftX
+                          << "\t" << dif.second.nAsics << std::endl;
   }
 }
 
@@ -245,8 +238,8 @@ std::vector<int> TriventProc::getPadIndex(const int difId, const int asicId, con
 
   std::vector<int> index{
       static_cast<int>(1 + MapILargeHR2.at(chanId) + AsicShiftI.at(asicId)),
-      static_cast<int>(32 - (MapJLargeHR2.at(chanId) + AsicShiftJ.at(asicId)) + findIter->second.DifY),
-      static_cast<int>(findIter->second.K)};
+      static_cast<int>(32 - (MapJLargeHR2.at(chanId) + AsicShiftJ.at(asicId)) + findIter->second.shiftY),
+      static_cast<int>(findIter->second.layerId)};
   std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
 
   // Cerenkov layer is not in the layerSet as it's not a physical layer, needs to account for that when checking the pad
@@ -589,10 +582,6 @@ void TriventProc::initRootTree() {
 
 //=============================================================================
 void TriventProc::init() {
-  m_trigNbr   = 0;
-  m_trigCount = 0;
-  m_evtNum    = 0; // event number
-  // ========================
   printParameters();
 
   // Create writer for lcio output file
@@ -601,25 +590,11 @@ void TriventProc::init() {
   m_lcWriter->open(m_outFileName, LCIO::WRITE_NEW);
 
   // Read and print geometry file
-  try {
-    XMLReader(m_geomXMLFile);
-  } catch (std::string &e) {
-    std::cout << "\n------------------------------------------------------------------------------------------"
-              << std::endl;
-    std::cout << "\t ****** Caught Exception when parsing geometry file: " << e << std::endl;
-    std::cout << "------------------------------------------------------------------------------------------\n"
-              << std::endl;
-    throw;
-  } catch (...) {
-    std::cout << "\n------------------------------------------------------------------------------------------"
-              << std::endl;
-    std::cout << "\t ****** Uncaught Exception when parsing geometry file! " << std::endl;
-    std::cout << "------------------------------------------------------------------------------------------\n"
-              << std::endl;
-    throw;
-  }
-  printDifGeom();
 
+  streamlog_out(DEBUG) << "Reading geometry...\n";
+  readGeometry(m_geomFile);
+  streamlog_out(DEBUG) << "Reading geometry...DONE\n";
+  printDifGeom();
   initRootTree();
 }
 
