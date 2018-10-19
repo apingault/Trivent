@@ -44,8 +44,8 @@ public:
   void init() override;
   void initRootTree();
   void processEvent(LCEvent *evtP) override;
-  void processRunHeader(LCRunHeader * /*runH*/) override{};
   void XMLReader(const std::string &xmlfile);
+  void end() override;
   void printDifGeom() const;
 
   int getCellDif_id(const int cellId) const;
