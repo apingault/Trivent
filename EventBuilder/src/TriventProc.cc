@@ -404,7 +404,12 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
 
       // find and remove square events
       const int asicKey = getAsicKey(padIndex);
-      assert(asicKey > 0);
+
+      if (m_layerStartAt0)
+        assert(asicKey >= 0);
+      else
+        assert(asicKey > 0);
+
       if (asicMap[asicKey] != 0) {
         ++asicMap[asicKey];
       } else {
@@ -563,14 +568,13 @@ void TriventProc::initRootTree() {
   // Check if first layer is numbered 0 or 1
   // Prevent accessing non defined element in vectors...
   const auto firstLayer = std::min_element(m_layerSet.begin(), m_layerSet.end());
-  bool       startAt0   = false;
   if (0 == *firstLayer) {
-    startAt0 = true;
+    m_layerStartAt0 = true;
   }
 
   for (const auto &layerIter : m_layerSet) {
     int iLayer = layerIter - 1;
-    if (startAt0) {
+    if (m_layerStartAt0) {
       iLayer = layerIter;
     }
 
