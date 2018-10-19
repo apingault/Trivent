@@ -395,6 +395,13 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       }
 
       // find and remove square events
+      const std::vector<int> padIndex = getPadIndex(difId, asicId, chanId);
+      if (padIndex.empty()) {
+        streamlog_out(WARNING) << red << "[" << __func__ << "] - Dif '" << difId
+                             << "' not found in geometry file...skipping hit" << normal << std::endl;
+        continue;
+      }
+
       const int asicKey = getAsicKey(padIndex);
 
       if (m_layerStartAt0)
