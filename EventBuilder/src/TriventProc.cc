@@ -340,8 +340,7 @@ void TriventProc::resetEventParameters() {
 }
 
 //=============================================================================
-void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int &timePeak,
-                               const int &lowTimeBoundary, const int &highTimeBoundary) {
+void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int timePeak, const int lowTimeBoundary, const int highTimeBoundary) {
 
   resetEventParameters();
 
@@ -818,11 +817,11 @@ void TriventProc::processEvent(LCEvent *evtP) {
     return;
   }
 
-  for (unsigned int i = 0; i < m_hcalCollections.size(); i++) //! loop over collection
+  for (unsigned int i = 0; i < m_inputCollections.size(); i++)
   {
     LCCollection *inputLCCol;
     try {
-      inputLCCol = evtP->getCollection(m_hcalCollections.at(i));
+      inputLCCol = evtP->getCollection(m_inputCollections.at(i));
     } catch (lcio::DataNotAvailableException &zero) {
       streamlog_out(ERROR) << red << "[" << __func__ << "] - No data found in collection " << i << normal << std::endl;
     }
