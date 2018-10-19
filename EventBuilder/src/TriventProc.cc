@@ -370,28 +370,16 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       assert(rawHit->getTimeStamp() == hitTime);
 
       const int difId = getCellDif_id(rawHit->getCellID0());
-      assert(difId != m_cerenkovDifId);
+      assert(difId != m_cerenkovDifId); // No hit from the bif should be present in this collection
 
-      const int asicId = getCellAsic_id(
-          rawHit->getCellID0()); // Can't be const to correct for cerenkovAsicId bug (in data from 2014>2016)
+      const int asicId = getCellAsic_id(rawHit->getCellID0());
       const int chanId = getCellChan_id(rawHit->getCellID0());
       const int thresh = rawHit->getAmplitude();
       if (asicId < 1 || asicId > 48) {
-        streamlog_out(ERROR) << red << "[" << __func__ << "] - Found a hit with weird AsicId, Dif/Asic/Chan/Thr... "
-                             << difId << "/" << asicId << "/" << chanId << "/" << thresh << " Exiting" << normal
-                             << std::endl;
-        abort();
+        throw std::runtime_error("Found a hit with weird AsicId, Dif/Asic/Chan/Thr... " + std::to_string(difId) + "/" + std::to_string(asicId) + "/" + std::to_string(chanId) + "/" + std::to_string(thresh));
       }
       if (chanId < 0 || chanId > 63) {
-        streamlog_out(ERROR) << red << "[" << __func__ << "] - Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... "
-                             << difId << "/" << asicId << "/" << chanId << "/" << thresh << normal << std::endl;
-        abort();
-      }
-      const std::vector<int> padIndex = getPadIndex(difId, asicId, chanId);
-      if (padIndex.empty()) {
-        streamlog_out(ERROR) << red << "[" << __func__ << "] - Dif '" << difId
-                             << "' not found in geometry file...skipping hit" << normal << std::endl;
-        abort();
+        throw std::runtime_error("Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... " + std::to_string(difId) + "/" + std::to_string(asicId) + "/" + std::to_string(chanId) + "/" + std::to_string(thresh));
       }
 
       // find and remove ramFull events
@@ -493,11 +481,14 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
 
       if (difId != m_cerenkovDifId) { //
         // Fill hitsMap for each Layer, cerenkov not included in m_vHitMapPerLayer
-        // streamlog_out(DEBUG) << yellow << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'..." <<
-        // normal << std::endl;
-        m_vHitMapPerLayer.at(K - 1)->Fill(I, J);
-        // streamlog_out(DEBUG) << blue << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'...OK" <<
-        // normal << std::endl;
+        // streamlog_out(DEBUG) << yellow << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'..." << normal << std::endl;
+        try{
+        m_vHitMapPerLayer.at(K)->Fill(I, J);
+        } catch (const std::exception &e) {
+          streamlog_out(ERROR) << blue << "[" << __func__ << "] - '" << e.what() << std::endl;
+          throw;
+        }
+        // streamlog_out(DEBUG) << blue << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'...OK" << normal << std::endl;
       }
 
       cellIdEncoder.setCellID(caloHit);
@@ -688,9 +679,7 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
 
       const std::vector<int> padIndex = getPadIndex(difId, asicId, chanId);
       if (padIndex.empty()) {
-        streamlog_out(ERROR) << red << "[" << __func__ << "] - Dif '" << difId
-                             << "' not found in geometry file...skipping hit" << normal << std::endl;
-        abort();
+        throw std::runtime_error("Dif '" + std::to_string(difId) + "' not found in geometry file...skipping hit");
       }
 
       auto *caloHit = new CalorimeterHitImpl();
@@ -719,11 +708,9 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
       } else if (hitThreshold == 1) {
         m_nCerenkov1 += 1;
       } else {
-        streamlog_out(ERROR) << red << "[" << __func__ << "] - Found Cerenkov hit with weird threshold : '"
-                             << hitThreshold << "'..." << normal << std::endl;
         delete caloHit;
         caloHit = nullptr;
-        abort();
+        throw std::runtime_error("Found Cerenkov hit with weird threshold : '" + std::to_string(hitThreshold) + "'...");
       }
       cellIdEncoder.setCellID(caloHit);
       cerCol->addElement(caloHit);
@@ -942,7 +929,11 @@ void TriventProc::processEvent(LCEvent *evtP) {
       std::unique_ptr<LCCollectionVec> outCol = std::make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
 
       // Event Building
-      TriventProc::eventBuilder(outCol, timePeak, lowBound, highBound);
+      streamlog_out(DEBUG0) << blue << "[" << __func__ << "] - EventBuilding..." << normal << std::endl;
+      try{
+        TriventProc::eventBuilder(outCol, timePeak, lowBound, highBound);
+      } catch (const std::exception &e) {throw;}
+
       streamlog_out(DEBUG0) << blue << "[" << __func__ << "] - EventBuilding...OK" << normal << std::endl;
 
       m_evtTrigNbr = m_trigNbr;
