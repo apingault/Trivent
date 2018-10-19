@@ -41,9 +41,7 @@ TriventProc myTriventProc;
 using json = nlohmann::json;
 
 //=========================================================
-TriventProc::TriventProc()
-    : Processor("TriventProc")
-{
+TriventProc::TriventProc() : Processor("TriventProc") {
   // collection
   registerInputCollections(LCIO::RAWCALORIMETERHIT, "InputCollectionNames", "HCAL Collection Names", m_inputCollections,
                            m_inputCollections);
@@ -112,9 +110,8 @@ TriventProc::TriventProc()
 void TriventProc::insertDifIntoMap(int difId, difGeom &dif) {
   auto it = m_difMapping.insert({difId, dif});
   if (!it.second) {
-    // std::cout << "ERROR in geometry : dif " << difId << " of layer " << dif.layerId << " already exists" << std::endl;
-    throw std::runtime_error("ERROR in geometry : dif " + std::to_string(difId) + " of layer " + std::to_string(dif.layerId) +
-                             " already exists");
+    throw std::runtime_error("ERROR in geometry : dif " + std::to_string(difId) + " of layer " +
+                             std::to_string(dif.layerId) + " already exists");
   }
 }
 
@@ -127,8 +124,8 @@ void TriventProc::readGeometry(const std::string &geomFile) {
 
   for (const auto &layer : layerList) {
     const int slotId = layer.at("slot");
-    int difId  = layer.at("left");
-    difGeom temp{slotId, 0};
+    int       difId  = layer.at("left");
+    difGeom   temp{slotId, 0};
     insertDifIntoMap(difId, temp);
 
     difId       = layer.at("center");
@@ -142,8 +139,9 @@ void TriventProc::readGeometry(const std::string &geomFile) {
     streamlog_out(DEBUG) << "inserting layer " << slotId << std::endl;
 
     // Make sure dummy layer for the bif is not in the list of layer (some geometry files implement this...)
-    if (m_hasCherenkov && difId == m_cerenkovDifId){
-      throw std::runtime_error("Bif should not be present in this part of the geometry, please move it to a separate 'bifId' section");
+    if (m_hasCherenkov && difId == m_cerenkovDifId) {
+      throw std::runtime_error(
+          "Bif should not be present in this part of the geometry, please move it to a separate 'bifId' section");
     }
     m_layerSet.insert(slotId);
   }
@@ -151,12 +149,13 @@ void TriventProc::readGeometry(const std::string &geomFile) {
   if (m_hasCherenkov) {
     // make sure we didn't already added the dif in the mapping
     const auto difIter = m_difMapping.find(m_cerenkovDifId);
-    m_cerenkovLayerId = *(m_layerSet.rbegin()) + 100 ; // Set dummy layerId for the bif to be 100 layers after the end of the prototype, so it doesn't register in the displays
+    m_cerenkovLayerId = *(m_layerSet.rbegin()) + 100; // Set dummy layerId for the bif to be 100 layers after the end of
+                                                      // the prototype, so it doesn't register in the displays
 
     if (difIter == m_difMapping.end()) {
       try {
         const int bifId = jsonFile.at("bifId").get<int>();
-        if (bifId != m_cerenkovDifId){
+        if (bifId != m_cerenkovDifId) {
           throw std::runtime_error("BifId from geometry file (" + std::to_string(bifId) +
                                    ") is different than marlin xml parameter (" + std::to_string(m_cerenkovDifId) +
                                    ")");
@@ -171,7 +170,7 @@ void TriventProc::readGeometry(const std::string &geomFile) {
         difGeom bifGeom{m_cerenkovLayerId, 0, 0, 1};
         insertDifIntoMap(m_cerenkovDifId, bifGeom);
       }
-    }else{ // should never happen now
+    } else { // should never happen now
       throw std::runtime_error("No reason the bif dummy layer should be present");
     }
   }
@@ -186,8 +185,8 @@ void TriventProc::readGeometry(const std::string &geomFile) {
 void TriventProc::printDifGeom() const {
   streamlog_out(DEBUG1) << "[" << __func__ << "] --- Dumping geomtry File: " << std::endl;
   for (const auto &dif : m_difMapping) {
-    streamlog_out(DEBUG1) << dif.first << "\t" << dif.second.layerId << "\t" << dif.second.shiftY << "\t" << dif.second.shiftX
-                          << "\t" << dif.second.nAsics << std::endl;
+    streamlog_out(DEBUG1) << dif.first << "\t" << dif.second.layerId << "\t" << dif.second.shiftY << "\t"
+                          << dif.second.shiftX << "\t" << dif.second.nAsics << std::endl;
   }
 }
 
@@ -330,7 +329,8 @@ void TriventProc::resetEventParameters() {
 }
 
 //=============================================================================
-void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int timePeak, const int lowTimeBoundary, const int highTimeBoundary) {
+void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int timePeak,
+                               const int lowTimeBoundary, const int highTimeBoundary) {
 
   resetEventParameters();
 
@@ -361,10 +361,13 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       const int chanId = getCellChan_id(rawHit->getCellID0());
       const int thresh = rawHit->getAmplitude();
       if (asicId < 1 || asicId > 48) {
-        throw std::runtime_error("Found a hit with weird AsicId, Dif/Asic/Chan/Thr... " + std::to_string(difId) + "/" + std::to_string(asicId) + "/" + std::to_string(chanId) + "/" + std::to_string(thresh));
+        throw std::runtime_error("Found a hit with weird AsicId, Dif/Asic/Chan/Thr... " + std::to_string(difId) + "/" +
+                                 std::to_string(asicId) + "/" + std::to_string(chanId) + "/" + std::to_string(thresh));
       }
       if (chanId < 0 || chanId > 63) {
-        throw std::runtime_error("Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... " + std::to_string(difId) + "/" + std::to_string(asicId) + "/" + std::to_string(chanId) + "/" + std::to_string(thresh));
+        throw std::runtime_error("Found a hit with weird ChannelId, Dif/Asic/Chan/Thr... " + std::to_string(difId) +
+                                 "/" + std::to_string(asicId) + "/" + std::to_string(chanId) + "/" +
+                                 std::to_string(thresh));
       }
 
       // find and remove ramFull events
@@ -391,7 +394,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       const std::vector<int> padIndex = getPadIndex(difId, asicId, chanId);
       if (padIndex.empty()) {
         streamlog_out(WARNING) << red << "[" << __func__ << "] - Dif '" << difId
-                             << "' not found in geometry file...skipping hit" << normal << std::endl;
+                               << "' not found in geometry file...skipping hit" << normal << std::endl;
         continue;
       }
 
@@ -444,9 +447,9 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       // Avoid two hit in the same cell
       std::map<int, int>::const_iterator findIter = hitKeys.find(aHitKey);
       if (findIter != hitKeys.end()) {
-          delete caloHit;
-          caloHit = nullptr;
-          continue;
+        delete caloHit;
+        caloHit = nullptr;
+        continue;
       }
 
       const int I = padIndex[0];
@@ -470,14 +473,16 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
 
       if (difId != m_cerenkovDifId) { //
         // Fill hitsMap for each Layer, cerenkov not included in m_vHitMapPerLayer
-        // streamlog_out(DEBUG) << yellow << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'..." << normal << std::endl;
-        try{
-        m_vHitMapPerLayer.at(K)->Fill(I, J);
+        // streamlog_out(DEBUG) << yellow << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'..." <<
+        // normal << std::endl;
+        try {
+          m_vHitMapPerLayer.at(K)->Fill(I, J);
         } catch (const std::exception &e) {
           streamlog_out(ERROR) << blue << "[" << __func__ << "] - '" << e.what() << std::endl;
           throw;
         }
-        // streamlog_out(DEBUG) << blue << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'...OK" << normal << std::endl;
+        // streamlog_out(DEBUG) << blue << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'...OK" <<
+        // normal << std::endl;
       }
 
       cellIdEncoder.setCellID(caloHit);
@@ -490,7 +495,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       m_hitI.push_back(I);
       m_hitJ.push_back(J);
       m_hitK.push_back(K);
-      // m_hitBCID.push_back((*rawhit)->getTimeStamp());
+      m_hitBCID.push_back(rawHit->getTimeStamp());
       m_hitThreshold.push_back(thresh);
     }
   }
@@ -613,7 +618,8 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
 
   CellIDEncoder<CalorimeterHitImpl> cellIdEncoder(m_cellIdFormat, cerCol.get());
 
-  for (int hitTime = timePeak - m_cerenkovTimeWindow; hitTime <= timePeak + m_cerenkovTimeWindow; ++hitTime) {
+  // for (int hitTime = timePeak - m_cerenkovTimeWindow; hitTime <= timePeak + m_cerenkovTimeWindow; ++hitTime) {
+  for (int hitTime = timePeak - m_cerenkovTimeWindow; hitTime <= timePeak; ++hitTime) {
 
     // No hit recorded at hitTime
     if (m_cerenkovRawHitMap.find(hitTime) == m_cerenkovRawHitMap.end()) {
@@ -656,9 +662,9 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
       auto *caloHit = new CalorimeterHitImpl();
       caloHit->setTime(static_cast<float>(cerHit->getTimeStamp()));
 
-      cellIdEncoder["I"]       = padIndex[0];
-      cellIdEncoder["J"]       = padIndex[1];
-      cellIdEncoder["K-1"]     = 0; // No layerId needed for the bif
+      cellIdEncoder["I"]   = padIndex[0];
+      cellIdEncoder["J"]   = padIndex[1];
+      cellIdEncoder["K-1"] = 0; // No layerId needed for the bif
 
       if (m_cellIdFormat == std::string("M:3,S-1:3,I:9,J:9,K-1:6")) {
         cellIdEncoder["M"]   = 0;
@@ -797,8 +803,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
     return;
   }
 
-  for (unsigned int i = 0; i < m_inputCollections.size(); i++)
-  {
+  for (unsigned int i = 0; i < m_inputCollections.size(); i++) {
     LCCollection *inputLCCol;
     try {
       inputLCCol = evtP->getCollection(m_inputCollections.at(i));
@@ -901,9 +906,11 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
       // Event Building
       streamlog_out(DEBUG0) << blue << "[" << __func__ << "] - EventBuilding..." << normal << std::endl;
-      try{
+      try {
         TriventProc::eventBuilder(outCol, timePeak, lowBound, highBound);
-      } catch (const std::exception &e) {throw;}
+      } catch (const std::exception &e) {
+        throw;
+      }
 
       streamlog_out(DEBUG0) << blue << "[" << __func__ << "] - EventBuilding...OK" << normal << std::endl;
 

@@ -229,7 +229,7 @@ Verb = "MESSAGE"
 glob = xmlOptionSection('global')
 # glob.Verbosity = "DEBUG0"
 glob.Verbosity = Verb
-glob.MaxRecordNumber = 1000  # Max Number of event to process
+glob.MaxRecordNumber = 0  # Max Number of event to process
 glob.SkipNEvents = 0  # Number of event to skip
 glob.LCIOInputFiles = []
 

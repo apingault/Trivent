@@ -1,12 +1,14 @@
 #!/usr/bin/env python2
 #
-import os, sys
+import os
+import sys
 from subprocess import call
 import yaml
 
+
 class Marlin(object):
     def __init__(self):
-        
+
         self.xmlConfig = None
         self.libraries = None
         self.ilcSoftInitScript = None
@@ -15,7 +17,7 @@ class Marlin(object):
         self.outputPath = None
         self.outputFiles = []
         self.cliOptions = {}
-    
+
     def setXMLConfig(self, xmlFile):
         ''' Set xml config file
         '''
@@ -36,7 +38,7 @@ class Marlin(object):
         ''' Set One option to be superseded in xml
         '''
         self.cliOptions[option] = value
-        
+
     def setILCSoftScript(self, script):
         ''' Set init_ilcsoft.sh script to source for proper software linking
         '''
@@ -46,7 +48,7 @@ class Marlin(object):
         ''' Set upload script to grid
         '''
         self.uploadScript = script
-        
+
     def setDownloadScript(self, script):
         ''' Set Download script to grid
         '''
@@ -85,11 +87,11 @@ class Marlin(object):
             marlinSection['downloadScript'] = self.downloadScript
             marlinSection['outputPath'] = self.outputPath
             marlinSection['outputFiles'] = self.outputFiles
-            
+
             if self.cliOptions is not None:
                 cliOptionSubSection = {}
                 marlinSection['cliOptions'] = cliOptionSubSection
-                
+
                 for key, value in self.cliOptions.items():
                     cliOptionSubSection[key] = value
 
@@ -103,15 +105,15 @@ class Marlin(object):
             with open(cfgFile, "r") as ymlFile:
                 cfg = yaml.load(ymlFile)
         except IOError:
-            sys.exit("[run_marlin.py] --- ERROR: Config file '{0}' not found....exiting".format(cfgFile))            
-        
+            sys.exit("[run_marlin.py] --- ERROR: Config file '{0}' not found....exiting".format(cfgFile))
+
         try:
             marlinSection = cfg['Marlin']
-            self.xmlConfig = marlinSection['xmlConfig'] 
-            self.libraries = marlinSection['libraries'] 
-            self.ilcSoftInitScript = marlinSection['ilcSoftInitScript']      
-            self.uploadScript = marlinSection['uploadScript']      
-            self.downloadScript = marlinSection['downloadScript']   
+            self.xmlConfig = marlinSection['xmlConfig']
+            self.libraries = marlinSection['libraries']
+            self.ilcSoftInitScript = marlinSection['ilcSoftInitScript']
+            self.uploadScript = marlinSection['uploadScript']
+            self.downloadScript = marlinSection['downloadScript']
             self.outputPath = marlinSection['outputPath']
             self.outputFiles = marlinSection['outputFiles']
             self.setCliOptions(marlinSection['cliOptions'].items())
@@ -127,20 +129,19 @@ class Marlin(object):
             if v is None:
                 missingConfig.append(k)
             if missingConfig:
-               sys.exit("[run_marlin.py] --- ERROR: Some configuration are missing from '{0}'' : {1} ... exiting".format(cfgFile,missingConfig))
-
+                sys.exit("[run_marlin.py] --- ERROR: Some configuration are missing from '{0}'' : {1} ... exiting".format(cfgFile, missingConfig))
 
     def run(self, cfgFile):
         self.checkConfig(cfgFile)
         # source ilcsoft for proper environment
-        cmd = "source {0}; ".format(self.ilcSoftInitScript)        
+        cmd = "source {0}; ".format(self.ilcSoftInitScript)
         cmd += "Marlin "
-        
+
         # add eventual replacement options to configFile
         # print self.cliOptions
         if self.cliOptions:
             for key, value in self.cliOptions.items():
-                cmd += '--{0}="{1}" '.format(key, value)        
+                cmd += '--{0}="{1}" '.format(key, value)
 
         # Add configuration file
         cmd += self.xmlConfig
@@ -152,5 +153,3 @@ class Marlin(object):
             cmd = "source {} {} ./ {}".format(self.uploadScript, f, self.outputPath)
             print "[marlin.py] --- uploading {} to {} with cmd '{}'".format(f, self.outputPath, cmd)
             call(cmd, env=dict(os.environ), shell=True)
-        
-
