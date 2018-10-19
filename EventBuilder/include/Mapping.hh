@@ -6,14 +6,11 @@
 
 // define the difgeom types
 
-using uint = unsigned int;
-
-struct LayerID {
-  uint   K;
-  int    DifX;
-  int    DifY;
-  double IncX;
-  double IncY;
+struct difGeom {
+  int    layerId;
+  int    shiftY;
+  int    shiftX{0};
+  int    nAsics{48};
 };
 
 //=====================================

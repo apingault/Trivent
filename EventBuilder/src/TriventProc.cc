@@ -38,21 +38,11 @@ TriventProc myTriventProc;
 
 //=========================================================
 TriventProc::TriventProc()
-    : Processor("TriventProc"),
-      m_outputCollectionName("SDHCAL_HIT"),
-      m_outFileName("TDHCAL.slcio"),
-      m_noiseFileName("noise_run.slcio"),
-      m_rootFileName("TDHCAL.root"),
-      m_treeName("EventTree"),
-      m_treeDescription("Event variables"),
-      m_geomXMLFile("setup_geometry"),
-      m_cerenkovCollectionName("CERENKOV_HIT"),
-      m_plotFolder("./") {
+    : Processor("TriventProc")
+{
   // collection
-  std::vector<std::string> hcalCollections;
-  hcalCollections.emplace_back("DHCALRawHits");
-  registerInputCollections(LCIO::RAWCALORIMETERHIT, "InputCollectionNames", "HCAL Collection Names", m_hcalCollections,
-                           hcalCollections);
+  registerInputCollections(LCIO::RAWCALORIMETERHIT, "InputCollectionNames", "HCAL Collection Names", m_inputCollections,
+                           m_inputCollections);
 
   registerOutputCollection(LCIO::CALORIMETERHIT, "OutputCollectionName", "HCAL Collection Name", m_outputCollectionName,
                            m_outputCollectionName);
@@ -89,7 +79,7 @@ TriventProc::TriventProc()
   registerProcessorParameter("TreeName", "Logroot tree name", m_treeName, m_treeName);
 
   // Root Tree
-  registerProcessorParameter("TreeDescription", "Logroot tree name", m_treeName, m_treeName);
+  registerProcessorParameter("TreeDescription", "Logroot tree description", m_treeDescription, m_treeDescription);
 
   // histogram control tree
   registerProcessorParameter("ROOTOutputFile", "Logroot name", m_rootFileName, m_rootFileName);
@@ -206,15 +196,15 @@ void TriventProc::printDifGeom() const {
 // ============ decode the cell ids =============
 // bit shift & 0xFF = Apply mask 1111 1111 to binary value
 // eg: Dif 1 => cellID0 = 00983297 => DifID = 1 / AsicID = 1 / ChanID = 15
-int TriventProc::getCellDif_id(const int &cellId) const { return cellId & 0xFF; }
+int TriventProc::getCellDif_id(const int cellId) const { return cellId & 0xFF; }
 
 //=============================================================================
 //  bit shift & 0xFF00 Apply mask 1111 1111 0000 0000 then cut last 8 bits
-int TriventProc::getCellAsic_id(const int &cellId) const { return (cellId & 0xFF00) >> 8; }
+int TriventProc::getCellAsic_id(const int cellId) const { return (cellId & 0xFF00) >> 8; }
 
 //=============================================================================
 //  bit shift & 0x3F0000 Apply mask 1111 0000 0000 0000 0000 then cut last 16 bits
-int TriventProc::getCellChan_id(const int &cellId) const { return (cellId & 0x3F0000) >> 16; }
+int TriventProc::getCellChan_id(const int cellId) const { return (cellId & 0x3F0000) >> 16; }
 
 // ============ ============ ============ ============ ============ ============ ============
 // ============ ============ ============ ============ ============ ============ ============
@@ -230,13 +220,6 @@ int TriventProc::getCellChan_id(const int &cellId) const { return (cellId & 0x3F
 
 bool TriventProc::checkPadLimits(const std::vector<int> &padIndex, const std::vector<int> &padLimits) const {
   assert(padLimits.size() == padIndex.size() * 2);
-  // std::cout << "pads: ";
-  // for (const auto &pad : padIndex)
-  //   std::cout << " " << pad;
-  // std::cout << "\nlims: ";
-  // for (const auto &pad : padLimits)
-  //   std::cout << " " << pad;
-  // std::cout << std::endl;
   for (int i = 0; i < static_cast<int>(padIndex.size()); ++i) {
     if (padIndex[i] < padLimits[i * 2] || padIndex[i] > padLimits[i * 2 + 1]) {
       return false;
@@ -246,10 +229,11 @@ bool TriventProc::checkPadLimits(const std::vector<int> &padIndex, const std::ve
 }
 
 //=============================================================================
-std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, const int &chanId) const {
-  const auto findIter = m_mDifMapping.find(difId);
+std::vector<int> TriventProc::getPadIndex(const int difId, const int asicId, const int chanId) const {
 
-  if (findIter == m_mDifMapping.end()) {
+  const auto findIter = m_difMapping.find(difId);
+
+  if (findIter == m_difMapping.end()) {
     streamlog_out(ERROR) << "[" << __func__ << "] - difId '" << difId << "' not found in geometry file" << std::endl;
     return {}; // empty
   }
@@ -259,6 +243,7 @@ std::vector<int> TriventProc::getPadIndex(const int &difId, const int &asicId, c
       static_cast<int>(32 - (MapJLargeHR2.at(chanId) + AsicShiftJ.at(asicId)) + findIter->second.DifY),
       static_cast<int>(findIter->second.K)};
   std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
+
   // Cerenkov layer is not in the layerSet as it's not a physical layer, needs to account for that when checking the pad
   // limits
   //
@@ -283,7 +268,7 @@ int TriventProc::getMaxTime() const {
 }
 
 //=============================================================================
-std::vector<int> TriventProc::getTimeSpectrum(const int &maxTime) const {
+std::vector<int> TriventProc::getTimeSpectrum(const int maxTime) const {
   std::vector<int> timeSpectrumVec(maxTime + 1, 0);
   for (const auto &mapIt : m_triggerRawHitMap) {
     int time = mapIt.first;
@@ -365,9 +350,9 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
 
   CellIDEncoder<CalorimeterHitImpl> cellIdEncoder("M:3,S-1:3,I:9,J:9,K-1:6", evtCol.get());
 
-  std::map<int, int> asicMap;
-  std::map<int, int> ramFullMap;
-  std::map<int, int> hitKeys;
+  std::map<int, int> asicMap{};
+  std::map<int, int> ramFullMap{};
+  std::map<int, int> hitKeys{};
 
   for (int hitTime = lowTimeBoundary; hitTime <= highTimeBoundary; ++hitTime) {
 
