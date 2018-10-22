@@ -389,10 +389,10 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
         streamlog_out(DEBUG1) << yellow << "[" << __func__ << "] - Rejecting event with ram full. Dif : " << difId
                               << normal << std::endl;
 
+        ++m_rejectedNum;
         m_isSelected = false;
         m_hasRamFull = true;
         if (!m_keepRejected) {
-          m_firedLayersSet.clear();
           hitKeys.clear();
           asicMap.clear();
           ramFullMap.clear();
@@ -423,15 +423,24 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
         streamlog_out(DEBUG1) << yellow << "[" << __func__ << "] - Rejecting event with full asic. Dif '" << difId
                               << "' asic '" << asicId << "' at time '" << timePeak << "'" << normal << std::endl;
 
+        ++m_rejectedNum;
         m_isSelected  = false;
         m_hasFullAsic = true;
         if (!m_keepRejected) {
-          m_firedLayersSet.clear();
           hitKeys.clear();
           asicMap.clear();
           ramFullMap.clear();
           return;
         }
+      }
+
+      // Create hit Key
+      const int aHitKey = IJKToKey(padIndex);
+
+      // Avoid two hit in the same cell
+      std::map<int, int>::const_iterator findIter = hitKeys.find(aHitKey);
+      if (findIter != hitKeys.end()) {
+        continue;
       }
 
       // Creating Calorimeter Hit
@@ -447,17 +456,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
         caloHit->setEnergy(hitShiftedAmplitude - 1); // 2nd threshold ?
       } else {
         caloHit->setEnergy(hitShiftedAmplitude + 1); // 1st threshold ?
-      }
-
-      // Create hit Key
-      const int aHitKey = IJKToKey(padIndex);
-
-      // Avoid two hit in the same cell
-      std::map<int, int>::const_iterator findIter = hitKeys.find(aHitKey);
-      if (findIter != hitKeys.end()) {
-        delete caloHit;
-        caloHit = nullptr;
-        continue;
       }
 
       const int I = padIndex[0];
@@ -477,20 +475,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
         cellIdEncoder["Chan_id"] = chanId;
       } else {
         throw std::runtime_error(m_cellIdFormat + " is not a valid encoding format...");
-      }
-
-      if (difId != m_cerenkovDifId) { //
-        // Fill hitsMap for each Layer, cerenkov not included in m_vHitMapPerLayer
-        // streamlog_out(DEBUG) << yellow << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'..." <<
-        // normal << std::endl;
-        try {
-          m_vHitMapPerLayer.at(K)->Fill(I, J);
-        } catch (const std::exception &e) {
-          streamlog_out(ERROR) << blue << "[" << __func__ << "] - '" << e.what() << std::endl;
-          throw;
-        }
-        // streamlog_out(DEBUG) << blue << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'...OK" <<
-        // normal << std::endl;
       }
 
       cellIdEncoder.setCellID(caloHit);
@@ -921,6 +905,29 @@ void TriventProc::processEvent(LCEvent *evtP) {
       }
 
       streamlog_out(DEBUG0) << blue << "[" << __func__ << "] - EventBuilding...OK" << normal << std::endl;
+      // Do not store rejected event...
+      if (!m_isSelected && !m_keepRejected) {
+        resetEventParameters();
+        timeIter = std::next(timeIter, m_timeWin + 1);
+        streamlog_out(DEBUG0) << green << "[" << __func__ << "] - Trivent rejected event at :==> " << red << timePeak
+                              << green << "\t :Nhit: ==> " << magenta << outCol->getNumberOfElements() << normal
+                              << std::endl;
+        continue;
+      }
+
+      // Fill hitsMap for each Layer, cerenkov not included in m_vHitMapPerLayer
+      // streamlog_out(DEBUG) << yellow << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'..." <<
+      // normal << std::endl;
+      for (unsigned int iHit = 0; iHit < m_hitI.size(); ++iHit) {
+        try {
+          m_vHitMapPerLayer.at(m_hitK.at(iHit))->Fill(m_hitI.at(iHit), m_hitJ.at(iHit));
+        } catch (const std::exception &e) {
+          streamlog_out(ERROR) << blue << "[" << __func__ << "] - '" << e.what() << std::endl;
+          throw;
+        }
+      }
+      // streamlog_out(DEBUG) << blue << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'...OK" <<
+      // normal << std::endl;
 
       m_evtTrigNbr = m_trigNbr;
       m_evtNbr     = m_evtNum; // dont increment here: rejected event will have same number as last accepted !
@@ -947,14 +954,11 @@ void TriventProc::processEvent(LCEvent *evtP) {
         streamlog_out(DEBUG0) << green << "[" << __func__
                               << "] - Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
                               << " m_layerCut: " << m_layerCut << normal << std::endl;
-        ++m_rejectedNum;
-        m_isSelected         = false;
-        m_hasNotEnoughLayers = true;
-        if (!m_keepRejected) {
-          m_firedLayersSet.clear();
-          timeIter = std::next(timeIter, m_timeWin + 1);
-          continue;
+        if (m_isSelected) { // only increment if event was not previsously tagged as rejected in evBuilder
+          ++m_rejectedNum;
+          m_isSelected = false;
         }
+        m_hasNotEnoughLayers = true;
       }
 
       //  Apply cut on time between two events
