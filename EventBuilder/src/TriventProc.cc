@@ -754,7 +754,7 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
 
   streamlog_out(DEBUG2) << blue << "[" << __func__ << "] - Trigger '" << m_trigNbr << "' Found "
                         << m_cerenkovRawHitMap.size() << " raw hits in BIF!" << normal << std::endl;
-  if (m_cerenkovRawHitMap.empty()) {
+  if (!m_cerenkovRawHitMap.empty()) {
     streamlog_out(DEBUG1) << blue << "\t at time : " << normal << std::endl;
     for (const auto &mapIt : m_cerenkovRawHitMap) {
       streamlog_out(DEBUG1) << blue << " \t '" << mapIt.first << " Cerenkov --> '" << mapIt.second[0] << normal
