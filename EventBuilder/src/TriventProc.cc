@@ -146,6 +146,11 @@ void TriventProc::readGeometry(const std::string &geomFile) {
     m_layerSet.insert(slotId);
   }
 
+  const auto difsToSkipList = jsonFile.at("difsToSkip");
+  for (const auto &difItem : difsToSkipList) {
+    m_difsToSkip.emplace_back(difItem);
+  }
+
   if (m_hasCherenkov) {
     // make sure we didn't already added the dif in the mapping
     const auto difIter = m_difMapping.find(m_cerenkovDifId);
@@ -231,7 +236,12 @@ std::vector<int> TriventProc::getPadIndex(const int difId, const int asicId, con
   const auto findIter = m_difMapping.find(difId);
 
   if (findIter == m_difMapping.end()) {
-    streamlog_out(ERROR) << "[" << __func__ << "] - difId '" << difId << "' not found in geometry file" << std::endl;
+    const auto findSkipIter = std::find(m_difsToSkip.begin(), m_difsToSkip.end(), difId);
+    if (findSkipIter == m_difsToSkip.end()) {
+      streamlog_out(ERROR) << "[" << __func__ << "] - difId '" << difId << "' not found in geometry file" << std::endl;
+    } else
+      streamlog_out(DEBUG) << "[" << __func__ << "] - difId '" << difId << "' is set to be skipped in geometry file"
+                           << std::endl;
     return {}; // empty
   }
 

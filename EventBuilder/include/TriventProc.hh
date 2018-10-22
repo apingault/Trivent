@@ -117,6 +117,7 @@ private:
   std::vector<std::string> m_inputCollections{"DHCALRawHits"};
   float                    m_beamEnergy{0.};
   std::map<int, difGeom>   m_difMapping{}; ///< map of <difId/difGeom>
+  std::vector<int>         m_difsToSkip{};
 
   // Cut parameters
   int m_elecNoiseCut{5000};
