@@ -154,8 +154,8 @@ void TriventProc::readGeometry(const std::string &geomFile) {
   if (m_hasCherenkov) {
     // make sure we didn't already added the dif in the mapping
     const auto difIter = m_difMapping.find(m_cerenkovDifId);
-    m_cerenkovLayerId = *(m_layerSet.rbegin()) + 100; // Set dummy layerId for the bif to be 100 layers after the end of
-                                                      // the prototype, so it doesn't register in the displays
+    m_cerenkovLayerId  = *(m_layerSet.rbegin()) + 100; // Set dummy layerId for the bif to be 100 layers after the end
+                                                       // of the prototype, so it doesn't register in the displays
 
     if (difIter == m_difMapping.end()) {
       try {
@@ -168,10 +168,10 @@ void TriventProc::readGeometry(const std::string &geomFile) {
         difGeom bifGeom{m_cerenkovLayerId, 0, 0, 1}; //
         insertDifIntoMap(bifId, bifGeom);
       } catch (std::exception &e) { // TODO: having to declare the bif id in geomFile + config file is dumb af!
-        streamlog_out(WARNING)
-            << "[" << __func__
-            << "] - No bifId (cerenkov dif) found in geometry file, using default parameter from marlin config file : "
-            << m_cerenkovDifId << std::endl;
+        streamlog_out(WARNING) << "[" << __func__
+                               << "] - No bifId (cerenkov dif) found in geometry file, using default parameter from "
+                                  "marlin config file : "
+                               << m_cerenkovDifId << std::endl;
         difGeom bifGeom{m_cerenkovLayerId, 0, 0, 1};
         insertDifIntoMap(m_cerenkovDifId, bifGeom);
       }
@@ -403,8 +403,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       // find and remove square events
       const std::vector<int> padIndex = getPadIndex(difId, asicId, chanId);
       if (padIndex.empty()) {
-        streamlog_out(WARNING) << red << "[" << __func__ << "] - Dif '" << difId
-                               << "' not found in geometry file...skipping hit" << normal << std::endl;
         continue;
       }
 

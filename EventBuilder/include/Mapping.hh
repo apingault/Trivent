@@ -7,10 +7,10 @@
 // define the difgeom types
 
 struct difGeom {
-  int    layerId;
-  int    shiftY;
-  int    shiftX{0};
-  int    nAsics{48};
+  int layerId;
+  int shiftY;
+  int shiftX{0};
+  int nAsics{48};
 };
 
 //=====================================
