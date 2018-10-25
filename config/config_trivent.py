@@ -142,8 +142,8 @@ elif runOnLxplus is True:
     ilcSoftVersion = gridIlcSoftVersion
 
 initILCSoftScript = ilcSoftPath + ilcSoftVersion + "/init_ilcsoft.sh"
-marlinCfgFile = "marlinCfg_{}.yml"  # .format(runNumber) cfgFile name written by script to properly run marlin with all variables set
-marlinCfgPath = processorPath
+marlinCfgFileName = "marlinCfg_{}.yml"  # .format(runNumber) cfgFile name written by script to properly run marlin with all variables set
+marlinCfgFile = processorPath + 'config/marlinCfg/' + marlinCfgFileName  # Where to put the configFiles
 
 # All data are assumed to be in a perPeriod subfolder
 if 'Laurent' in processorType:
@@ -161,7 +161,7 @@ geomPath = '{}/DifGeom/'.format(processorPath)
 logFile = '{}/triventLog_{}'  # .format(logPath, runNumber)
 # inputFile = 'DHCAL_{}_SO_Antoine.slcio'  # .format(runNumber)
 inputFile = 'DHCAL_{}_I0_0.slcio'  # .format(runNumber)
-xmlFile = 'TriventProcessor.xml'
+xmlFile = 'config/TriventProcessor.xml'
 libExt = 'so'
 if sys.platform == 'darwin':
     libExt = 'dylib'

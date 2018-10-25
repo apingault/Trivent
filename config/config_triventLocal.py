@@ -116,12 +116,12 @@ gridProcessorPath = eos_home + "Software/Trivent/"
 ####################
 # Global variables
 ####################
-logToFile = False
+logToFile = True
 ilcSoftVersion = "v01-19-05"
-gridIlcSoftVersion = 'v01-19-05'
+gridIlcSoftVersion = 'current/CI_gcc'
 ilcSoftPath = '/opt/ilcsoft/'
-gridIlcSoftPath = '/cvmfs/ilc.desy.de/sw/x86_64_gcc49_sl6/'
-processorType = 'Trivent Laurent'
+gridIlcSoftPath = '/cvmfs/clicdp.cern.ch/iLCSoft/builds/'
+processorType = 'Trivent Ecal'
 # processorType = 'Trivent'
 
 # General Path to find/store data: the following assumes that all data is in a subfolder of dataPath
@@ -140,26 +140,30 @@ elif runOnLxplus is True:
     ilcSoftVersion = gridIlcSoftVersion
 
 initILCSoftScript = ilcSoftPath + ilcSoftVersion + "/init_ilcsoft.sh"
-marlinCfgFile = "marlinCfg_{}.yml"  # .format(runNumber) cfgFile name written by script to properly run marlin with all variables set
-marlinCfgPath = processorPath
-
-# All data are assumed to be in a perPeriod subfolder
-if 'Laurent' in processorType:
-    inputPath = '{}/Raw/'.format(dataPath)
-    outputFile = 'TDHCAL_Laurent_{}'  # extension slcio/root added in xml # .format(runNumber)
-else:
-    inputPath = '{}/Streamout/'.format(dataPath)
-    outputFile = 'TDHCAL_Antoine_{}POS'  # extension slcio/root added in xml # .format(runNumber)
+marlinCfgFileName = "marlinCfg_{}.yml"  # .format(runNumber) cfgFile name written by script to properly run marlin with all variables set
+marlinCfgFile = processorPath + 'config/marlinCfg/' + marlinCfgFileName  # Where to put the configFiles
 
 outputPath = '{}/Trivent/'.format(dataPath)
 plotPath = '{}/Plots/'.format(dataPath)
 logPath = '{}/Logs/'.format(dataPath)
 geomPath = '{}/DifGeom/'.format(processorPath)
 
+# All data are assumed to be in a perPeriod subfolder
+if 'Laurent' in processorType:
+    inputPath = '{}/Raw/'.format(dataPath)
+    outputFile = 'TDHCAL_Laurent_{}'  # extension slcio/root added in xml # .format(runNumber)
+elif 'Ecal' in processorType:
+    inputPath = '{}/Raw/'.format(dataPath)
+    outputFile = 'TDHCAL_Ecal_{}'  # extension slcio/root added in xml # .format(runNumber)
+    outputPath = '{}/Ecal/'.format(dataPath)
+else:
+    inputPath = '{}/Streamout/'.format(dataPath)
+    outputFile = 'TDHCAL_{}'  # extension slcio/root added in xml # .format(runNumber)
+
 logFile = '{}/triventLog_{}'  # .format(logPath, runNumber)
 # inputFile = 'DHCAL_{}_SO_Antoine.slcio'  # .format(runNumber)
 inputFile = 'DHCAL_{}_I0_0.slcio'  # .format(runNumber)
-xmlFile = 'TriventProcessor.xml'
+xmlFile = 'config/TriventProcessor.xml'
 libExt = 'so'
 if sys.platform == 'darwin':
     libExt = 'dylib'
