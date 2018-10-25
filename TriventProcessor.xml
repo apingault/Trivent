@@ -6,17 +6,18 @@
     <parameter name="LCIOInputFiles"></parameter>
     <parameter name="MaxRecordNumber">0</parameter>
     <parameter name="SkipNEvents">0</parameter>
-    <parameter name="Verbosity" options="DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT">DEBUG0</parameter>
+    <parameter name="Verbosity" options="DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT">MESSAGE</parameter>
   </global>
   <processor name="MyTriventProcessor" type="TriventProc">
-    <parameter name="Verbosity" type="string" options="DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT">DEBUG0</parameter>
+    <parameter name="Verbosity" type="string" options="DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT">MESSAGE</parameter>
     <parameter name="InputCollectionNames" type="StringVec">DHCALRawHits</parameter>
     <parameter name="OutputCollectionName" type="string">SDHCAL_HIT</parameter>
     <parameter name="LCIOOutputFile" type="string"></parameter>
     <parameter name="ROOTOutputFile" type="string"></parameter>
+    <parameter name="TreeName" type="string"></parameter>
     <parameter name="PlotFolder" type="string"></parameter>
     <parameter name="SetupGeometry" type="string"></parameter>
-    <parameter name="CellIdFormat" type="string"></parameter>
+    <parameter name="CellIdFormat" type="string">M:3,S-1:3,I:9,J:9,K-1:6</parameter>
     <parameter name="GainCorrectionMode" type="bool">False</parameter>
     <parameter name="ElectronicNoiseCut" type="int">350000</parameter>
     <parameter name="LayerGap" type="double">2.8</parameter>
@@ -25,6 +26,6 @@
     <parameter name="TimeWin" type="int">2</parameter>
     <parameter name="HasCerenkovDif" type="bool">True</parameter>
     <parameter name="CerenkovDifId" type="int">3</parameter>
-    <parameter name="CerenkovTimeWindow" type="int">30</parameter>
+    <parameter name="CerenkovTimeWindow" type="int">10</parameter>
   </processor>
 </marlin>
