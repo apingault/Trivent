@@ -941,7 +941,19 @@ void TriventProc::processEvent(LCEvent *evtP) {
       }
 
       streamlog_out(DEBUG0) << blue << "[" << __func__ << "] - EventBuilding...OK" << normal << std::endl;
-      // Do not store rejected event...
+      // Apply cut on min number of firedLayer +
+      if (static_cast<int>(m_nFiredLayers) < m_layerCut) {
+        streamlog_out(DEBUG0) << green << "[" << __func__
+                              << "] - Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
+                              << " m_layerCut: " << m_layerCut << normal << std::endl;
+        if (m_isSelected) { // only increment if event was not previsously tagged as rejected in evBuilder
+          ++m_rejectedNum;
+          m_isSelected = false;
+        }
+        m_hasNotEnoughLayers = true;
+      }
+
+       // Do not store rejected event...
       if (!m_isSelected && !m_keepRejected) {
         resetEventParameters();
         timeIter = std::next(timeIter, m_timeWin + 1);
@@ -988,18 +1000,6 @@ void TriventProc::processEvent(LCEvent *evtP) {
                                << "\t cer3 = " << m_nCerenkov3 << normal << std::endl;
           ++m_nCerenkovEvts;
         }
-      }
-
-      // Apply cut on min number of firedLayer +
-      if (static_cast<int>(m_nFiredLayers) < m_layerCut) {
-        streamlog_out(DEBUG0) << green << "[" << __func__
-                              << "] - Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
-                              << " m_layerCut: " << m_layerCut << normal << std::endl;
-        if (m_isSelected) { // only increment if event was not previsously tagged as rejected in evBuilder
-          ++m_rejectedNum;
-          m_isSelected = false;
-        }
-        m_hasNotEnoughLayers = true;
       }
 
       //  Apply cut on time between two events
