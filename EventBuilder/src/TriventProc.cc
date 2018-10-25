@@ -103,6 +103,8 @@ TriventProc::TriventProc() : Processor("TriventProc") {
                              "Data Format string: it could be M:3,S-1:3,I:9,J:9,K-1:6 (ILD_ENDCAP) or "
                              "I:9,J:9,K-1:6,Dif_id:8,Asic_id:6,Chan_id:7",
                              m_cellIdFormat, m_cellIdFormat);
+
+  registerProcessorParameter("ZShift", "Shift on Z axis to compute hitPosition", m_zShift, m_zShift);
 }
 
 //=============================================================================
@@ -325,7 +327,11 @@ void TriventProc::resetEventParameters() {
   m_hitI.clear();
   m_hitJ.clear();
   m_hitK.clear();
+  m_hitX.clear();
+  m_hitY.clear();
+  m_hitZ.clear();
   m_hitThreshold.clear();
+  m_hitBCID.clear();
   m_firedLayersSet.clear();
   m_nFiredLayers = 0;
 
@@ -444,7 +450,12 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       }
 
       // Creating Calorimeter Hit
-      std::array<float, 3> pos{padIndex[0] * m_cellSizeI, padIndex[1] * m_cellSizeJ, padIndex[2] * m_layerThickness};
+      const int            I = padIndex[0];
+      const int            J = padIndex[1];
+      const int            K = padIndex[2];
+      std::array<float, 3> pos{static_cast<float>(J * m_cellSizeJ + m_cellSizeJ / 2),
+                               static_cast<float>((96 - I) * m_cellSizeI + m_cellSizeI / 2),
+                               static_cast<float>(K * m_layerThickness + m_zShift)};
 
       auto *caloHit = new CalorimeterHitImpl();
       caloHit->setTime(static_cast<float>(rawHit->getTimeStamp()));
@@ -457,10 +468,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       } else {
         caloHit->setEnergy(hitShiftedAmplitude + 1); // 1st threshold ?
       }
-
-      const int I = padIndex[0];
-      const int J = padIndex[1];
-      const int K = padIndex[2];
 
       // set the cell id
       cellIdEncoder["I"]   = I;
@@ -487,6 +494,9 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       m_hitI.push_back(I);
       m_hitJ.push_back(J);
       m_hitK.push_back(K);
+      m_hitX.push_back(pos.at(0));
+      m_hitY.push_back(pos.at(1));
+      m_hitZ.push_back(pos.at(2));
       m_hitBCID.push_back(rawHit->getTimeStamp());
       m_hitThreshold.push_back(thresh);
     }
@@ -520,28 +530,44 @@ void TriventProc::initRootTree() {
   // Create Event tree & Branches
   m_eventTree = getOrCreateTree(m_treeName, m_treeDescription);
   assert(m_eventTree);
+  m_eventTree->Branch("DetectorId", &m_detId);
   m_eventTree->Branch("TriggerNumber", &m_evtTrigNbr);
+  m_eventTree->Branch("TriggerBcid", &m_triggerBcid);
   m_eventTree->Branch("EventNumber", &m_evtNbr);
-  // m_eventTree->Branch("Hitbcid",                 &m_hitBCID);
+  m_eventTree->Branch("EventBCID", &m_evtBcid);
   m_eventTree->Branch("NumberOfHits", &m_nHit);
   m_eventTree->Branch("HitI", &m_hitI);
   m_eventTree->Branch("HitJ", &m_hitJ);
   m_eventTree->Branch("HitK", &m_hitK);
+  m_eventTree->Branch("HitX", &m_hitX);
+  m_eventTree->Branch("HitY", &m_hitY);
+  m_eventTree->Branch("HitZ", &m_hitZ);
+  m_eventTree->Branch("Hitbcid", &m_hitBCID);
   m_eventTree->Branch("HitThreshold", &m_hitThreshold);
-  m_eventTree->Branch("NumberOfFiredLayers", &m_nFiredLayers);
-  m_eventTree->Branch("CerAsic", &m_cerAsic);
-  m_eventTree->Branch("CerChan", &m_cerChan);
-  m_eventTree->Branch("CerThreshold", &m_cerThreshold);
-  m_eventTree->Branch("NumberOfCerenkov1Hits", &m_nCerenkov1);
-  m_eventTree->Branch("NumberOfCerenkov2Hits", &m_nCerenkov2);
-  m_eventTree->Branch("NumberOfCerenkov3Hits", &m_nCerenkov3);
-  m_eventTree->Branch("TriggerHasTooManyCerenkov", &m_hasTooManyCerenkov);
-  m_eventTree->Branch("CerenkovTime", &m_timeCerenkov);
-  m_eventTree->Branch("EventIsSelected", &m_isSelected);
-  m_eventTree->Branch("EventIsNoise", &m_isNoise);
-  m_eventTree->Branch("EventHasNotEnoughLayers", &m_hasNotEnoughLayers);
-  m_eventTree->Branch("EventHasFullAsic", &m_hasFullAsic);
-  m_eventTree->Branch("EventHasRamFull", &m_hasRamFull);
+  // m_eventTree->Branch("TriggerNumber", &m_evtTrigNbr);
+  // m_eventTree->Branch("TriggerBcid", &m_triggerBcid);
+  // m_eventTree->Branch("EventNumber", &m_evtNbr);
+  // m_eventTree->Branch("EventBCID", &m_evtBcid);
+  // m_eventTree->Branch("NumberOfHits", &m_nHit);
+  // m_eventTree->Branch("HitI", &m_hitI);
+  // m_eventTree->Branch("HitJ", &m_hitJ);
+  // m_eventTree->Branch("HitK", &m_hitK);
+  // m_eventTree->Branch("Hitbcid", &m_hitBCID);
+  // m_eventTree->Branch("HitThreshold", &m_hitThreshold);
+  // m_eventTree->Branch("NumberOfFiredLayers", &m_nFiredLayers);
+  // m_eventTree->Branch("CerAsic", &m_cerAsic);
+  // m_eventTree->Branch("CerChan", &m_cerChan);
+  // m_eventTree->Branch("CerThreshold", &m_cerThreshold);
+  // m_eventTree->Branch("NumberOfCerenkov1Hits", &m_nCerenkov1);
+  // m_eventTree->Branch("NumberOfCerenkov2Hits", &m_nCerenkov2);
+  // m_eventTree->Branch("NumberOfCerenkov3Hits", &m_nCerenkov3);
+  // m_eventTree->Branch("TriggerHasTooManyCerenkov", &m_hasTooManyCerenkov);
+  // m_eventTree->Branch("CerenkovTime", &m_timeCerenkov);
+  // m_eventTree->Branch("EventIsSelected", &m_isSelected);
+  // m_eventTree->Branch("EventIsNoise", &m_isNoise);
+  // m_eventTree->Branch("EventHasNotEnoughLayers", &m_hasNotEnoughLayers);
+  // m_eventTree->Branch("EventHasFullAsic", &m_hasFullAsic);
+  // m_eventTree->Branch("EventHasRamFull", &m_hasRamFull);
 
   TDirectory *rootDir   = gDirectory;
   TDirectory *hitMapDir = rootDir->mkdir("HitMapPerLayer");
@@ -931,6 +957,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
 
       m_evtTrigNbr = m_trigNbr;
       m_evtNbr     = m_evtNum; // dont increment here: rejected event will have same number as last accepted !
+      m_evtBcid    = timePeak;
       m_nHit       = outCol->getNumberOfElements();
 
       std::unique_ptr<LCCollectionVec> cerCol = std::make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
@@ -992,7 +1019,9 @@ void TriventProc::end() {
   streamlog_out(MESSAGE) << "Trivent rejected " << m_rejectedNum << " Candidate event" << std::endl;
   streamlog_out(MESSAGE) << "Trivent Selected " << m_selectedNum << " Candidate event" << std::endl;
   streamlog_out(MESSAGE) << "Cerenkov Event Selected " << m_nCerenkovEvts << std::endl;
-  if (m_nCerenkovEvts > 0) {
+
+  bool shouldFindCerenkovShifts{false};
+  if (m_nCerenkovEvts > 0 && shouldFindCerenkovShifts) {
     std::string cerCut = "CerenkovTime>-" + std::to_string(m_cerenkovTimeWindow);
     m_eventTree->Draw("CerenkovTime>>hcer", cerCut.c_str());
     // std::unique_ptr<TH1> hcer(dynamic_cast<TH1 *>(gDirectory->Get("hcer")));

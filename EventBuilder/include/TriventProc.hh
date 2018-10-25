@@ -126,10 +126,11 @@ private:
   int m_timeWin{2};
   int m_time2prevEventCut{0};
 
-  // Geometry paramaters
+  // Geometry paramaters all in mm
   float         m_cellSizeI{10.408};
   float         m_cellSizeJ{10.408};
   float         m_layerThickness{26.131};
+  float         m_zShift{225};
   std::set<int> m_layerSet{};
   bool          m_layerStartAt0{false};
 
@@ -188,14 +189,20 @@ private:
   // std::vector<unsigned int> m_vTimeSpectrum; // number of hits per time clock
 
   // Event branches
-  unsigned int m_evtTrigNbr{0}; // Current trigger Number
-  unsigned int m_evtNbr{0};     // Current Evt number
-  unsigned int m_nHit{0};       // Number of hits
+  unsigned int m_detId{100};     // DetectorId (used for ecal)
+  unsigned int m_evtTrigNbr{0};  // Current trigger Number
+  uint64_t     m_triggerBcid{0}; // Current trigger bcid
+  unsigned int m_evtNbr{0};      // Current Evt number
+  unsigned int m_evtBcid{0};     // Current Evt bcid
+  unsigned int m_nHit{0};        // Number of hits
 
   std::vector<unsigned long int> m_hitBCID{}; // Hit time
   std::vector<int>               m_hitI{};    // Hit position
   std::vector<int>               m_hitJ{};    // Hit position
   std::vector<int>               m_hitK{};    // Hit position
+  std::vector<double>            m_hitX{};    // Hit position
+  std::vector<double>            m_hitY{};    // Hit position
+  std::vector<double>            m_hitZ{};    // Hit position
   std::vector<int>               m_hitThreshold{};
   std::vector<int>               m_hitTimeStamp{};
 
