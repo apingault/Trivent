@@ -10,6 +10,7 @@ class Marlin(object):
     def __init__(self):
 
         self.xmlConfig = None
+        self.runOnGrid = False
         self.libraries = None
         self.ilcSoftInitScript = None
         self.uploadScript = None
@@ -22,6 +23,11 @@ class Marlin(object):
         ''' Set xml config file
         '''
         self.xmlConfig = xmlFile
+
+    def setRunOnGrid(self, runOnGrid):
+        ''' Set xml config file
+        '''
+        self.runOnGrid = runOnGrid
 
     def setLibraries(self, libraries):
         ''' Set dll libraries
@@ -149,7 +155,8 @@ class Marlin(object):
         return call(cmd, env=dict(os.environ, MARLIN_DLL=self.libraries), shell=True)
 
     def uploadFiles(self):
-        for f in self.outputFiles:
-            cmd = "source {} {} ./ {}".format(self.uploadScript, f, self.outputPath)
-            print "[marlin.py] --- uploading {} to {} with cmd '{}'".format(f, self.outputPath, cmd)
-            call(cmd, env=dict(os.environ), shell=True)
+        if self.runOnGrid:
+            for f in self.outputFiles:
+                cmd = "source {} {} ./ {}".format(self.uploadScript, f, self.outputPath)
+                print "[marlin.py] --- uploading {} to {} with cmd '{}'".format(f, self.outputPath, cmd)
+                call(cmd, env=dict(os.environ), shell=True)

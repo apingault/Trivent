@@ -21,14 +21,12 @@ import dbUtils as dbu  # custom interfaces to TestBeam databases
 try:
     import Ganga
 except ImportError:
-    print("Ganga not found on system, won't run on grid")
     gangaNotFound = True
 else:
     gangaNotFound = False
     from Ganga.Core.exceptions import IncompleteJobSubmissionError
     from Ganga.GPI import *
     # Job, jobtree, TreeError, config, LocalFile, MassStorageFile, GangaDataset
-
 sys.path.append(".")
 
 
@@ -45,8 +43,8 @@ def checkForConfigFile(configFile):
         check = configFile.outputFile
         check = configFile.processorPath
         check = configFile.marlinLib
+        check = configFile.marlinCfgFileName
         check = configFile.marlinCfgFile
-        check = configFile.marlinCfgPath
         check = configFile.initILCSoftScript
 
         if 'Streamout' not in configFile.processorType:
@@ -70,8 +68,10 @@ def checkForConfigFile(configFile):
             check = configFile.backend
             check = configFile.CE
         else:
-            check = configFile.logPath
-            check = configFile.logFile
+            check = configFile.logToFile
+            if configFile.logToFile is True:
+                check = configFile.logPath
+                check = configFile.logFile
 
     except AttributeError as e:
         par = e.message.split(' ')[-1]
@@ -334,22 +334,22 @@ def main():
                 sys.exit("[{}] - No geometryFile attribute found in configFile '{}'".format(scriptName, configFile))
 
         # Printing modification to xml file
-        if conf.runOnGrid is False:
-            print("\n[{}] ========================".format(scriptName))
-            print("[{}] --- Dumping modified xml parameters: ".format(scriptName))
-            for par, value in vars(conf.glob).items():
-                if par != 'name':
-                    print("[{}] \t\t{}:\t{}".format(scriptName, par, value))
-            for par, value in vars(conf.marlinProc).items():
-                if par != 'name':
-                    print("[{}] \t\t{}:\t{}".format(scriptName, par, value))
-            print("[{}] ========================\n".format(scriptName))
+        # if conf.runOnGrid is False:
+        #     print("\n[{}] ========================".format(scriptName))
+        #     print("[{}] --- Dumping modified xml parameters: ".format(scriptName))
+        #     for par, value in vars(conf.glob).items():
+        #         if par != 'name':
+        #             print("[{}] \t\t{}:\t{}".format(scriptName, par, value))
+        #     for par, value in vars(conf.marlinProc).items():
+        #         if par != 'name':
+        #             print("[{}] \t\t{}:\t{}".format(scriptName, par, value))
+        #     print("[{}] ========================\n".format(scriptName))
 
         # Marlin configuration
-        # marlinCfgFile = conf.marlinCfgFile.format(conf.processorPath, runNumber)
         marlinCfgFile = conf.marlinCfgFile.format(runNumber)
         marlin = Marlin()
         marlin.setXMLConfig(conf.xmlFile)
+        marlin.setRunOnGrid(conf.runOnGrid)
         marlin.setLibraries(marlinLib)
         marlin.setILCSoftScript(conf.initILCSoftScript)
         marlin.setUploadScript("carefulUpload.sh")
@@ -362,15 +362,15 @@ def main():
 
         # Running locally
         if conf.runOnGrid is False:
-            log = open(conf.logFile.format(conf.logPath, runNumber), "w", 1)  # line-buffered
             print("\n[{}] ========================".format(scriptName))
             print('[{}] --- Running Marlin...'.format(scriptName))
-            print("[{}] --- Output is logged to '{}'".format(scriptName, log))
             beginTime = time.time()
             if conf.logToFile is True:
-                subprocess.call(['python', 'python/run_marlin.py', conf.marlinCfgPath + marlinCfgFile], stdout=log, stderr=log)
+                log = open(conf.logFile.format(conf.logPath, runNumber), "w", 1)  # line-buffered
+                print("[{}] --- Output is logged to '{}'".format(scriptName, log))
+                subprocess.call(['python', 'python/run_marlin.py', marlinCfgFile], stdout=log, stderr=log)
             else:
-                subprocess.call(['python', 'python/run_marlin.py', conf.marlinCfgPath + marlinCfgFile])
+                subprocess.call(['python', 'python/run_marlin.py', marlinCfgFile])
 
             print('[{}] - Running Marlin...OK - '.format(scriptName), end='')
             try:
@@ -386,7 +386,7 @@ def main():
         else:
             if gangaNotFound is True:
                 sys.exit('Ganga python binding not found, can not run on grid')
-            with open(conf.marlinCfgPath + marlinCfgFile, 'r') as ymlfile:
+            with open(marlinCfgFile, 'r') as ymlfile:
                 cfg = yaml.load(ymlfile)
             gridSection = {}
             cfg['Grid'] = gridSection
@@ -395,7 +395,7 @@ def main():
             gridSection['LCG_CATALOG_TYPE'] = conf.lcg_catalog_type
             gridSection['LFC_HOST'] = conf.lfc_host
             gridSection['inputFiles'] = conf.gridInputFiles
-            with open(conf.marlinCfgPath + marlinCfgFile, 'w') as ymlfile:
+            with open(marlinCfgFile, 'w') as ymlfile:
                 ymlfile.write(yaml.dump(cfg, default_flow_style=False))
 
             try:
@@ -431,7 +431,7 @@ def main():
                 inputFiles = []
                 for f in conf.gridInputFiles:
                     inputFiles.append(LocalFile(f))
-                inputFiles.append(LocalFile(conf.marlinCfgPath + marlinCfgFile))
+                inputFiles.append(LocalFile(marlinCfgFile))
                 # print('inputFiles:\n', inputFiles)
 
                 # TODO: Check that files already exists on grid before submitting
