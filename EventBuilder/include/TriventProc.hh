@@ -98,7 +98,7 @@ public:
   int    IJKToKey(const std::vector<int> &padIndex) const;
 
 private:
-  std::unique_ptr<LCWriter> m_lcWriter;
+  std::unique_ptr<LCWriter> m_lcWriter{nullptr};
   // map of <hitTimeStamp, rawHit>
   std::map<int, std::vector<EVENT::RawCalorimeterHit *>> m_triggerRawHitMap{};
   std::map<int, std::vector<EVENT::RawCalorimeterHit *>> m_cerenkovRawHitMap{};
