@@ -330,8 +330,11 @@ void TriventProc::resetEventParameters() {
   m_hitX.clear();
   m_hitY.clear();
   m_hitZ.clear();
+  m_hitCogX = 0;
+  m_hitCogY = 0;
+  m_hitCogZ = 0;
   m_hitThreshold.clear();
-  m_hitBCID.clear();
+  m_hitBcid.clear();
   m_firedLayersSet.clear();
   m_nFiredLayers = 0;
 
@@ -497,7 +500,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       m_hitX.push_back(pos.at(0));
       m_hitY.push_back(pos.at(1));
       m_hitZ.push_back(pos.at(2));
-      m_hitBCID.push_back(rawHit->getTimeStamp());
+      m_hitBcid.push_back(rawHit->getTimeStamp());
       m_hitThreshold.push_back(thresh);
     }
   }
@@ -530,20 +533,25 @@ void TriventProc::initRootTree() {
   // Create Event tree & Branches
   m_eventTree = getOrCreateTree(m_treeName, m_treeDescription);
   assert(m_eventTree);
-  m_eventTree->Branch("DetectorId", &m_detId);
-  m_eventTree->Branch("TriggerNumber", &m_evtTrigNbr);
-  m_eventTree->Branch("TriggerBcid", &m_triggerBcid);
-  m_eventTree->Branch("EventNumber", &m_evtNbr);
-  m_eventTree->Branch("EventBCID", &m_evtBcid);
-  m_eventTree->Branch("NumberOfHits", &m_nHit);
+  m_eventTree->Branch("DetId", &m_detId);
+  m_eventTree->Branch("TrigNum", &m_evtTrigNbr);
+  m_eventTree->Branch("TrigBcid", &m_triggerBcid);
+  m_eventTree->Branch("TrigLength", &m_acquisitionTime);
+  m_eventTree->Branch("EvtNum", &m_evtNbr);
+  m_eventTree->Branch("EvtBcid", &m_evtBcid);
+  m_eventTree->Branch("EvtRevBcid", &m_evtReversedBcid);
+  m_eventTree->Branch("NHits", &m_nHit);
   m_eventTree->Branch("HitI", &m_hitI);
   m_eventTree->Branch("HitJ", &m_hitJ);
   m_eventTree->Branch("HitK", &m_hitK);
   m_eventTree->Branch("HitX", &m_hitX);
   m_eventTree->Branch("HitY", &m_hitY);
   m_eventTree->Branch("HitZ", &m_hitZ);
-  m_eventTree->Branch("Hitbcid", &m_hitBCID);
-  m_eventTree->Branch("HitThreshold", &m_hitThreshold);
+  m_eventTree->Branch("HitCogX", &m_hitCogX);
+  m_eventTree->Branch("HitCogY", &m_hitCogY);
+  m_eventTree->Branch("HitCogZ", &m_hitCogZ);
+  m_eventTree->Branch("HitBcid", &m_hitBcid);
+  m_eventTree->Branch("HitThresh", &m_hitThreshold);
   // m_eventTree->Branch("TriggerNumber", &m_evtTrigNbr);
   // m_eventTree->Branch("TriggerBcid", &m_triggerBcid);
   // m_eventTree->Branch("EventNumber", &m_evtNbr);
@@ -552,7 +560,7 @@ void TriventProc::initRootTree() {
   // m_eventTree->Branch("HitI", &m_hitI);
   // m_eventTree->Branch("HitJ", &m_hitJ);
   // m_eventTree->Branch("HitK", &m_hitK);
-  // m_eventTree->Branch("Hitbcid", &m_hitBCID);
+  // m_eventTree->Branch("Hitbcid", &m_hitBcid);
   // m_eventTree->Branch("HitThreshold", &m_hitThreshold);
   // m_eventTree->Branch("NumberOfFiredLayers", &m_nFiredLayers);
   // m_eventTree->Branch("CerAsic", &m_cerAsic);
@@ -737,11 +745,13 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
         pname << "DIF" << difId << "_Triggers";
         inputLCCol.getParameters().getIntVals(pname.str(), vTrigger);
         if (!vTrigger.empty()) {
-          m_bcid1                 = vTrigger[4];
-          m_bcid2                 = vTrigger[3];
-          const uint64_t Shift    = 16777216ULL; // to shift the value from the 24 first bits
-          const uint64_t theBCID_ = m_bcid1 * Shift + m_bcid2;
-          streamlog_out(DEBUG0) << "[" << __func__ << "] - trigger time : " << theBCID_ << std::endl;
+          m_bcid1                       = vTrigger[4];
+          m_bcid2                       = vTrigger[3];
+          const uint64_t Shift          = 16777216ULL; // to shift the value from the 24 first bits
+          m_triggerBcid                 = m_bcid1 * Shift + m_bcid2;
+          m_acquisitionTime = vTrigger[2]; // in 200ns clock
+
+          streamlog_out(DEBUG0) << "[" << __func__ << "] - trigger time : " << m_triggerBcid << std::endl;
         }
       }
 
@@ -822,7 +832,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
   }
 
   for (unsigned int i = 0; i < m_inputCollections.size(); i++) {
-    LCCollection *inputLCCol;
+    LCCollection *inputLCCol{nullptr};
     try {
       inputLCCol = evtP->getCollection(m_inputCollections.at(i));
     } catch (lcio::DataNotAvailableException &zero) {
@@ -958,7 +968,11 @@ void TriventProc::processEvent(LCEvent *evtP) {
       m_evtTrigNbr = m_trigNbr;
       m_evtNbr     = m_evtNum; // dont increment here: rejected event will have same number as last accepted !
       m_evtBcid    = timePeak;
+      m_evtReversedBcid    = m_acquisitionTime - timePeak;
       m_nHit       = outCol->getNumberOfElements();
+      m_hitCogX            = std::accumulate(m_hitX.begin(), m_hitX.end(), 0.0) / m_hitX.size();
+      m_hitCogY            = std::accumulate(m_hitY.begin(), m_hitY.end(), 0.0) / m_hitY.size();
+      m_hitCogZ            = std::accumulate(m_hitZ.begin(), m_hitZ.end(), 0.0) / m_hitZ.size();
 
       std::unique_ptr<LCCollectionVec> cerCol = std::make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
       if (m_hasCherenkov) {
