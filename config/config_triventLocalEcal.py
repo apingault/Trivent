@@ -1,11 +1,12 @@
 #!/usr/bin/env python2
 '''
-
+Stuck with python 2 for the root bindings on lxplus.
 '''
 
 import sys
 import platform
 
+# List of run to analyse.
 runList = [
     744211, 744214, 744218, 744221, 744226, 744230, 744233, 744237, 744242, 744246, 744249, 744254, 744258, 744263,
     744269, 744273, 744278, 744283, 744317
@@ -13,6 +14,7 @@ runList = [
 
 maxNumberOfTrigger = 0  # Max Number of trigger to analyse, 0 = all
 numberOfTriggerToSkip = 1  #
+verbosity = 'MESSAGE'
 
 ###
 #  Paths
@@ -21,7 +23,8 @@ eos_sdhcal = '/eos/project/s/sdhcal/data/'
 
 processorPath = '/eos/user/a/apingaul/CALICE/Software/Trivent/'
 dataPath = '/eos/user/a/apingaul/CALICE/Data/' + runPeriod + '/'
-inputPath = eos_sdhcal + runPeriod + '/Raw/'  # input folder with slcio
+# inputPath = eos_sdhcal + runPeriod + '/Raw/'  # input folder with slcio
+inputPath = dataPath + '/Raw/'  # input folder with slcio
 outputPath = dataPath + 'Ecal/'  # output folder for slcio/root
 
 inputFile = 'DHCAL_{}_I0_0.slcio'  # .format(runNumber)
@@ -60,6 +63,7 @@ class xmlOptionSection(object):
 ###
 processorType = 'Trivent'
 glob = xmlOptionSection('global')
+glob.Verbosity = verbosity
 glob.MaxRecordNumber = maxNumberOfTrigger  # Max Number of event to process
 glob.SkipNEvents = numberOfTriggerToSkip  # Number of event to skip
 glob.LCIOInputFiles = []
@@ -67,6 +71,7 @@ glob.LCIOInputFiles = []
 # Processor param
 ###
 marlinProc = xmlOptionSection('MyTriventProcessor')
+marlinProc.Verbosity = verbosity
 marlinProc.SetupGeometry = geomPath + geomFile
 marlinProc.TreeName = 'sdhcal'
 
