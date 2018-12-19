@@ -63,3 +63,19 @@ Just do:
 ```
 
 Once you are done you can leave the virtualenv by calling `deactivate`
+
+
+## Running Marlin directly
+
+You can also directly run the marlin processor from the command line as usual. Edit the config file (default is in `config/TriventProcessor.xml`) and run with
+
+```bash
+    export MARLIN_DLL=lib/libTriventProc.so  # or .dylib if running on mac
+    Marlin config/TriventProcessor.xml  # 
+```
+
+You can also directly specify Marlin option on the command line, this will override the value from the config file.
+
+```bash
+    Marlin --global.MaxRecordNumber="1000" config/TriventProcessor.xml
+```
