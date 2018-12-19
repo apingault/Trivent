@@ -121,6 +121,11 @@ private:
   std::set<int> m_layerSet{};
   bool          m_layerStartAt0{false};
 
+  // Cerenkov
+  bool m_hasCherenkov{true};
+  int  m_cerenkovDifId{3};
+  int  m_cerenkovLayerId{-1};
+
   unsigned int m_trigNbr{0};
   unsigned int m_trigCount{0};
   unsigned int m_evtNum{0};

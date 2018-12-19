@@ -50,6 +50,11 @@ TriventProc::TriventProc() : Processor("TriventProc") {
   // histogram control tree
   registerProcessorParameter("ROOTOutputFile", "Logroot name", m_rootFileName, m_rootFileName);
 
+  registerProcessorParameter("HasCerenkovDIF", "If Cerenkov dif was connected during data taking", m_hasCherenkov,
+                             m_hasCherenkov);
+
+  registerProcessorParameter("CerenkovDifId", "Dif number for cerenkov data", m_cerenkovDifId, m_cerenkovDifId);
+
   registerProcessorParameter("CellIdFormat",
                              "Data Format string: it could be M:3,S-1:3,I:9,J:9,K-1:6 (ILD_ENDCAP) or "
                              "I:9,J:9,K-1:6,Dif_id:8,Asic_id:6,Chan_id:7",
@@ -90,12 +95,47 @@ void TriventProc::readGeometry(const std::string &geomFile) {
     insertDifIntoMap(difId, temp);
 
     streamlog_out(DEBUG) << "inserting layer " << slotId << std::endl;
+
+    // Make sure dummy layer for the bif is not in the list of layer (some geometry files implement this...)
+    if (m_hasCherenkov && difId == m_cerenkovDifId) {
+      throw std::runtime_error(
+          "Bif should not be present in this part of the geometry, please move it to a separate 'bifId' section");
+    }
     m_layerSet.insert(slotId);
   }
 
   const auto difsToSkipList = jsonFile.at("difsToSkip");
   for (const auto &difItem : difsToSkipList) {
     m_difsToSkip.emplace_back(difItem);
+  }
+
+  if (m_hasCherenkov) {
+    // make sure we didn't already added the dif in the mapping
+    const auto difIter = m_difMapping.find(m_cerenkovDifId);
+    m_cerenkovLayerId  = *(m_layerSet.rbegin()) + 100; // Set dummy layerId for the bif to be 100 layers after the end
+                                                       // of the prototype, so it doesn't register in the displays
+
+    if (difIter == m_difMapping.end()) {
+      try {
+        const int bifId = jsonFile.at("bifId").get<int>();
+        if (bifId != m_cerenkovDifId) {
+          throw std::runtime_error("BifId from geometry file (" + std::to_string(bifId) +
+                                   ") is different than marlin xml parameter (" + std::to_string(m_cerenkovDifId) +
+                                   ")");
+        }
+        difGeom bifGeom{m_cerenkovLayerId, 0, 0, 1}; //
+        insertDifIntoMap(bifId, bifGeom);
+      } catch (std::exception &e) { // TODO: having to declare the bif id in geomFile + config file is dumb af!
+        streamlog_out(WARNING) << "[" << __func__
+                               << "] - No bifId (cerenkov dif) found in geometry file, using default parameter from "
+                                  "marlin config file : "
+                               << m_cerenkovDifId << std::endl;
+        difGeom bifGeom{m_cerenkovLayerId, 0, 0, 1};
+        insertDifIntoMap(m_cerenkovDifId, bifGeom);
+      }
+    } else { // should never happen now
+      throw std::runtime_error("No reason the bif dummy layer should be present");
+    }
   }
 
   streamlog_out(MESSAGE) << yellow << "[" << __func__ << "] - Found " << m_difMapping.size()
@@ -167,6 +207,14 @@ std::vector<int> TriventProc::getPadIndex(const int difId, const int asicId, con
       static_cast<int>(32 - (MapJLargeHR2.at(chanId) + AsicShiftJ.at(asicId)) + findIter->second.shiftY),
       static_cast<int>(findIter->second.layerId)};
   std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
+
+  // Cerenkov layer is not in the layerSet as it's not a physical layer, needs to account for that when checking the pad
+  // limits
+  //
+  if (difId == m_cerenkovDifId) {
+    padLims.pop_back();
+    padLims.push_back(m_cerenkovLayerId);
+  }
 
   const bool padOk = checkPadLimits(index, padLims);
   assert(padOk);
@@ -254,6 +302,7 @@ void TriventProc::eventBuilder(const int timePeak, const int lowTimeBoundary, co
       assert(rawHit->getTimeStamp() == hitTime);
 
       const int difId = getCellDif_id(rawHit->getCellID0());
+      assert(difId != m_cerenkovDifId); // No hit from the bif should be present in this collection
 
       const int asicId = getCellAsic_id(rawHit->getCellID0());
       const int chanId = getCellChan_id(rawHit->getCellID0());
@@ -446,6 +495,9 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
                            << " chanId: " << getCellChan_id(rawHit->getCellID0())
                            << " thresh: " << rawHit->getAmplitude() << " removing it !" << normal << std::endl;
       continue;
+    }
+    if (difId != m_cerenkovDifId) {
+      m_triggerRawHitMap[rawHit->getTimeStamp()].push_back(rawHit);
     }
   }
 }
