@@ -12,7 +12,7 @@ If for whatever reason this build doesn't work anymore you can use `/cvmfs/clicd
 
 ```bash
     export ilcsoftScript=/cvmfs/clicdp.cern.ch/iLCSoft/builds/current/CI_gcc/init_ilcsoft.sh  # adapt to your needs
-    git clone https://github.com/apingault/Trivent
+    git clone --branch CommonEcalSdhcal https://github.com/apingault/Trivent/
     source $ilcsoftScript
     cd Trivent; mkdir build; cd build; cmake -C $ILCSOFT/ILCSoft.cmake ..
     make install
@@ -47,7 +47,7 @@ Once this is set-up you can just:
     export PY_USER_BIN=$(python -c 'import site; print(site.USER_BASE + "/bin")')
     export PATH=$PY_USER_BIN:$PATH
     source triventEnv/bin/activate  # Use the virtual env
-    python/pyMarlin.py config/yourConfigFile  # without the .py extension at the end of the configFile
+    python/pyMarlin.py config/config_triventLocalEcal  # without the .py extension at the end of the configFile
 ```
 
 github sometimes messes with my files permissions, if you have a 
