@@ -80,6 +80,8 @@ class Marlin(object):
         except IOError:
             # print "Creating new configuration file '{0}'".format(cfgFile)
             cfg = {}
+            if not os.path.exists(os.path.dirname(cfgFile)):
+                os.makedirs(os.path.dirname(cfgFile))
         else:  # found existing config file
             if cfg is None:  # empty config file
                 cfg = {}
