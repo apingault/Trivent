@@ -6,32 +6,29 @@
 import sys
 import platform
 
-# runList = [
-#     744211, 744214, 744218, 744221, 744226, 744230, 744233, 744237, 744242, 744246, 744249, 744254, 744258, 744263,
-#     744269, 744273, 744278, 744283, 744317
-# ]
-runList = [744211]
+runList = [
+    744211, 744214, 744218, 744221, 744226, 744230, 744233, 744237, 744242, 744246, 744249, 744254, 744258, 744263,
+    744269, 744273, 744278, 744283, 744317
+]
 
-maxNumberOfTrigger = 1000  # Max Number of trigger to analyse
+maxNumberOfTrigger = 0  # Max Number of trigger to analyse, 0 = all
 numberOfTriggerToSkip = 1  #
 
 ###
 #  Paths
-eos_home = '/eos/user/a/apingaul/CALICE/'
-eos_sdhcal = '/eos/project/s/sdhcal/data/'
-processorPath = eos_home + 'Software/Trivent/'
 runPeriod = 'SPS_09_2018'
-dataPath = eos_home + 'Data/' + runPeriod + '/'
+eos_sdhcal = '/eos/project/s/sdhcal/data/'
+
+processorPath = '/eos/user/a/apingaul/CALICE/Software/Trivent/'
+dataPath = '/eos/user/a/apingaul/CALICE/Data/' + runPeriod + '/'
 inputPath = eos_sdhcal + runPeriod + '/Raw/'  # input folder with slcio
 outputPath = dataPath + 'Ecal/'  # output folder for slcio/root
-plotPath = dataPath + 'Plots/'
-logPath = dataPath + 'Logs/'
-geomPath = processorPath + 'DifGeom/'  # folder with json geometry files
 
 inputFile = 'DHCAL_{}_I0_0.slcio'  # .format(runNumber)
-outputFile = 'TDHCAL_Ecal_{}'  # extension slcio/root added in xml # .format(runNumber)
-xmlFile = 'config/TriventProcessor.xml'
-geomFile = 'sdhcal_SPS_09_2018.json'
+outputFile = 'TDHCAL_Ecal_{}'  # .format(runNumber)
+
+plotPath = dataPath + 'Plots/'
+logPath = dataPath + 'Logs/'
 
 ilcSoftVersion = "v01-19-05"
 ilcSoftPath = '/opt/ilcsoft/'
@@ -47,6 +44,10 @@ initILCSoftScript = ilcSoftPath + ilcSoftVersion + "/init_ilcsoft.sh"
 '''
     # Should not need to edit part below
 '''
+
+xmlFile = 'config/TriventProcessor.xml'
+geomFile = 'sdhcal_SPS_09_2018.json'
+geomPath = processorPath + 'DifGeom/'  # folder with json geometry files
 
 
 # Marlin options

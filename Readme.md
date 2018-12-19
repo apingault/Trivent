@@ -20,7 +20,7 @@ If for whatever reason this build doesn't work anymore you can use `/cvmfs/clicd
 ```
 
 ## Configuration
-Edit the various paths to data/ilcsoft script etc.
+Edit `config/configTriventLocal.py` with the paths to data/ilcsoft script etc.
 
 
 ## Running
