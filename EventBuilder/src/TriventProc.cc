@@ -1,28 +1,3 @@
-/**
- * Yacine HADDAD
- * LLR Ecole polytechnique
- * avril 2012
- * Trivent v0.3
- */
-
-/*
- *  TODO : LCIO parameters
- *          - startOfSpill Time Stamp
- *          - CerTag/TimeStamp
- *
- *      Add a cut if too much hit in One layer vs before/after (mean of +-3 layers)
- *          -> Remove Grounding Event?
- *          -> Remove event if RamFull on DIF
- *      ROOT
- *        timeSpectrum + limit
- *        rejected event
- *          too few hits
- *          too few layers hit
- *          Full asic
- *          too close events
- *
- */
-
 // -- Trivent include
 #include "TriventProc.hh"
 
@@ -34,7 +9,7 @@
 // -- Root headers
 #include <TCanvas.h>
 
-TriventProc myTriventProc;
+TriventProc triventForCommonEcal;
 
 // -- json
 #include <nlohmann/json.hpp>
@@ -46,18 +21,6 @@ TriventProc::TriventProc() : Processor("TriventProc") {
   registerInputCollections(LCIO::RAWCALORIMETERHIT, "InputCollectionNames", "HCAL Collection Names", m_inputCollections,
                            m_inputCollections);
 
-  registerOutputCollection(LCIO::CALORIMETERHIT, "OutputCollectionName", "HCAL Collection Name", m_outputCollectionName,
-                           m_outputCollectionName);
-
-  registerOutputCollection(LCIO::CALORIMETERHIT, "CerenkovCollectionName", "Cerenkov Collection Name",
-                           m_cerenkovCollectionName, m_cerenkovCollectionName);
-
-  // Option of output file with clean events
-  registerProcessorParameter("LCIOOutputFile", "LCIO file", m_outFileName, m_outFileName);
-  // Energy
-  registerProcessorParameter("beamEnergy", "The beam ", m_beamEnergy, m_beamEnergy);
-  // Option of output file with noise
-  registerProcessorParameter("NOISEOutputFile", "NOISE file", m_noiseFileName, m_noiseFileName);
   // layer cut
   registerProcessorParameter("LayerCut", "cut in number of layer 10 in default", m_layerCut, m_layerCut);
 
@@ -66,6 +29,7 @@ TriventProc::TriventProc() : Processor("TriventProc") {
 
   // time windows
   registerProcessorParameter("TimeWin", "time window = 2 in default", m_timeWin, m_timeWin);
+
   // dif mapping in json file
   registerProcessorParameter("SetupGeometry", "Dif geometry and position on the detector in json", m_geomFile,
                              m_geomFile);
@@ -85,19 +49,6 @@ TriventProc::TriventProc() : Processor("TriventProc") {
 
   // histogram control tree
   registerProcessorParameter("ROOTOutputFile", "Logroot name", m_rootFileName, m_rootFileName);
-
-  registerProcessorParameter("HasCerenkovDIF", "If Cerenkov dif was connected during data taking", m_hasCherenkov,
-                             m_hasCherenkov);
-
-  registerProcessorParameter("CerenkovDifId", "Dif number for cerenkov data", m_cerenkovDifId, m_cerenkovDifId);
-
-  registerProcessorParameter("CerenkovTimeWindow", "TimeWindow around timePeak in which to look for cerenkov data",
-                             m_cerenkovTimeWindow, m_cerenkovTimeWindow);
-
-  registerProcessorParameter("KeepRejectedEvent", "Keep event that didn't pass cut selection", m_keepRejected,
-                             m_keepRejected);
-
-  registerProcessorParameter("PlotFolder", "Folder Path to save Plot", m_plotFolder, m_plotFolder);
 
   registerProcessorParameter("CellIdFormat",
                              "Data Format string: it could be M:3,S-1:3,I:9,J:9,K-1:6 (ILD_ENDCAP) or "
@@ -139,47 +90,12 @@ void TriventProc::readGeometry(const std::string &geomFile) {
     insertDifIntoMap(difId, temp);
 
     streamlog_out(DEBUG) << "inserting layer " << slotId << std::endl;
-
-    // Make sure dummy layer for the bif is not in the list of layer (some geometry files implement this...)
-    if (m_hasCherenkov && difId == m_cerenkovDifId) {
-      throw std::runtime_error(
-          "Bif should not be present in this part of the geometry, please move it to a separate 'bifId' section");
-    }
     m_layerSet.insert(slotId);
   }
 
   const auto difsToSkipList = jsonFile.at("difsToSkip");
   for (const auto &difItem : difsToSkipList) {
     m_difsToSkip.emplace_back(difItem);
-  }
-
-  if (m_hasCherenkov) {
-    // make sure we didn't already added the dif in the mapping
-    const auto difIter = m_difMapping.find(m_cerenkovDifId);
-    m_cerenkovLayerId  = *(m_layerSet.rbegin()) + 100; // Set dummy layerId for the bif to be 100 layers after the end
-                                                       // of the prototype, so it doesn't register in the displays
-
-    if (difIter == m_difMapping.end()) {
-      try {
-        const int bifId = jsonFile.at("bifId").get<int>();
-        if (bifId != m_cerenkovDifId) {
-          throw std::runtime_error("BifId from geometry file (" + std::to_string(bifId) +
-                                   ") is different than marlin xml parameter (" + std::to_string(m_cerenkovDifId) +
-                                   ")");
-        }
-        difGeom bifGeom{m_cerenkovLayerId, 0, 0, 1}; //
-        insertDifIntoMap(bifId, bifGeom);
-      } catch (std::exception &e) { // TODO: having to declare the bif id in geomFile + config file is dumb af!
-        streamlog_out(WARNING) << "[" << __func__
-                               << "] - No bifId (cerenkov dif) found in geometry file, using default parameter from "
-                                  "marlin config file : "
-                               << m_cerenkovDifId << std::endl;
-        difGeom bifGeom{m_cerenkovLayerId, 0, 0, 1};
-        insertDifIntoMap(m_cerenkovDifId, bifGeom);
-      }
-    } else { // should never happen now
-      throw std::runtime_error("No reason the bif dummy layer should be present");
-    }
   }
 
   streamlog_out(MESSAGE) << yellow << "[" << __func__ << "] - Found " << m_difMapping.size()
@@ -236,7 +152,6 @@ bool TriventProc::checkPadLimits(const std::vector<int> &padIndex, const std::ve
 std::vector<int> TriventProc::getPadIndex(const int difId, const int asicId, const int chanId) const {
 
   const auto findIter = m_difMapping.find(difId);
-
   if (findIter == m_difMapping.end()) {
     const auto findSkipIter = std::find(m_difsToSkip.begin(), m_difsToSkip.end(), difId);
     if (findSkipIter == m_difsToSkip.end()) {
@@ -253,20 +168,8 @@ std::vector<int> TriventProc::getPadIndex(const int difId, const int asicId, con
       static_cast<int>(findIter->second.layerId)};
   std::vector<int> padLims = {1, 96, 1, 96, 0, static_cast<int>(m_layerSet.size())};
 
-  // Cerenkov layer is not in the layerSet as it's not a physical layer, needs to account for that when checking the pad
-  // limits
-  //
-  if (difId == m_cerenkovDifId) {
-    padLims.pop_back();
-    padLims.push_back(m_cerenkovLayerId);
-  }
   const bool padOk = checkPadLimits(index, padLims);
   assert(padOk);
-
-  // if (difId == m_cerenkovDifId) {
-  // streamlog_out(DEBUG0) << "[" << __func__ << "] - difId== " << difId<< " asicId ==" << asicId << " chanId ==" <<
-  // chanId << " I == " << index[0] << " J == " << index[1] << " K == " << index[2] << std::endl;
-  // }
   return index;
 }
 
@@ -308,22 +211,12 @@ int TriventProc::getAsicKey(const std::vector<int> &padIndex) const {
 }
 
 //=============================================================================
-void TriventProc::resetTriggerParameters() {
-  m_nCerenkovTrigger   = 0;
-  m_hasTooManyCerenkov = false;
-  m_triggerRawHitMap.clear();
-  m_cerenkovRawHitMap.clear();
-}
+void TriventProc::resetTriggerParameters() { m_triggerRawHitMap.clear(); }
 
 //=============================================================================
 void TriventProc::resetEventParameters() {
   // reset Flags
-  m_isSelected         = true;
-  m_isNoise            = false;
-  m_hasNotEnoughLayers = false;
-  m_hasFullAsic        = false;
-  m_hasRamFull         = false;
-  m_nHit               = 0;
+  m_nHit = 0;
   m_hitI.clear();
   m_hitJ.clear();
   m_hitK.clear();
@@ -335,28 +228,15 @@ void TriventProc::resetEventParameters() {
   m_hitCogZ = 0;
   m_hitThreshold.clear();
   m_hitBcid.clear();
+  m_hitRevBcid.clear();
   m_firedLayersSet.clear();
   m_nFiredLayers = 0;
-
-  m_nCerenkov1 = 0;
-  m_nCerenkov2 = 0;
-  m_nCerenkov3 = 0;
-  m_timeCerenkov.clear();
-  m_cerAsic.clear();
-  m_cerChan.clear();
-  m_cerThreshold.clear();
 }
 
 //=============================================================================
-void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, const int timePeak,
-                               const int lowTimeBoundary, const int highTimeBoundary) {
+void TriventProc::eventBuilder(const int timePeak, const int lowTimeBoundary, const int highTimeBoundary) {
 
   resetEventParameters();
-
-  evtCol->setFlag(evtCol->getFlag() | (1 << LCIO::RCHBIT_LONG));
-  evtCol->setFlag(evtCol->getFlag() | (1 << LCIO::RCHBIT_TIME));
-
-  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder(m_cellIdFormat.c_str(), evtCol.get());
 
   std::map<int, int> asicMap{};
   std::map<int, int> ramFullMap{};
@@ -374,7 +254,6 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       assert(rawHit->getTimeStamp() == hitTime);
 
       const int difId = getCellDif_id(rawHit->getCellID0());
-      assert(difId != m_cerenkovDifId); // No hit from the bif should be present in this collection
 
       const int asicId = getCellAsic_id(rawHit->getCellID0());
       const int chanId = getCellChan_id(rawHit->getCellID0());
@@ -394,19 +273,14 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
         ramFullMap[difId]++;
       }
 
-      if (ramFullMap[difId] > 48 && !m_hasRamFull) {
+      if (ramFullMap[difId] > 48) {
         streamlog_out(DEBUG1) << yellow << "[" << __func__ << "] - Rejecting event with ram full. Dif : " << difId
                               << normal << std::endl;
-
         ++m_rejectedNum;
-        m_isSelected = false;
-        m_hasRamFull = true;
-        if (!m_keepRejected) {
-          hitKeys.clear();
-          asicMap.clear();
-          ramFullMap.clear();
-          return;
-        }
+        hitKeys.clear();
+        asicMap.clear();
+        ramFullMap.clear();
+        return;
       }
 
       // find and remove square events
@@ -431,16 +305,11 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       if (asicMap[asicKey] == 64) {
         streamlog_out(DEBUG1) << yellow << "[" << __func__ << "] - Rejecting event with full asic. Dif '" << difId
                               << "' asic '" << asicId << "' at time '" << timePeak << "'" << normal << std::endl;
-
         ++m_rejectedNum;
-        m_isSelected  = false;
-        m_hasFullAsic = true;
-        if (!m_keepRejected) {
-          hitKeys.clear();
-          asicMap.clear();
-          ramFullMap.clear();
-          return;
-        }
+        hitKeys.clear();
+        asicMap.clear();
+        ramFullMap.clear();
+        return;
       }
 
       // Create hit Key
@@ -460,39 +329,9 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
                                static_cast<float>((96 - I) * m_cellSizeI + m_cellSizeI / 2),
                                static_cast<float>(K * m_layerThickness + m_zShift)};
 
-      auto *caloHit = new CalorimeterHitImpl();
-      caloHit->setTime(static_cast<float>(rawHit->getTimeStamp()));
-
-      const auto hitShiftedAmplitude = static_cast<float>(rawHit->getAmplitude() & 3);
-      if (hitShiftedAmplitude > 2.5) {
-        caloHit->setEnergy(hitShiftedAmplitude); // 3rd threshold
-      } else if (hitShiftedAmplitude > 1.5) {
-        caloHit->setEnergy(hitShiftedAmplitude - 1); // 2nd threshold ?
-      } else {
-        caloHit->setEnergy(hitShiftedAmplitude + 1); // 1st threshold ?
-      }
-
-      // set the cell id
-      cellIdEncoder["I"]   = I;
-      cellIdEncoder["J"]   = J;
-      cellIdEncoder["K-1"] = K;
-      if (m_cellIdFormat == std::string("M:3,S-1:3,I:9,J:9,K-1:6")) {
-        cellIdEncoder["M"]   = 0;
-        cellIdEncoder["S-1"] = 3;
-      } else if (m_cellIdFormat == std::string("I:9,J:9,K-1:6,Dif_id:8,Asic_id:6,Chan_id:7")) {
-        cellIdEncoder["Dif_id"]  = difId;
-        cellIdEncoder["Asic_id"] = asicId;
-        cellIdEncoder["Chan_id"] = chanId;
-      } else {
-        throw std::runtime_error(m_cellIdFormat + " is not a valid encoding format...");
-      }
-
-      cellIdEncoder.setCellID(caloHit);
       // add layer to list of unique touched layers
       m_firedLayersSet.insert(K);
 
-      caloHit->setPosition(pos.data());
-      evtCol->addElement(caloHit);
       hitKeys.insert(std::pair<int, int>(aHitKey, hitTime));
       m_hitI.push_back(I);
       m_hitJ.push_back(J);
@@ -501,6 +340,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       m_hitY.push_back(pos.at(1));
       m_hitZ.push_back(pos.at(2));
       m_hitBcid.push_back(rawHit->getTimeStamp());
+      m_hitRevBcid.push_back(m_acquisitionTime - rawHit->getTimeStamp());
       m_hitThreshold.push_back(thresh);
     }
   }
@@ -524,12 +364,6 @@ void TriventProc::initRootTree() {
   m_rootFile = new TFile(m_rootFileName.c_str(), "RECREATE");
   assert(m_rootFile);
 
-  // Create Trigger tree & Branches
-  // m_triggerTree = getOrCreateTree("TriggerTree", "Trigger variables");
-  // m_triggerTree->Branch("TriggerNumber",                    &m_trigNbr);
-  // m_triggerTree->Branch("NumberOfEvents",                   &m_nEvt);
-  // m_triggerTree->Branch("TimeSpectrum", "std::vector<int>", &m_vTimeSpectrum);
-
   // Create Event tree & Branches
   m_eventTree = getOrCreateTree(m_treeName, m_treeDescription);
   assert(m_eventTree);
@@ -551,35 +385,8 @@ void TriventProc::initRootTree() {
   m_eventTree->Branch("HitCogY", &m_hitCogY);
   m_eventTree->Branch("HitCogZ", &m_hitCogZ);
   m_eventTree->Branch("HitBcid", &m_hitBcid);
+  m_eventTree->Branch("HitRevBcid", &m_hitRevBcid);
   m_eventTree->Branch("HitThresh", &m_hitThreshold);
-  // m_eventTree->Branch("TriggerNumber", &m_evtTrigNbr);
-  // m_eventTree->Branch("TriggerBcid", &m_triggerBcid);
-  // m_eventTree->Branch("EventNumber", &m_evtNbr);
-  // m_eventTree->Branch("EventBCID", &m_evtBcid);
-  // m_eventTree->Branch("NumberOfHits", &m_nHit);
-  // m_eventTree->Branch("HitI", &m_hitI);
-  // m_eventTree->Branch("HitJ", &m_hitJ);
-  // m_eventTree->Branch("HitK", &m_hitK);
-  // m_eventTree->Branch("Hitbcid", &m_hitBcid);
-  // m_eventTree->Branch("HitThreshold", &m_hitThreshold);
-  // m_eventTree->Branch("NumberOfFiredLayers", &m_nFiredLayers);
-  // m_eventTree->Branch("CerAsic", &m_cerAsic);
-  // m_eventTree->Branch("CerChan", &m_cerChan);
-  // m_eventTree->Branch("CerThreshold", &m_cerThreshold);
-  // m_eventTree->Branch("NumberOfCerenkov1Hits", &m_nCerenkov1);
-  // m_eventTree->Branch("NumberOfCerenkov2Hits", &m_nCerenkov2);
-  // m_eventTree->Branch("NumberOfCerenkov3Hits", &m_nCerenkov3);
-  // m_eventTree->Branch("TriggerHasTooManyCerenkov", &m_hasTooManyCerenkov);
-  // m_eventTree->Branch("CerenkovTime", &m_timeCerenkov);
-  // m_eventTree->Branch("EventIsSelected", &m_isSelected);
-  // m_eventTree->Branch("EventIsNoise", &m_isNoise);
-  // m_eventTree->Branch("EventHasNotEnoughLayers", &m_hasNotEnoughLayers);
-  // m_eventTree->Branch("EventHasFullAsic", &m_hasFullAsic);
-  // m_eventTree->Branch("EventHasRamFull", &m_hasRamFull);
-
-  TDirectory *rootDir   = gDirectory;
-  TDirectory *hitMapDir = rootDir->mkdir("HitMapPerLayer");
-  hitMapDir->cd();
 
   // Check if first layer is numbered 0 or 1
   // Prevent accessing non defined element in vectors...
@@ -587,146 +394,18 @@ void TriventProc::initRootTree() {
   if (0 == *firstLayer) {
     m_layerStartAt0 = true;
   }
-
-  for (const auto &layerIter : m_layerSet) {
-    int iLayer = layerIter - 1;
-    if (m_layerStartAt0) {
-      iLayer = layerIter;
-    }
-
-    std::stringstream oss;
-    oss << "hitMap_Layer" << iLayer;
-    streamlog_out(DEBUG0) << "[" << __func__ << "] - Booking hitMap for layer '" << iLayer << "'..." << std::endl;
-    m_vHitMapPerLayer.push_back(makeTH2(oss.str(), "I", "J (DIFSide)"));
-    assert(m_vHitMapPerLayer.back());
-    streamlog_out(DEBUG0) << "[" << __func__ << "] - Booking hitMap for layer '" << iLayer << "'...OK" << std::endl;
-  }
-
-  int iLayer = 0;
-  for (auto const &histo : m_vHitMapPerLayer) {
-    assert(histo);
-    streamlog_out(DEBUG0) << yellow << "[" << __func__ << "] - Booked hitMap histo for layer '" << iLayer
-                          << "' at --> '" << histo << "'" << normal << std::endl;
-    ++iLayer;
-  }
 }
 
 //=============================================================================
 void TriventProc::init() {
   printParameters();
 
-  // Create writer for lcio output file
-  m_lcWriter = std::unique_ptr<LCWriter>(LCFactory::getInstance()->createLCWriter());
-  m_lcWriter->setCompressionLevel(0);
-  m_lcWriter->open(m_outFileName, LCIO::WRITE_NEW);
-
   // Read and print geometry file
-
   streamlog_out(DEBUG) << "Reading geometry...\n";
   readGeometry(m_geomFile);
   streamlog_out(DEBUG) << "Reading geometry...DONE\n";
   printDifGeom();
   initRootTree();
-}
-
-//=============================================================================
-TH2 *TriventProc::makeTH2(const std::string &title, const std::string &xTitle, const std::string &yTitle) const {
-  TH2 *hMap = new TH2D(title.c_str(), title.c_str(), 96, 1, 97, 96, 1, 97);
-  hMap->GetXaxis()->SetTitle(xTitle.c_str());
-  hMap->GetYaxis()->SetTitle(yTitle.c_str());
-  return hMap;
-}
-
-//=============================================================================
-void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCol, const int timePeak) {
-  cerCol->setFlag(cerCol->getFlag() | (1 << LCIO::RCHBIT_LONG));
-  cerCol->setFlag(cerCol->getFlag() | (1 << LCIO::RCHBIT_TIME));
-
-  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder(m_cellIdFormat, cerCol.get());
-
-  // for (int hitTime = timePeak - m_cerenkovTimeWindow; hitTime <= timePeak + m_cerenkovTimeWindow; ++hitTime) {
-  for (int hitTime = timePeak - m_cerenkovTimeWindow; hitTime <= timePeak; ++hitTime) {
-
-    // No hit recorded at hitTime
-    if (m_cerenkovRawHitMap.find(hitTime) == m_cerenkovRawHitMap.end()) {
-      continue;
-    }
-
-    for (const auto &cerHit : m_cerenkovRawHitMap.at(hitTime)) {
-      assert(cerHit);
-      const auto bifTime = static_cast<int>(cerHit->getTimeStamp());
-      assert(bifTime == hitTime);
-
-      const int difId = getCellDif_id(cerHit->getCellID0());
-      if (difId != m_cerenkovDifId) {
-        streamlog_out(ERROR) << red << "[" << __func__ << "] - Found Cerenkov hit in wrong dif '" << difId
-                             << "'... should be in dif '" << m_cerenkovDifId << "'...skipping" << normal << std::endl;
-        continue;
-      }
-
-      m_timeCerenkov.push_back(bifTime - timePeak);
-      int asicId = getCellAsic_id(cerHit->getCellID0());
-      if (asicId == 129) {
-        streamlog_out(DEBUG0) << yellow << "[" << __func__ << "] - Cerenkov asic has not been corrected : '" << asicId
-                              << " correcting it... to asicId = 1" << normal << std::endl;
-        asicId = 1;
-      }
-      assert(asicId > 0 && asicId <= 48);
-      const int chanId = getCellChan_id(cerHit->getCellID0());
-      assert(chanId >= 0 && asicId < 64);
-      const int hitThreshold = cerHit->getAmplitude();
-
-      streamlog_out(DEBUG) << "[" << __func__ << "] - Found Cerenkov hit at time '" << bifTime - timePeak
-                           << "' bifTime: " << bifTime << " timePeak: " << timePeak << "\t Asic '" << asicId
-                           << "'\t Chan '" << chanId << "'\t Threshold " << hitThreshold << std::endl;
-
-      const std::vector<int> padIndex = getPadIndex(difId, asicId, chanId);
-      if (padIndex.empty()) {
-        throw std::runtime_error("Dif '" + std::to_string(difId) + "' not found in geometry file...skipping hit");
-      }
-
-      auto *caloHit = new CalorimeterHitImpl();
-      caloHit->setTime(static_cast<float>(cerHit->getTimeStamp()));
-
-      cellIdEncoder["I"]   = padIndex[0];
-      cellIdEncoder["J"]   = padIndex[1];
-      cellIdEncoder["K-1"] = 0; // No layerId needed for the bif
-
-      if (m_cellIdFormat == std::string("M:3,S-1:3,I:9,J:9,K-1:6")) {
-        cellIdEncoder["M"]   = 0;
-        cellIdEncoder["S-1"] = 3;
-      } else if (m_cellIdFormat == std::string("I:9,J:9,K-1:6,Dif_id:8,Asic_id:6,Chan_id:7")) {
-        cellIdEncoder["Dif_id"]  = difId;
-        cellIdEncoder["Asic_id"] = asicId;
-        cellIdEncoder["Chan_id"] = chanId;
-      } else {
-        throw std::runtime_error(m_cellIdFormat + " is not a valid encoding format...");
-      }
-
-      caloHit->setEnergy(hitThreshold); // 3rd threshold
-      if (hitThreshold == 3) {
-        m_nCerenkov3 += 1;
-      } else if (hitThreshold == 2) {
-        m_nCerenkov2 += 1;
-      } else if (hitThreshold == 1) {
-        m_nCerenkov1 += 1;
-      } else {
-        delete caloHit;
-        caloHit = nullptr;
-        throw std::runtime_error("Found Cerenkov hit with weird threshold : '" + std::to_string(hitThreshold) + "'...");
-      }
-      cellIdEncoder.setCellID(caloHit);
-      cerCol->addElement(caloHit);
-    }
-  }
-  m_nCerenkovTrigger += (m_nCerenkov1 + m_nCerenkov2 + m_nCerenkov3);
-  if (m_nCerenkovTrigger > m_cerenkovRawHitMap.size() && !m_hasTooManyCerenkov) {
-    streamlog_out(WARNING) << yellow << "[" << __func__
-                           << "] - Cerenkov hit associated with multiple event in Trigger : "
-                              "Associated hit/total bif_hit in trigger : '"
-                           << m_nCerenkovTrigger << "'/" << m_cerenkovRawHitMap.size() << normal << std::endl;
-    m_hasTooManyCerenkov = true;
-  }
 }
 
 //=============================================================================
@@ -736,49 +415,37 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
   for (int ihit(0); ihit < inputLCCol.getNumberOfElements(); ++ihit) // loop over the hits
   {
     auto *rawHit = dynamic_cast<RawCalorimeterHit *>(inputLCCol.getElementAt(ihit));
-    if (rawHit != nullptr) {
-      // extract abolute bcid information:
-      const int difId = rawHit->getCellID0() & 0xFF;
-      assert(difId > 0);
-      if (ihit == 0) {
-        std::stringstream pname("");
-        pname << "DIF" << difId << "_Triggers";
-        inputLCCol.getParameters().getIntVals(pname.str(), vTrigger);
-        if (!vTrigger.empty()) {
-          m_bcid1                       = vTrigger[4];
-          m_bcid2                       = vTrigger[3];
-          const uint64_t Shift          = 16777216ULL; // to shift the value from the 24 first bits
-          m_triggerBcid                 = m_bcid1 * Shift + m_bcid2;
-          m_acquisitionTime = vTrigger[2]; // in 200ns clock
+    if (!rawHit) {
+      continue;
+    }
+    // extract abolute bcid information:
+    const int difId = rawHit->getCellID0() & 0xFF;
+    assert(difId > 0);
+    if (ihit == 0) {
+      std::stringstream pname("");
+      pname << "DIF" << difId << "_Triggers";
+      inputLCCol.getParameters().getIntVals(pname.str(), vTrigger);
+      if (!vTrigger.empty()) {
+        m_bcid1              = vTrigger[4];
+        m_bcid2              = vTrigger[3];
+        const uint64_t Shift = 16777216ULL; // to shift the value from the 24 first bits
+        m_triggerBcid        = m_bcid1 * Shift + m_bcid2;
+        m_acquisitionTime    = vTrigger[2]; // in 200ns clock
 
-          streamlog_out(DEBUG0) << "[" << __func__ << "] - trigger time : " << m_triggerBcid << std::endl;
-        }
-      }
-
-      if (rawHit->getTimeStamp() < 0) {
-        streamlog_out(ERROR) << red << "[" << __func__ << "] - Trig '" << m_trigNbr
-                             << "'Found a raw hit with negative timeStamp! : "
-                             << "time: " << rawHit->getTimeStamp() << " difId: " << getCellDif_id(rawHit->getCellID0())
-                             << " asicId: " << getCellAsic_id(rawHit->getCellID0())
-                             << " chanId: " << getCellChan_id(rawHit->getCellID0())
-                             << " thresh: " << rawHit->getAmplitude() << " removing it !" << normal << std::endl;
-        continue;
-      }
-      if (difId == m_cerenkovDifId) {
-        m_cerenkovRawHitMap[rawHit->getTimeStamp()].push_back(rawHit);
-      } else {
-        m_triggerRawHitMap[rawHit->getTimeStamp()].push_back(rawHit);
+        streamlog_out(DEBUG0) << "[" << __func__ << "] - trigger time : " << m_triggerBcid << std::endl;
       }
     }
-  }
 
-  streamlog_out(DEBUG2) << blue << "[" << __func__ << "] - Trigger '" << m_trigNbr << "' Found "
-                        << m_cerenkovRawHitMap.size() << " raw hits in BIF!" << normal << std::endl;
-  if (!m_cerenkovRawHitMap.empty()) {
-    streamlog_out(DEBUG1) << blue << "\t at time : " << normal << std::endl;
-    for (const auto &mapIt : m_cerenkovRawHitMap) {
-      streamlog_out(DEBUG1) << blue << " \t '" << mapIt.first << " Cerenkov --> '" << mapIt.second[0] << normal
-                            << std::endl;
+    // Weird timestamp from some dif from time to time
+    if (rawHit->getTimeStamp() < 0) {
+      // streamlog_out(ERROR) << red << "[" << __func__ << "] - Trig '" << m_trigNbr
+      streamlog_out(DEBUG) << red << "[" << __func__ << "] - Trig '" << m_trigNbr
+                           << "'Found a raw hit with negative timeStamp! : "
+                           << "time: " << rawHit->getTimeStamp() << " difId: " << getCellDif_id(rawHit->getCellID0())
+                           << " asicId: " << getCellAsic_id(rawHit->getCellID0())
+                           << " chanId: " << getCellChan_id(rawHit->getCellID0())
+                           << " thresh: " << rawHit->getAmplitude() << " removing it !" << normal << std::endl;
+      continue;
     }
   }
 }
@@ -851,7 +518,7 @@ void TriventProc::processEvent(LCEvent *evtP) {
                              << std::endl;
     }
 
-    const int numElements = inputLCCol->getNumberOfElements(); // hit number in trigger
+    const int numElements = inputLCCol->getNumberOfElements(); // nHits in trigger
     if (numElements > m_elecNoiseCut) {
       streamlog_out(MESSAGE) << yellow << "[" << __func__ << "] - TRIGGER number " << m_trigCount
                              << " SKIPPED ... hitNumber > m_elecNoiseCut : " << numElements << " > " << m_elecNoiseCut
@@ -916,26 +583,12 @@ void TriventProc::processEvent(LCEvent *evtP) {
                             << timePeak << "' - hits : " << *maxIter << " prevTimePeak: " << prevTimePeak << normal
                             << std::endl;
 
-      //---------- set event paramters ------
-      std::unique_ptr<LCEventImpl> lcEvt           = std::make_unique<LCEventImpl>(); // create the event
-      const std::string            parname_trigger = "trigger";
-      const std::string            parname_energy  = "beamEnergy";
-      const std::string            parname_bcid1   = "bcid1";
-      const std::string            parname_bcid2   = "bcid2";
-      lcEvt->parameters().setValue(parname_trigger, evtP->getEventNumber());
-      lcEvt->parameters().setValue(parname_energy, m_beamEnergy);
-      lcEvt->parameters().setValue(parname_bcid1, m_bcid1);
-      lcEvt->parameters().setValue(parname_bcid2, m_bcid2);
-      lcEvt->setRunNumber(evtP->getRunNumber());
-      m_runNumber = evtP->getRunNumber();
-      //-------------------------------------
-
       std::unique_ptr<LCCollectionVec> outCol = std::make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
 
       // Event Building
       streamlog_out(DEBUG0) << blue << "[" << __func__ << "] - EventBuilding..." << normal << std::endl;
       try {
-        TriventProc::eventBuilder(outCol, timePeak, lowBound, highBound);
+        TriventProc::eventBuilder(timePeak, lowBound, highBound);
       } catch (const std::exception &e) {
         throw;
       }
@@ -946,61 +599,16 @@ void TriventProc::processEvent(LCEvent *evtP) {
         streamlog_out(DEBUG0) << green << "[" << __func__
                               << "] - Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
                               << " m_layerCut: " << m_layerCut << normal << std::endl;
-        if (m_isSelected) { // only increment if event was not previsously tagged as rejected in evBuilder
-          ++m_rejectedNum;
-          m_isSelected = false;
-        }
-        m_hasNotEnoughLayers = true;
       }
 
-       // Do not store rejected event...
-      if (!m_isSelected && !m_keepRejected) {
-        resetEventParameters();
-        timeIter = std::next(timeIter, m_timeWin + 1);
-        streamlog_out(DEBUG0) << green << "[" << __func__ << "] - Trivent rejected event at :==> " << red << timePeak
-                              << green << "\t :Nhit: ==> " << magenta << outCol->getNumberOfElements() << normal
-                              << std::endl;
-        continue;
-      }
-
-      // Fill hitsMap for each Layer, cerenkov not included in m_vHitMapPerLayer
-      // streamlog_out(DEBUG) << yellow << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'..." <<
-      // normal << std::endl;
-      for (unsigned int iHit = 0; iHit < m_hitI.size(); ++iHit) {
-        try {
-          m_vHitMapPerLayer.at(m_hitK.at(iHit))->Fill(m_hitI.at(iHit), m_hitJ.at(iHit));
-        } catch (const std::exception &e) {
-          streamlog_out(ERROR) << blue << "[" << __func__ << "] - '" << e.what() << std::endl;
-          throw;
-        }
-      }
-      // streamlog_out(DEBUG) << blue << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'...OK" <<
-      // normal << std::endl;
-
-      m_evtTrigNbr = m_trigNbr;
-      m_evtNbr     = m_evtNum; // dont increment here: rejected event will have same number as last accepted !
-      m_evtBcid    = timePeak;
-      m_evtReversedBcid    = m_acquisitionTime - timePeak;
-      m_nHit       = outCol->getNumberOfElements();
-      m_hitCogX            = std::accumulate(m_hitX.begin(), m_hitX.end(), 0.0) / m_hitX.size();
-      m_hitCogY            = std::accumulate(m_hitY.begin(), m_hitY.end(), 0.0) / m_hitY.size();
-      m_hitCogZ            = std::accumulate(m_hitZ.begin(), m_hitZ.end(), 0.0) / m_hitZ.size();
-
-      std::unique_ptr<LCCollectionVec> cerCol = std::make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
-      if (m_hasCherenkov) {
-        streamlog_out(DEBUG0) << "[" << __func__ << "] - Find Cer " << m_cerenkovRawHitMap.size() << std::endl;
-        findCerenkovHits(cerCol, timePeak);
-        streamlog_out(DEBUG0) << "[" << __func__ << "] - Find Cer OK" << normal << std::endl;
-
-        // if (m_timeCerenkov != -2 * m_cerenkovTimeWindow) // InitialValue
-        if (!m_timeCerenkov.empty()) {
-          streamlog_out(DEBUG) << green << "[" << __func__ << "] - Trig# " << m_evtTrigNbr << " TrigCount "
-                               << m_trigCount << " Evt# " << m_evtNum << "\tFound Cerenkov!"
-                               << "\t cer1 = " << m_nCerenkov1 << "\t cer2 = " << m_nCerenkov2
-                               << "\t cer3 = " << m_nCerenkov3 << normal << std::endl;
-          ++m_nCerenkovEvts;
-        }
-      }
+      m_evtTrigNbr      = m_trigNbr;
+      m_evtNbr          = m_evtNum; // dont increment here: rejected event will have same number as last accepted !
+      m_evtBcid         = timePeak;
+      m_evtReversedBcid = m_acquisitionTime - timePeak;
+      m_nHit            = outCol->getNumberOfElements();
+      m_hitCogX         = std::accumulate(m_hitX.begin(), m_hitX.end(), 0.0) / m_hitX.size();
+      m_hitCogY         = std::accumulate(m_hitY.begin(), m_hitY.end(), 0.0) / m_hitY.size();
+      m_hitCogZ         = std::accumulate(m_hitZ.begin(), m_hitZ.end(), 0.0) / m_hitZ.size();
 
       //  Apply cut on time between two events
       assert(timePeak - prevTimePeak > m_time2prevEventCut);
@@ -1008,22 +616,10 @@ void TriventProc::processEvent(LCEvent *evtP) {
       streamlog_out(DEBUG0) << green << "[" << __func__ << "] - Trivent find event at :==> " << red << timePeak << green
                             << "\t :Nhit: ==> " << magenta << outCol->getNumberOfElements() << normal << std::endl;
 
-      lcEvt->setEventNumber(++m_evtNum);
-      lcEvt->addCollection(outCol.release(), m_outputCollectionName);
-      lcEvt->addCollection(cerCol.release(), m_cerenkovCollectionName);
-      lcEvt->parameters().setValue("CerenkovTag", static_cast<int>(!m_timeCerenkov.empty()));
-      m_lcWriter->writeEvent(lcEvt.get());
-      assert(lcEvt);
-
-      if (m_isSelected) {
-        ++m_selectedNum;
-      }
-
+      ++m_selectedNum;
       m_eventTree->Fill();
       timeIter = std::next(timeIter, m_timeWin + 1);
     }
-    // m_vTimeSpectrum = timeSpectrumVec;
-    // m_triggerTree->Fill();
   }
 }
 
@@ -1032,46 +628,7 @@ void TriventProc::end() {
 
   streamlog_out(MESSAGE) << "Trivent rejected " << m_rejectedNum << " Candidate event" << std::endl;
   streamlog_out(MESSAGE) << "Trivent Selected " << m_selectedNum << " Candidate event" << std::endl;
-  streamlog_out(MESSAGE) << "Cerenkov Event Selected " << m_nCerenkovEvts << std::endl;
 
-  bool shouldFindCerenkovShifts{false};
-  if (m_nCerenkovEvts > 0 && shouldFindCerenkovShifts) {
-    std::string cerCut = "CerenkovTime>-" + std::to_string(m_cerenkovTimeWindow);
-    m_eventTree->Draw("CerenkovTime>>hcer", cerCut.c_str());
-    // std::unique_ptr<TH1> hcer(dynamic_cast<TH1 *>(gDirectory->Get("hcer")));
-    auto *hcer = dynamic_cast<TH1 *>(gDirectory->Get("hcer"));
-    streamlog_out(MESSAGE) << "Cerenkov Probable time shift at "
-                           << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin()) << " with "
-                           << hcer->GetBinContent(hcer->GetMaximumBin()) << "/" << m_nCerenkovEvts << " event tagged"
-                           << std::endl;
-    int cerTagInTime = 0;
-    for (int i = -m_timeWin; i < m_timeWin + 1; ++i) {
-      streamlog_out(MESSAGE) << "Bin '" << hcer->GetXaxis()->GetBinCenter(hcer->GetMaximumBin() + i)
-                             << "' :  " << hcer->GetBinContent(hcer->GetMaximumBin() + i) << std::endl;
-      cerTagInTime += hcer->GetBinContent(hcer->GetMaximumBin() + i);
-    }
-    streamlog_out(ERROR) << "TotCerenkov in MPV+-timeWin : " << cerTagInTime << "/" << m_nCerenkovEvts << " ("
-                         << static_cast<float>(cerTagInTime) / static_cast<float>(m_nCerenkovEvts) * 100 << "%)"
-                         << std::endl;
-  }
-  m_lcWriter->close();
-
-  // TCanvas *c1 = new TCanvas();
-  // std::unique_ptr<TCanvas> c1 = std::make_unique<TCanvas>();
-  // c1->SetCanvasSize(2048, 1024);
-  // c1->Update();
-  // c1->cd();
-  // c1->Divide(2, 1);
-  // c1->cd(1);
-
-  // std::cout << "Drawing for layer 48" << std::endl;
-  // m_vHitMapPerLayer.at(47)->Draw("colz");
-  // c1->cd(2);
-  // std::cout << "Drawing for layer 50" << std::endl;
-  // m_vHitMapPerLayer.at(49)->Draw("colz");
-  // std::stringstream ss;
-  // ss << m_plotFolder << "/hitMap_Layer48-50_run" << m_runNumber << ".png";
-  // c1->SaveAs(ss.str().c_str());
   m_rootFile->cd();
   m_rootFile->Write();
   m_rootFile->Close();

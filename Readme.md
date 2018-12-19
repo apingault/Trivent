@@ -14,8 +14,9 @@ If for whatever reason this build doesn't work anymore you can use `/cvmfs/clicd
     export ilcsoftScript=/cvmfs/clicdp.cern.ch/iLCSoft/builds/current/CI_gcc/init_ilcsoft.sh  # adapt to your needs
     git clone https://github.com/apingault/Trivent
     source $ilcsoftScript
-    mkdir build; cd build; cmake -C $ILCSOFT/ILCSoft.cmake ..
+    cd Trivent; mkdir build; cd build; cmake -C $ILCSOFT/ILCSoft.cmake ..
     make install
+    cd -
 ```
 
 ## Configuration
@@ -34,9 +35,6 @@ To ensure proper environment I would suggest using a virtualenv: (These steps ar
     export PY_USER_BIN=$(python -c 'import site; print(site.USER_BASE + "/bin")')
     export PATH=$PY_USER_BIN:$PATH
     python -m pip install --user virtualenv
-    # python -m pip install --user --upgrade virtualenvwrapper
-    # source virtualenvwrapper.sh
-    # mkvirtualenv --python=$(which python) triventEnv
     virtualenv --no-site-packages -p $(which python) triventEnv  # Ensure you use the correct Python version not the ols system one(2.6.6)
     source triventEnv/bin/activate
     # Update python installation
@@ -46,9 +44,22 @@ To ensure proper environment I would suggest using a virtualenv: (These steps ar
 Once this is set-up you can just:
 
 ```bash
+    export PY_USER_BIN=$(python -c 'import site; print(site.USER_BASE + "/bin")')
+    export PATH=$PY_USER_BIN:$PATH
     source triventEnv/bin/activate  # Use the virtual env
-    python -m python/pyMarlin.py config/yourConfigFile  # without the .py extension at the end of the configFile
+    python/pyMarlin.py config/yourConfigFile  # without the .py extension at the end of the configFile
+```
+
+github sometimes messes with my files permissions, if you have a 
+
+```bash
+    bash: ./python/pyMarlin.py: Permission denied
+```
+
+Just do:
+
+```bash
+    chmod +x python/pyMarlin.py
 ```
 
 Once you are done you can leave the virtualenv by calling `deactivate`
-

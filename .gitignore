@@ -9,3 +9,5 @@ output/
 *.d
 *.so
 *.pyc
+/config/marlinCfg
+/triventEnv
