@@ -737,7 +737,7 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
   {
     auto *rawHit = dynamic_cast<RawCalorimeterHit *>(inputLCCol.getElementAt(ihit));
     if (rawHit != nullptr) {
-      // extract abolute bcid information:
+      // extract absolute bcid information:
       const int difId = rawHit->getCellID0() & 0xFF;
       assert(difId > 0);
       if (ihit == 0) {
@@ -745,11 +745,11 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
         pname << "DIF" << difId << "_Triggers";
         inputLCCol.getParameters().getIntVals(pname.str(), vTrigger);
         if (!vTrigger.empty()) {
-          m_bcid1                       = vTrigger[4];
-          m_bcid2                       = vTrigger[3];
-          const uint64_t Shift          = 16777216ULL; // to shift the value from the 24 first bits
-          m_triggerBcid                 = m_bcid1 * Shift + m_bcid2;
-          m_acquisitionTime = vTrigger[2]; // in 200ns clock
+          m_bcid1              = vTrigger[4];
+          m_bcid2              = vTrigger[3];
+          const uint64_t Shift = 16777216ULL; // to shift the value from the 24 first bits
+          m_triggerBcid        = m_bcid1 * Shift + m_bcid2;
+          m_acquisitionTime    = vTrigger[2]; // in 200ns clock
 
           streamlog_out(DEBUG0) << "[" << __func__ << "] - trigger time : " << m_triggerBcid << std::endl;
         }
@@ -946,14 +946,14 @@ void TriventProc::processEvent(LCEvent *evtP) {
         streamlog_out(DEBUG0) << green << "[" << __func__
                               << "] - Event rejected, too few layer hit. nLayerHit: " << m_nFiredLayers
                               << " m_layerCut: " << m_layerCut << normal << std::endl;
-        if (m_isSelected) { // only increment if event was not previsously tagged as rejected in evBuilder
+        if (m_isSelected) { // only increment if event was not previously tagged as rejected in evBuilder
           ++m_rejectedNum;
           m_isSelected = false;
         }
         m_hasNotEnoughLayers = true;
       }
 
-       // Do not store rejected event...
+      // Do not store rejected event...
       if (!m_isSelected && !m_keepRejected) {
         resetEventParameters();
         timeIter = std::next(timeIter, m_timeWin + 1);
@@ -962,6 +962,8 @@ void TriventProc::processEvent(LCEvent *evtP) {
                               << std::endl;
         continue;
       }
+      // streamlog_out(DEBUG) << blue << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'...OK" <<
+      // normal << std::endl;
 
       // Fill hitsMap for each Layer, cerenkov not included in m_vHitMapPerLayer
       // streamlog_out(DEBUG) << yellow << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'..." <<
@@ -977,14 +979,14 @@ void TriventProc::processEvent(LCEvent *evtP) {
       // streamlog_out(DEBUG) << blue << "[" << __func__ << "] - Filling hitMap for Layer '" << K << "'...OK" <<
       // normal << std::endl;
 
-      m_evtTrigNbr = m_trigNbr;
-      m_evtNbr     = m_evtNum; // dont increment here: rejected event will have same number as last accepted !
-      m_evtBcid    = timePeak;
-      m_evtReversedBcid    = m_acquisitionTime - timePeak;
-      m_nHit       = outCol->getNumberOfElements();
-      m_hitCogX            = std::accumulate(m_hitX.begin(), m_hitX.end(), 0.0) / m_hitX.size();
-      m_hitCogY            = std::accumulate(m_hitY.begin(), m_hitY.end(), 0.0) / m_hitY.size();
-      m_hitCogZ            = std::accumulate(m_hitZ.begin(), m_hitZ.end(), 0.0) / m_hitZ.size();
+      m_evtTrigNbr      = m_trigNbr;
+      m_evtNbr          = m_evtNum; // dont increment here: rejected event will have same number as last accepted !
+      m_evtBcid         = timePeak;
+      m_evtReversedBcid = m_acquisitionTime - timePeak;
+      m_nHit            = outCol->getNumberOfElements();
+      m_hitCogX         = std::accumulate(m_hitX.begin(), m_hitX.end(), 0.0) / m_hitX.size();
+      m_hitCogY         = std::accumulate(m_hitY.begin(), m_hitY.end(), 0.0) / m_hitY.size();
+      m_hitCogZ         = std::accumulate(m_hitZ.begin(), m_hitZ.end(), 0.0) / m_hitZ.size();
 
       std::unique_ptr<LCCollectionVec> cerCol = std::make_unique<LCCollectionVec>(LCIO::CALORIMETERHIT);
       if (m_hasCherenkov) {
