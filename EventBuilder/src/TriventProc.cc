@@ -746,7 +746,6 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
 
     const int difId = rawHit->getCellID0() & 0xFF;
     assert(difId > 0);
-
     // extract absolute bcid information:
     if (ihit == 0) {
       std::stringstream pname("");
@@ -763,11 +762,16 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
       }
     }
 
+    // Filter out hits that were in difs we don't care about
+    const auto findSkipIter = std::find(m_difsToSkip.begin(), m_difsToSkip.end(), difId);
+    if (findSkipIter != m_difsToSkip.end()) {
+      continue;
+    }
+
     if (rawHit->getTimeStamp() < 0) {
       streamlog_out(ERROR) << red << "[" << __func__ << "] - Trig '" << m_trigNbr
                            << "'Found a raw hit with negative timeStamp! : "
                            << "time: " << rawHit->getTimeStamp() << " difId: " << getCellDif_id(rawHit->getCellID0())
-                           << "time: " << rawHit->getTimeStamp() << " difId: " << difId
                            << " asicId: " << getCellAsic_id(rawHit->getCellID0())
                            << " chanId: " << getCellChan_id(rawHit->getCellID0())
                            << " thresh: " << rawHit->getAmplitude() << " removing it !" << normal << std::endl;
