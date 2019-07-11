@@ -18,6 +18,14 @@ If for whatever reason this build doesn't work anymore you can use `/cvmfs/clicd
     make install
 ```
 
+If you want to use the python package to configure the processor:
+
+```bash
+    python -m python/setup install
+```
+
+I would strongly recommend the use of a virtualenv to ensure a properly working python environment
+
 ## Configuration
 Edit the various paths to data/ilcsoft script etc.
 
