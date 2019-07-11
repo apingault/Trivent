@@ -335,6 +335,7 @@ void TriventProc::resetEventParameters() {
   m_hitCogZ = 0;
   m_hitThreshold.clear();
   m_hitBcid.clear();
+  m_hitReversedBcid.clear();
   m_firedLayersSet.clear();
   m_nFiredLayers = 0;
 
@@ -501,6 +502,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       m_hitY.push_back(pos.at(1));
       m_hitZ.push_back(pos.at(2));
       m_hitBcid.push_back(rawHit->getTimeStamp());
+      m_hitReversedBcid.push_back(m_acquisitionTime - rawHit->getTimeStamp());
       m_hitThreshold.push_back(thresh);
     }
   }
@@ -551,6 +553,7 @@ void TriventProc::initRootTree() {
   m_eventTree->Branch("HitCogY", &m_hitCogY);
   m_eventTree->Branch("HitCogZ", &m_hitCogZ);
   m_eventTree->Branch("HitBcid", &m_hitBcid);
+  m_eventTree->Branch("HitRevBcid", &m_hitReversedBcid);
   m_eventTree->Branch("HitThresh", &m_hitThreshold);
   // m_eventTree->Branch("TriggerNumber", &m_evtTrigNbr);
   // m_eventTree->Branch("TriggerBcid", &m_triggerBcid);
@@ -736,39 +739,44 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
   for (int ihit(0); ihit < inputLCCol.getNumberOfElements(); ++ihit) // loop over the hits
   {
     auto *rawHit = dynamic_cast<RawCalorimeterHit *>(inputLCCol.getElementAt(ihit));
-    if (rawHit != nullptr) {
-      // extract absolute bcid information:
-      const int difId = rawHit->getCellID0() & 0xFF;
-      assert(difId > 0);
-      if (ihit == 0) {
-        std::stringstream pname("");
-        pname << "DIF" << difId << "_Triggers";
-        inputLCCol.getParameters().getIntVals(pname.str(), vTrigger);
-        if (!vTrigger.empty()) {
-          m_bcid1              = vTrigger[4];
-          m_bcid2              = vTrigger[3];
-          const uint64_t Shift = 16777216ULL; // to shift the value from the 24 first bits
-          m_triggerBcid        = m_bcid1 * Shift + m_bcid2;
-          m_acquisitionTime    = vTrigger[2]; // in 200ns clock
 
-          streamlog_out(DEBUG0) << "[" << __func__ << "] - trigger time : " << m_triggerBcid << std::endl;
-        }
-      }
+    if (!rawHit) {
+      continue;
+    }
 
-      if (rawHit->getTimeStamp() < 0) {
-        streamlog_out(ERROR) << red << "[" << __func__ << "] - Trig '" << m_trigNbr
-                             << "'Found a raw hit with negative timeStamp! : "
-                             << "time: " << rawHit->getTimeStamp() << " difId: " << getCellDif_id(rawHit->getCellID0())
-                             << " asicId: " << getCellAsic_id(rawHit->getCellID0())
-                             << " chanId: " << getCellChan_id(rawHit->getCellID0())
-                             << " thresh: " << rawHit->getAmplitude() << " removing it !" << normal << std::endl;
-        continue;
+    const int difId = rawHit->getCellID0() & 0xFF;
+    assert(difId > 0);
+
+    // extract absolute bcid information:
+    if (ihit == 0) {
+      std::stringstream pname("");
+      pname << "DIF" << difId << "_Triggers";
+      inputLCCol.getParameters().getIntVals(pname.str(), vTrigger);
+      if (!vTrigger.empty()) {
+        m_bcid1              = vTrigger[4];
+        m_bcid2              = vTrigger[3];
+        const uint64_t Shift = 16777216ULL; // to shift the value from the 24 first bits
+        m_triggerBcid        = m_bcid1 * Shift + m_bcid2;
+        m_acquisitionTime    = vTrigger[2]; // in 200ns clock
+
+        streamlog_out(DEBUG0) << "[" << __func__ << "] - trigger time : " << m_triggerBcid << std::endl;
       }
-      if (difId == m_cerenkovDifId) {
-        m_cerenkovRawHitMap[rawHit->getTimeStamp()].push_back(rawHit);
-      } else {
-        m_triggerRawHitMap[rawHit->getTimeStamp()].push_back(rawHit);
-      }
+    }
+
+    if (rawHit->getTimeStamp() < 0) {
+      streamlog_out(ERROR) << red << "[" << __func__ << "] - Trig '" << m_trigNbr
+                           << "'Found a raw hit with negative timeStamp! : "
+                           << "time: " << rawHit->getTimeStamp() << " difId: " << getCellDif_id(rawHit->getCellID0())
+                           << "time: " << rawHit->getTimeStamp() << " difId: " << difId
+                           << " asicId: " << getCellAsic_id(rawHit->getCellID0())
+                           << " chanId: " << getCellChan_id(rawHit->getCellID0())
+                           << " thresh: " << rawHit->getAmplitude() << " removing it !" << normal << std::endl;
+      continue;
+    }
+    if (difId == m_cerenkovDifId) {
+      m_cerenkovRawHitMap[rawHit->getTimeStamp()].push_back(rawHit);
+    } else {
+      m_triggerRawHitMap[rawHit->getTimeStamp()].push_back(rawHit);
     }
   }
 

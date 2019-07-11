@@ -200,28 +200,29 @@ private:
   // int m_nEvt;                       // Number of evt in trigger
   // std::vector<unsigned int> m_vTimeSpectrum; // number of hits per time clock
 
-  // Event branches, all time length are in 200ns clock
-  unsigned int m_detId{100};     // DetectorId (used for ecal)
-  unsigned int m_evtTrigNbr{0};  // Current trigger Number
-  unsigned long long     m_triggerBcid{0}; // Current trigger bcid
-  unsigned long long     m_acquisitionTime{0}; // Current trigger length
-  unsigned int m_evtNbr{0};      // Current Evt number
-  unsigned int m_evtBcid{0};     // Current Evt bcid
-  unsigned int m_evtReversedBcid{0};     // Current Evt reversed bcid = (acquisionTime - bcid)
-  unsigned int m_nHit{0};        // Number of hits
+  // Event branches, all time length are in 200ns(5MHz) clock
+  unsigned int       m_detId{100};         // DetectorId (used for ecal)
+  unsigned int       m_evtTrigNbr{0};      // Current trigger Number
+  unsigned long long m_triggerBcid{0};     // Current trigger bcid
+  unsigned long long m_acquisitionTime{0}; // Current trigger length
+  unsigned int       m_evtNbr{0};          // Current Evt number
+  unsigned int       m_evtBcid{0};         // Current Evt bcid
+  unsigned int       m_evtReversedBcid{0}; // Current Evt reversed bcid = (acquisionTime - bcid)
+  unsigned int       m_nHit{0};            // Number of hits
 
-  std::vector<int>               m_hitBcid{}; // Hit time
-  std::vector<int>               m_hitI{};    // Hit position
-  std::vector<int>               m_hitJ{};    // Hit position
-  std::vector<int>               m_hitK{};    // Hit position
-  std::vector<double>            m_hitX{};    // Hit position
-  std::vector<double>            m_hitY{};    // Hit position
-  std::vector<double>            m_hitZ{};    // Hit position
-  std::vector<int>               m_hitThreshold{};
-  std::vector<int>               m_hitTimeStamp{};
-  double            m_hitCogX{-1.};    // Hit Cog
-  double            m_hitCogY{-1.};    // Hit Cog
-  double            m_hitCogZ{-1.};    // Hit Cog
+  std::vector<int>    m_hitBcid{};         // Hit time
+  std::vector<int>    m_hitReversedBcid{}; // Reversed hit time
+  std::vector<int>    m_hitI{};            // Hit position
+  std::vector<int>    m_hitJ{};            // Hit position
+  std::vector<int>    m_hitK{};            // Hit position
+  std::vector<double> m_hitX{};            // Hit position
+  std::vector<double> m_hitY{};            // Hit position
+  std::vector<double> m_hitZ{};            // Hit position
+  std::vector<int>    m_hitThreshold{};
+  std::vector<int>    m_hitTimeStamp{};
+  double              m_hitCogX{-1.}; // Hit Cog
+  double              m_hitCogY{-1.}; // Hit Cog
+  double              m_hitCogZ{-1.}; // Hit Cog
 
   std::set<unsigned int> m_firedLayersSet{};          // set of Layers touched in evt
   unsigned int           m_nFiredLayers{0};           // Number of Layers touched in evt = m_firedLayersSet.size()
