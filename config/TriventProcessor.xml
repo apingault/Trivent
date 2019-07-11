@@ -1,31 +1,87 @@
-<marlin>
+<?xml version="1.0" encoding="us-ascii"?>
+<!-- ?xml-stylesheet type="text/xsl" href="http://ilcsoft.desy.de/marlin/marlin.xsl"? -->
+<!-- ?xml-stylesheet type="text/xsl" href="marlin.xsl"? -->
+
+<!-- Loading shared library : /eos/home-a/apingaul/CALICE/Software/Trivent/lib/libTriventProc.so.0.9.0 (libTriventProc.so)-->
+
+<!--##########################################
+    #                                        #
+    #     Example steering file for marlin   #
+    #                                        #
+    ##########################################-->
+
+
+<marlin xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://ilcsoft.desy.de/marlin/marlin.xsd">
+  <constants>
+    <!-- define constants here - use in steering file as ${ConstantName} -->
+    <!--constant name="DetectorModel" value="ILD_l5_o1_v02" /-->
+  </constants>
+
   <execute>
-    <processor name="MyTriventProcessor"/>
+    <processor name="MyTriventProc"/>
   </execute>
+
   <global>
-    <parameter name="LCIOInputFiles"></parameter>
-    <parameter name="MaxRecordNumber">0</parameter>
-    <parameter name="SkipNEvents">0</parameter>
-    <parameter name="Verbosity" options="DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT">MESSAGE</parameter>
+    <parameter name="LCIOInputFiles"> simjob.slcio </parameter>
+    <!-- limit the number of processed records (run+evt): -->
+    <parameter name="MaxRecordNumber" value="5001" />
+    <parameter name="SkipNEvents" value="0" />
+    <parameter name="SupressCheck" value="false" />
+    <parameter name="AllowToModifyEvent" value="false" />
+    <parameter name="GearXMLFile"></parameter>
+    <parameter name="Verbosity" options="DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT"> DEBUG  </parameter>
+    <parameter name="RandomSeed" value="1234567890" />
+    <!-- optionally limit the collections that are read from the input file: -->
+    <!--parameter name="LCIOReadCollectionNames">MCParticle PandoraPFOs</parameter-->
   </global>
-  <processor name="MyTriventProcessor" type="TriventProc">
-    <parameter name="Verbosity" type="string" options="DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT">MESSAGE</parameter>
-    <parameter name="InputCollectionNames" type="StringVec">DHCALRawHits</parameter>
-    <parameter name="OutputCollectionName" type="string">SDHCAL_HIT</parameter>
-    <parameter name="LCIOOutputFile" type="string"></parameter>
-    <parameter name="ROOTOutputFile" type="string"></parameter>
-    <parameter name="TreeName" type="string"></parameter>
-    <parameter name="PlotFolder" type="string"></parameter>
-    <parameter name="SetupGeometry" type="string"></parameter>
-    <parameter name="CellIdFormat" type="string">M:3,S-1:3,I:9,J:9,K-1:6</parameter>
-    <parameter name="GainCorrectionMode" type="bool">False</parameter>
-    <parameter name="ElectronicNoiseCut" type="int">350000</parameter>
-    <parameter name="LayerGap" type="double">2.8</parameter>
-    <parameter name="LayerCut" type="int">7</parameter>
-    <parameter name="NoiseCut" type="int">10</parameter>
-    <parameter name="TimeWin" type="int">2</parameter>
-    <parameter name="HasCerenkovDif" type="bool">True</parameter>
-    <parameter name="CerenkovDifId" type="int">3</parameter>
-    <parameter name="CerenkovTimeWindow" type="int">10</parameter>
+
+
+  <processor name="MyTriventProc" type="TriventProc">
+    <!--Data Format string: it could be M:3,S-1:3,I:9,J:9,K-1:6 (ILD_ENDCAP) or I:9,J:9,K-1:6,Dif_id:8,Asic_id:6,Chan_id:7-->
+    <parameter name="CellIdFormat" type="string">M:3,S-1:3,I:9,J:9,K-1:6 </parameter>
+    <!--Cerenkov Collection Name-->
+    <parameter name="CerenkovCollectionName" type="string" lcioOutType="CalorimeterHit">CERENKOV_HIT </parameter>
+    <!--Dif number for cerenkov data-->
+    <parameter name="CerenkovDifId" type="int">3 </parameter>
+    <!--TimeWindow around timePeak in which to look for cerenkov data-->
+    <parameter name="CerenkovTimeWindow" type="int">10 </parameter>
+    <!--number of hit max on time stamp-->
+    <parameter name="ElectronicNoiseCut" type="int">5000 </parameter>
+    <!--If Cerenkov dif was connected during data taking-->
+    <parameter name="HasCerenkovDIF" type="bool">true </parameter>
+    <!--HCAL Collection Names-->
+    <parameter name="InputCollectionNames" type="StringVec" lcioInType="RawCalorimeterHit">DHCALRawHits  </parameter>
+    <!--Keep event that didn't pass cut selection-->
+    <parameter name="KeepRejectedEvent" type="bool">false </parameter>
+    <!--LCIO file-->
+    <parameter name="LCIOOutputFile" type="string">TDHCAL.slcio </parameter>
+    <!--cut in number of layer 10 in default-->
+    <parameter name="LayerCut" type="int">10 </parameter>
+    <!--NOISE file-->
+    <parameter name="NOISEOutputFile" type="string">noise_run.slcio </parameter>
+    <!--noise cut in time spectrum 10 in default-->
+    <parameter name="NoiseCut" type="int">10 </parameter>
+    <!--HCAL Collection Name-->
+    <parameter name="OutputCollectionName" type="string" lcioOutType="CalorimeterHit">SDHCAL_HIT </parameter>
+    <!--Folder Path to save Plot-->
+    <parameter name="PlotFolder" type="string">./ </parameter>
+    <!--Logroot name-->
+    <parameter name="ROOTOutputFile" type="string">TDHCAL.root </parameter>
+    <!--Dif geometry and position on the detector in json-->
+    <parameter name="SetupGeometry" type="string">setup_geometry </parameter>
+    <!--time window = 2 in default-->
+    <parameter name="TimeWin" type="int">2 </parameter>
+    <!--Logroot tree description-->
+    <parameter name="TreeDescription" type="string">Event variables </parameter>
+    <!--Logroot tree name-->
+    <parameter name="TreeName" type="string">EventTree </parameter>
+    <!--verbosity level of this processor ("DEBUG0-4,MESSAGE0-4,WARNING0-4,ERROR0-4,SILENT")-->
+    <parameter name="Verbosity" type="string">DEBUG </parameter>
+    <!--Shift on Z axis to compute hitPosition-->
+    <parameter name="ZShift" type="float">225 </parameter>
+    <!--cut on time to previous event (x 200 ns)-->
+    <parameter name="_time2prev_event_cut" type="int">0 </parameter>
+    <!--The beam -->
+    <parameter name="beamEnergy" type="float">0 </parameter>
   </processor>
 </marlin>
