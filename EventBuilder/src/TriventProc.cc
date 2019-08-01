@@ -855,7 +855,8 @@ void TriventProc::processEvent(LCEvent *evtP) {
     try {
       inputLCCol = evtP->getCollection(m_inputCollections.at(i));
     } catch (lcio::DataNotAvailableException &zero) {
-      streamlog_out(ERROR) << red << "[" << __func__ << "] - No data found in collection " << i << normal << std::endl;
+      streamlog_out(ERROR) << red << "[" << __func__ << "] - No data found in collection " << i << " available colMame "
+                           << evtP->getCollectionNames() << normal << std::endl;
     }
 
     if (inputLCCol == nullptr) {
