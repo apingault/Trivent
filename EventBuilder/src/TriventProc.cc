@@ -124,28 +124,35 @@ void TriventProc::readGeometry(const std::string &geomFile) {
   const auto    jsonFile  = json::parse(jsonStream);
   const auto    layerList = jsonFile.at("chambers");
 
+  const auto difPos = {std::make_pair("left", 0), std::make_pair("center", 32), std::make_pair("right", 64)};
   for (const auto &layer : layerList) {
-    const int slotId = layer.at("slot");
-    int       difId  = layer.at("left");
-    difGeom   temp{slotId, 0};
-    insertDifIntoMap(difId, temp);
+    const int slotId   = layer.at("slot");
+    bool      skipSlot = false;
+    for (const auto &pos : difPos) {
+      try {
+        const int difId = layer.at(pos.first);
+        // Make sure we do not add the dummy layer for the bif
+        if (m_hasCherenkov && difId == m_cerenkovDifId) {
+          streamlog_out(WARNING) << "Found dummy layer for the bif in the geometry, skipping it" << std::endl;
+          skipSlot = true;
+        } else {
+          difGeom dGeom{slotId, pos.second};
+          insertDifIntoMap(difId, dGeom);
+        }
 
-    difId       = layer.at("center");
-    temp.shiftY = 32;
-    insertDifIntoMap(difId, temp);
-
-    difId       = layer.at("right");
-    temp.shiftY = 64;
-    insertDifIntoMap(difId, temp);
-
-    streamlog_out(DEBUG) << "inserting layer " << slotId << std::endl;
-
-    // Make sure dummy layer for the bif is not in the list of layer (some geometry files implement this...)
-    if (m_hasCherenkov && difId == m_cerenkovDifId) {
-      throw std::runtime_error(
-          "Bif should not be present in this part of the geometry, please move it to a separate 'bifId' section");
+      } catch (json::out_of_range &e) {
+        if (!skipSlot) {
+          streamlog_out(WARNING) << "[" << __func__ << "] - Missing dif in the " << pos.first << " of layer " << slotId
+                                 << std::endl;
+        }
+        continue;
+      }
     }
-    m_layerSet.insert(slotId);
+
+    if (!skipSlot) {
+      streamlog_out(DEBUG) << "inserting layer " << slotId << std::endl;
+      m_layerSet.insert(slotId);
+    }
   }
 
   const auto difsToSkipList = jsonFile.at("difsToSkip");
