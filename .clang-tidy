@@ -1,6 +1,6 @@
-Checks:          'clang-diagnostic-*,clang-analyzer-*,*,-cppcoreguidelines-pro-bounds-array-to-pointer-decay'
-WarningsAsErrors: ''
-HeaderFilterRegex: 'Trivent/*.hh'
+Checks:          '*,-google-readability-todo,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-google-runtime-int,-cppcoreguidelines-pro-bounds-constant-array-index,-cppcoreguidelines-pro-type-vararg,-cppcoreguidelines-pro-bounds-array-to-pointer-decay'
+WarningsAsErrors: '*'
+HeaderFilterRegex: 'EventBuilder*'
 AnalyzeTemporaryDtors: true
 FormatStyle:     file
 User:            antoine

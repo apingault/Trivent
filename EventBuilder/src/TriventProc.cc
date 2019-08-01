@@ -34,8 +34,6 @@
 // -- Root headers
 #include <TCanvas.h>
 
-TriventProc myTriventProc;
-
 // -- json
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
@@ -168,7 +166,7 @@ void TriventProc::readGeometry(const std::string &geomFile) {
 
     if (difIter == m_difMapping.end()) {
       try {
-        const int bifId = jsonFile.at("bifId").get<int>();
+        const auto bifId = jsonFile.at("bifId").get<int>();
         if (bifId != m_cerenkovDifId) {
           throw std::runtime_error("BifId from geometry file (" + std::to_string(bifId) +
                                    ") is different than marlin xml parameter (" + std::to_string(m_cerenkovDifId) +
@@ -364,7 +362,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
   evtCol->setFlag(evtCol->getFlag() | (1 << LCIO::RCHBIT_LONG));
   evtCol->setFlag(evtCol->getFlag() | (1 << LCIO::RCHBIT_TIME));
 
-  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder(m_cellIdFormat.c_str(), evtCol.get());
+  CellIDEncoder<CalorimeterHitImpl> cellIdEncoder(m_cellIdFormat, evtCol.get());
 
   std::map<int, int> asicMap{};
   std::map<int, int> ramFullMap{};
@@ -425,11 +423,11 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
 
       const int asicKey = getAsicKey(padIndex);
 
-      if (m_layerStartAt0)
+      if (m_layerStartAt0) {
         assert(asicKey >= 0);
-      else
+      } else {
         assert(asicKey > 0);
-
+      }
       if (asicMap[asicKey] != 0) {
         ++asicMap[asicKey];
       } else {
@@ -464,9 +462,9 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       const int            I = padIndex[0];
       const int            J = padIndex[1];
       const int            K = padIndex[2];
-      std::array<float, 3> pos{static_cast<float>(J * m_cellSizeJ + m_cellSizeJ / 2),
-                               static_cast<float>((96 - I) * m_cellSizeI + m_cellSizeI / 2),
-                               static_cast<float>(K * m_layerThickness + m_zShift)};
+      std::array<float, 3> pos{{static_cast<float>(J * m_cellSizeJ + m_cellSizeJ / 2),
+                                static_cast<float>((96 - I) * m_cellSizeI + m_cellSizeI / 2),
+                                static_cast<float>(K * m_layerThickness + m_zShift)}};
 
       auto *caloHit = new CalorimeterHitImpl();
       caloHit->setTime(static_cast<float>(rawHit->getTimeStamp()));
@@ -747,7 +745,7 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
   {
     auto *rawHit = dynamic_cast<RawCalorimeterHit *>(inputLCCol.getElementAt(ihit));
 
-    if (!rawHit) {
+    if (nullptr == rawHit) {
       continue;
     }
 
