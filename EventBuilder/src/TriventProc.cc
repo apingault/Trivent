@@ -38,6 +38,7 @@
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 
+TriventProc myTriventProc;
 //=========================================================
 TriventProc::TriventProc() : Processor("TriventProc") {
   // collection
