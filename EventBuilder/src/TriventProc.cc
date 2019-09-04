@@ -267,7 +267,12 @@ std::vector<int> TriventProc::getPadIndex(const int difId, const int asicId, con
     padLims.push_back(m_cerenkovLayerId);
   }
   const bool padOk = checkPadLimits(index, padLims);
-  assert(padOk);
+  if (!padOk) {
+    streamlog_out(ERROR) << "[" << __func__ << "] - Found weir hit: difId== " << difId << " asicId ==" << asicId
+                         << " chanId ==" << chanId << " I == " << index[0] << " J == " << index[1]
+                         << " K == " << index[2] << std::endl;
+    return {};
+  }
 
   // if (difId == m_cerenkovDifId) {
   // streamlog_out(DEBUG0) << "[" << __func__ << "] - difId== " << difId<< " asicId ==" << asicId << " chanId ==" <<
