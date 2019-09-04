@@ -745,7 +745,8 @@ void TriventProc::findCerenkovHits(std::unique_ptr<IMPL::LCCollectionVec> &cerCo
 
 //=============================================================================
 void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
-  std::vector<int> vTrigger;
+  std::vector<int>                  vTrigger;
+  std::map<const int, unsigned int> mNegTimeStamp;
 
   for (int ihit(0); ihit < inputLCCol.getNumberOfElements(); ++ihit) // loop over the hits
   {
@@ -780,12 +781,20 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
     }
 
     if (rawHit->getTimeStamp() < 0) {
-      streamlog_out(ERROR) << red << "[" << __func__ << "] - Trig '" << m_trigNbr
-                           << "'Found a raw hit with negative timeStamp! : "
-                           << "time: " << rawHit->getTimeStamp() << " difId: " << getCellDif_id(rawHit->getCellID0())
-                           << " asicId: " << getCellAsic_id(rawHit->getCellID0())
-                           << " chanId: " << getCellChan_id(rawHit->getCellID0())
-                           << " thresh: " << rawHit->getAmplitude() << " removing it !" << normal << std::endl;
+      // Only display error msg for first negative time stamp of a dif,
+      // Avoids filling the logs when a dif has sync issue.
+      const auto foundIt = mNegTimeStamp.find(getCellDif_id(rawHit->getCellID0()));
+      if (foundIt == mNegTimeStamp.end()) {
+        streamlog_out(ERROR) << red << "[" << __func__ << "] - Trig '" << m_trigNbr
+                             << "'Found a raw hit with negative timeStamp! : "
+                             << "time: " << rawHit->getTimeStamp() << " difId: " << getCellDif_id(rawHit->getCellID0())
+                             << " asicId: " << getCellAsic_id(rawHit->getCellID0())
+                             << " chanId: " << getCellChan_id(rawHit->getCellID0())
+                             << " thresh: " << rawHit->getAmplitude() << " removing it !" << normal << std::endl;
+        mNegTimeStamp.emplace(std::make_pair<const int, unsigned int>(getCellDif_id(rawHit->getCellID0()), 1));
+      } else {
+        foundIt->second++;
+      }
       continue;
     }
     if (difId == m_cerenkovDifId) {
@@ -795,6 +804,14 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
     }
   }
 
+  if (0 != mNegTimeStamp.size()) {
+    streamlog_out(WARNING) << yellow << "[" << __func__ << "] - Trig '" << m_trigNbr
+                           << "' Found hits with negative time stamps in following difs: " << std::endl;
+    for (const auto &difIt : mNegTimeStamp) {
+      streamlog_out(WARNING) << yellow << "[" << __func__ << "] \t " << difIt.first << " : " << difIt.second << "hits"
+                             << normal << std::endl;
+    }
+  }
   streamlog_out(DEBUG2) << blue << "[" << __func__ << "] - Trigger '" << m_trigNbr << "' Found "
                         << m_cerenkovRawHitMap.size() << " raw hits in BIF!" << normal << std::endl;
   if (!m_cerenkovRawHitMap.empty()) {
