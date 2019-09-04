@@ -744,7 +744,7 @@ void TriventProc::fillRawHitTrigger(const LCCollection &inputLCCol) {
 
   for (int ihit(0); ihit < inputLCCol.getNumberOfElements(); ++ihit) // loop over the hits
   {
-    auto *rawHit = dynamic_cast<RawCalorimeterHit *>(inputLCCol.getElementAt(ihit));
+    auto *rawHit = static_cast<RawCalorimeterHit *>(inputLCCol.getElementAt(ihit));
 
     if (nullptr == rawHit) {
       continue;
