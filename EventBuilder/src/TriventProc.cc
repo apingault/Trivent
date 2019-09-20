@@ -468,7 +468,7 @@ void TriventProc::eventBuilder(std::unique_ptr<IMPL::LCCollectionVec> &evtCol, c
       const int            I = padIndex[0];
       const int            J = padIndex[1];
       const int            K = padIndex[2];
-      std::array<float, 3> pos{{static_cast<float>(J * m_cellSizeJ + m_cellSizeJ / 2),
+      std::array<float, 3> pos{{static_cast<float>((J - 1) * m_cellSizeJ + m_cellSizeJ / 2),
                                 static_cast<float>((96 - I) * m_cellSizeI + m_cellSizeI / 2),
                                 static_cast<float>(K * m_layerThickness + m_zShift)}};
 
